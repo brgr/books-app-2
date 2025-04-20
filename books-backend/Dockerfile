@@ -9,4 +9,4 @@ WORKDIR /app
 RUN uv sync --frozen
 
 # Presuming there is a `my_app` command provided by the project
-CMD ["uv", "run", "fastapi", "run", "main.py"]
+CMD ["uv", "run", "fastapi", "run", "main.py", "--port", "80"]
