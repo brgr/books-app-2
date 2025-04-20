@@ -8,5 +8,5 @@ ADD . /app
 WORKDIR /app
 RUN uv sync --frozen
 
-# Presuming there is a `my_app` command provided by the project
+EXPOSE 80
 CMD ["uv", "run", "fastapi", "run", "main.py", "--port", "80"]
