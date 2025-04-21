@@ -9,6 +9,7 @@ app = FastAPI(title="Books API")
 security = HTTPBasic()
 
 
+# TODO: Move the user + pw to env vars
 def get_current_username(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
     current_username_bytes = credentials.username.encode("utf8")
     correct_username_bytes = b"stanleyjobson"
