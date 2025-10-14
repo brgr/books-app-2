@@ -155,7 +155,8 @@ function formatDate(dateStr: string | null): string {
 }
 
 .book-card:hover {
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .book-content {
