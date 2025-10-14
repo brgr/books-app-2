@@ -20,6 +20,7 @@ const prefilledBookData = ref<GoogleBookResult | null>(null)
 
 const filterStatus = ref<ReadingStatus | ''>('')
 const searchQuery = ref('')
+const viewMode = ref<'list' | 'grid'>('list')
 
 const filteredBooks = computed(() => {
   if (!booksData.value) return []
@@ -173,6 +174,23 @@ function getStatusLabel(status: ReadingStatus): string {
             </option>
           </select>
         </div>
+
+        <div class="view-toggle">
+          <button
+            @click="viewMode = 'list'"
+            :class="['view-toggle-btn', { active: viewMode === 'list' }]"
+            title="List view"
+          >
+            List
+          </button>
+          <button
+            @click="viewMode = 'grid'"
+            :class="['view-toggle-btn', { active: viewMode === 'grid' }]"
+            title="Grid view"
+          >
+            Grid
+          </button>
+        </div>
       </div>
 
       <div v-if="loading" class="loading">
@@ -184,14 +202,35 @@ function getStatusLabel(status: ReadingStatus): string {
         <p v-else>No books yet. Add your first book to get started!</p>
       </div>
 
-      <div v-else class="books-list">
-        <BookCard
+      <div v-else :class="['books-container', viewMode === 'grid' ? 'books-grid' : 'books-list']">
+        <div
           v-for="book in filteredBooks"
           :key="book.id"
-          :book="book"
-          @updated="handleEditBook(book)"
-          @deleted="handleDeleteBook(book)"
-        />
+          :class="viewMode === 'grid' ? 'grid-item' : ''"
+        >
+          <img
+            v-if="viewMode === 'grid' && book.cover_image_url"
+            :src="book.cover_image_url"
+            :alt="book.title"
+            :title="book.title + ' by ' + book.author"
+            class="grid-cover"
+            @click="handleEditBook(book)"
+          />
+          <div
+            v-else-if="viewMode === 'grid'"
+            class="grid-cover-placeholder"
+            :title="book.title + ' by ' + book.author"
+            @click="handleEditBook(book)"
+          >
+            <div class="grid-no-cover-text">{{ book.title }}</div>
+          </div>
+          <BookCard
+            v-else
+            :book="book"
+            @updated="handleEditBook(book)"
+            @deleted="handleDeleteBook(book)"
+          />
+        </div>
       </div>
 
       <div v-if="booksData && booksData.pages > 1" class="pagination">
@@ -250,6 +289,7 @@ function getStatusLabel(status: ReadingStatus): string {
   background-color: var(--color-bg-card);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
+  align-items: center;
 }
 
 .filter-group {
@@ -264,14 +304,108 @@ function getStatusLabel(status: ReadingStatus): string {
   width: 100%;
 }
 
+.view-toggle {
+  display: flex;
+  gap: 4px;
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  padding: 4px;
+}
+
+.view-toggle-btn {
+  padding: 6px 16px;
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--border-radius) - 2px);
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.view-toggle-btn:hover {
+  color: var(--color-text);
+  background-color: var(--color-bg-card);
+}
+
+.view-toggle-btn.active {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.view-toggle-btn.active:hover {
+  background-color: var(--color-primary);
+}
+
 .empty-state {
   text-align: center;
   padding: var(--spacing-xl);
   color: var(--color-text-secondary);
 }
 
-.books-list {
+.books-container {
   margin-top: var(--spacing-lg);
+}
+
+.books-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.books-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.grid-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.grid-cover {
+  width: 100%;
+  aspect-ratio: 2/3;
+  object-fit: cover;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: var(--shadow);
+}
+
+.grid-cover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.grid-cover-placeholder {
+  width: 100%;
+  aspect-ratio: 2/3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: var(--shadow);
+  padding: var(--spacing-md);
+}
+
+.grid-cover-placeholder:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.grid-no-cover-text {
+  text-align: center;
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 500;
+  word-break: break-word;
+  line-height: 1.4;
 }
 
 .pagination-info {
@@ -288,6 +422,19 @@ function getStatusLabel(status: ReadingStatus): string {
 
   .filters {
     flex-direction: column;
+  }
+
+  .view-toggle {
+    width: 100%;
+  }
+
+  .view-toggle-btn {
+    flex: 1;
+  }
+
+  .books-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: var(--spacing-md);
   }
 }
 </style>
