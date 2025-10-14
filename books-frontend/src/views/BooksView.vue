@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { getBooks, deleteBook } from '../api/books'
 import BookCard from '../components/BookCard.vue'
 import BookFormModal from '../components/BookFormModal.vue'
@@ -20,7 +20,15 @@ const prefilledBookData = ref<GoogleBookResult | null>(null)
 
 const filterStatus = ref<ReadingStatus | ''>('')
 const searchQuery = ref('')
-const viewMode = ref<'list' | 'grid'>('list')
+
+// Load saved view mode from localStorage, default to 'list'
+const savedViewMode = localStorage.getItem('booksViewMode') as 'list' | 'grid' | null
+const viewMode = ref<'list' | 'grid'>(savedViewMode || 'list')
+
+// Watch viewMode and save to localStorage whenever it changes
+watch(viewMode, (newMode) => {
+  localStorage.setItem('booksViewMode', newMode)
+})
 
 const filteredBooks = computed(() => {
   if (!booksData.value) return []
