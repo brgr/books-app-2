@@ -1,0 +1,78 @@
+export const ReadingStatus = {
+  WANT_TO_READ: 'want_to_read',
+  STARTED: 'started',
+  FINISHED: 'finished',
+  ABANDONED: 'abandoned',
+} as const
+
+export type ReadingStatus = typeof ReadingStatus[keyof typeof ReadingStatus]
+
+export interface User {
+  id: number
+  username: string
+  created_at: string
+}
+
+export interface UserBook {
+  id: number
+  user_id: number
+  book_id: number
+  status: ReadingStatus
+  started_at: string | null
+  finished_at: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Book {
+  id: number
+  title: string
+  author: string
+  isbn: string | null
+  description: string | null
+  price: number | null
+  published_date: string | null
+  page_count: number | null
+  created_at: string
+  updated_at: string
+  user_status: UserBook | null
+}
+
+export interface PaginatedBooks {
+  items: Book[]
+  total: number
+  page: number
+  page_size: number
+  pages: number
+}
+
+export interface BookCreate {
+  title: string
+  author: string
+  isbn?: string
+  description?: string
+  price?: number
+  published_date?: string
+  page_count?: number
+}
+
+export interface BookUpdate {
+  title?: string
+  author?: string
+  isbn?: string
+  description?: string
+  price?: number
+  published_date?: string
+  page_count?: number
+}
+
+export interface UserBookStatusUpdate {
+  status: ReadingStatus
+  notes?: string
+}
+
+export interface UserCreate {
+  username: string
+  password: string
+}

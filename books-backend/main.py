@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -15,6 +16,15 @@ from app.config import settings
 from datetime import datetime, UTC
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
