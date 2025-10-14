@@ -8,6 +8,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  click: []
   updated: []
   deleted: []
 }>()
@@ -75,15 +76,16 @@ function formatDate(dateStr: string | null): string {
         v-if="book.cover_image_url"
         :src="book.cover_image_url"
         :alt="book.title"
-        class="book-cover"
+        class="book-cover book-cover-clickable"
+        @click="emit('click')"
       />
-      <div class="book-cover-placeholder" v-else>
+      <div class="book-cover-placeholder book-cover-clickable" v-else @click="emit('click')">
         No Cover
       </div>
 
       <div class="book-details">
         <div class="book-header">
-          <h3>{{ book.title }}</h3>
+          <h3 class="book-title-clickable" @click="emit('click')">{{ book.title }}</h3>
           <div class="book-actions">
             <button @click="emit('updated')" class="btn-small" title="Edit book">
               Edit
@@ -170,6 +172,16 @@ function formatDate(dateStr: string | null): string {
   flex-shrink: 0;
 }
 
+.book-cover-clickable {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.book-cover-clickable:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
 .book-cover-placeholder {
   display: flex;
   align-items: center;
@@ -197,6 +209,15 @@ function formatDate(dateStr: string | null): string {
   margin: 0;
   font-size: 1.25rem;
   flex: 1;
+}
+
+.book-title-clickable {
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.book-title-clickable:hover {
+  color: var(--color-primary);
 }
 
 .book-actions {

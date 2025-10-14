@@ -3,6 +3,7 @@ import { isAuthenticated, restoreAuthFromStorage } from '../api/auth'
 import { setupAuthInterceptor } from '../api/client'
 import LoginView from '../views/LoginView.vue'
 import BooksView from '../views/BooksView.vue'
+import BookDetailView from '../views/BookDetailView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -17,6 +18,12 @@ const router = createRouter({
       path: '/',
       name: 'books',
       component: BooksView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/books/:id',
+      name: 'book-detail',
+      component: BookDetailView,
       meta: { requiresAuth: true },
     },
   ],

@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { getBooks, deleteBook } from '../api/books'
 import BookCard from '../components/BookCard.vue'
 import BookFormModal from '../components/BookFormModal.vue'
 import BookSearchModal from '../components/BookSearchModal.vue'
 import NavigationBar from '../components/NavigationBar.vue'
 import { ReadingStatus, type Book, type PaginatedBooks, type GoogleBookResult } from '../api/types'
+
+const router = useRouter()
 
 const booksData = ref<PaginatedBooks | null>(null)
 const loading = ref(false)
@@ -80,6 +83,10 @@ function handleEditBook(book: Book) {
   editingBook.value = book
   prefilledBookData.value = null
   showFormModal.value = true
+}
+
+function handleViewBook(book: Book) {
+  router.push({ name: 'book-detail', params: { id: book.id } })
 }
 
 function handleSearchModalClose() {
@@ -222,19 +229,20 @@ function getStatusLabel(status: ReadingStatus): string {
             :alt="book.title"
             :title="book.title + ' by ' + book.author"
             class="grid-cover"
-            @click="handleEditBook(book)"
+            @click="handleViewBook(book)"
           />
           <div
             v-else-if="viewMode === 'grid'"
             class="grid-cover-placeholder"
             :title="book.title + ' by ' + book.author"
-            @click="handleEditBook(book)"
+            @click="handleViewBook(book)"
           >
             <div class="grid-no-cover-text">{{ book.title }}</div>
           </div>
           <BookCard
             v-else
             :book="book"
+            @click="handleViewBook(book)"
             @updated="handleEditBook(book)"
             @deleted="handleDeleteBook(book)"
           />
