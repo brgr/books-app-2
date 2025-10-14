@@ -29,6 +29,7 @@ class BookBase(BaseModel):
     price: Optional[float] = Field(None, ge=0)
     published_date: Optional[datetime] = None
     page_count: Optional[int] = Field(None, ge=0)
+    cover_image_url: Optional[str] = Field(None, max_length=500)
 
 
 class BookCreate(BookBase):
@@ -43,6 +44,7 @@ class BookUpdate(BaseModel):
     price: Optional[float] = Field(None, ge=0)
     published_date: Optional[datetime] = None
     page_count: Optional[int] = Field(None, ge=0)
+    cover_image_url: Optional[str] = Field(None, max_length=500)
 
 
 class BookResponse(BookBase):

@@ -21,6 +21,7 @@ const formData = ref({
   price: '',
   published_date: '',
   page_count: '',
+  cover_image_url: '',
 })
 
 const loading = ref(false)
@@ -37,6 +38,7 @@ watch(() => props.book, (book) => {
       price: book.price ? book.price.toString() : '',
       published_date: (book.published_date ? book.published_date.split('T')[0] : '') || '',
       page_count: book.page_count ? book.page_count.toString() : '',
+      cover_image_url: book.cover_image_url || '',
     }
   } else {
     resetForm()
@@ -54,6 +56,7 @@ watch(() => props.prefilledData, (data) => {
       price: '',
       published_date: (data.published_date ? data.published_date.split('T')[0] : '') || '',
       page_count: data.page_count ? data.page_count.toString() : '',
+      cover_image_url: data.thumbnail || '',
     }
   }
 }, { immediate: true })
@@ -67,6 +70,7 @@ function resetForm() {
     price: '',
     published_date: '',
     page_count: '',
+    cover_image_url: '',
   }
   error.value = ''
 }
@@ -84,6 +88,7 @@ async function handleSubmit() {
       price: formData.value.price ? parseFloat(formData.value.price) : undefined,
       published_date: formData.value.published_date || undefined,
       page_count: formData.value.page_count ? parseInt(formData.value.page_count) : undefined,
+      cover_image_url: formData.value.cover_image_url || undefined,
     }
 
     if (props.book) {

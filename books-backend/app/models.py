@@ -41,6 +41,7 @@ class Book(Base):
     price = Column(Float, nullable=True)
     published_date = Column(DateTime, nullable=True)
     page_count = Column(Integer, nullable=True)
+    cover_image_url = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC))
     updated_at = Column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 

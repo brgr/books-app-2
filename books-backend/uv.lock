@@ -96,6 +96,7 @@ dependencies = [
     { name = "httpx" },
     { name = "pwdlib", extra = ["argon2"] },
     { name = "pydantic-settings" },
+    { name = "python-multipart" },
     { name = "sqlalchemy" },
 ]
 
@@ -114,6 +115,7 @@ requires-dist = [
     { name = "pwdlib", extras = ["argon2"], specifier = ">=0.2.0" },
     { name = "pydantic-settings", specifier = ">=2.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
+    { name = "python-multipart", specifier = ">=0.0.6" },
     { name = "sqlalchemy", specifier = ">=2.0.0" },
 ]
 provides-extras = ["dev"]

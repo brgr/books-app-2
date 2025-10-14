@@ -1,7 +1,12 @@
 from typing import Annotated
+import os
+import uuid
+import shutil
+from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, status, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -27,6 +32,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Create uploads directory if it doesn't exist
+UPLOAD_DIR = Path("uploads/covers")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+# Mount static files for uploaded images
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 
 @app.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -210,6 +222,60 @@ def delete_book(
     db.delete(book)
     db.commit()
     return None
+
+
+@app.post("/books/{book_id}/cover", response_model=BookResponse)
+async def upload_book_cover(
+    book_id: int,
+    file: Annotated[UploadFile, File(...)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)]
+):
+    """Upload a cover image for a book."""
+    # Check if book exists
+    book = db.query(Book).filter(Book.id == book_id).first()
+    if not book:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Book not found"
+        )
+
+    # Validate file type
+    allowed_types = ["image/jpeg", "image/png", "image/webp", "image/gif"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid file type. Allowed types: {', '.join(allowed_types)}"
+        )
+
+    # Generate unique filename
+    file_extension = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+    unique_filename = f"{uuid.uuid4()}.{file_extension}"
+    file_path = UPLOAD_DIR / unique_filename
+
+    # Save file
+    try:
+        with file_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to save file: {str(e)}"
+        )
+
+    # Update book with cover URL
+    book.cover_image_url = f"/uploads/covers/{unique_filename}"
+    db.commit()
+    db.refresh(book)
+
+    # Attach user's reading status
+    user_book = db.query(UserBook).filter(
+        UserBook.user_id == current_user.id,
+        UserBook.book_id == book.id
+    ).first()
+    book.user_status = user_book
+
+    return book
 
 
 # Reading status endpoints

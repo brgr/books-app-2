@@ -70,19 +70,31 @@ function formatDate(dateStr: string | null): string {
 
 <template>
   <div class="book-card">
-    <div class="book-header">
-      <h3>{{ book.title }}</h3>
-      <div class="book-actions">
-        <button @click="emit('updated')" class="btn-small" title="Edit book">
-          Edit
-        </button>
-        <button @click="emit('deleted')" class="btn-small btn-danger" title="Delete book">
-          Delete
-        </button>
+    <div class="book-content">
+      <img
+        v-if="book.cover_image_url"
+        :src="book.cover_image_url"
+        :alt="book.title"
+        class="book-cover"
+      />
+      <div class="book-cover-placeholder" v-else>
+        No Cover
       </div>
-    </div>
 
-    <p class="book-author">by {{ book.author }}</p>
+      <div class="book-details">
+        <div class="book-header">
+          <h3>{{ book.title }}</h3>
+          <div class="book-actions">
+            <button @click="emit('updated')" class="btn-small" title="Edit book">
+              Edit
+            </button>
+            <button @click="emit('deleted')" class="btn-small btn-danger" title="Delete book">
+              Delete
+            </button>
+          </div>
+        </div>
+
+        <p class="book-author">by {{ book.author }}</p>
 
     <div v-if="book.description" class="book-description">
       {{ book.description }}
@@ -126,6 +138,8 @@ function formatDate(dateStr: string | null): string {
         Finished: {{ formatDate(book.user_status.finished_at) }}
       </div>
     </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -142,6 +156,36 @@ function formatDate(dateStr: string | null): string {
 
 .book-card:hover {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.book-content {
+  display: flex;
+  gap: var(--spacing-lg);
+}
+
+.book-cover,
+.book-cover-placeholder {
+  width: 120px;
+  height: 180px;
+  object-fit: cover;
+  border-radius: var(--border-radius);
+  flex-shrink: 0;
+}
+
+.book-cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  text-align: center;
+}
+
+.book-details {
+  flex: 1;
+  min-width: 0;
 }
 
 .book-header {
@@ -218,6 +262,16 @@ function formatDate(dateStr: string | null): string {
 }
 
 @media (max-width: 768px) {
+  .book-content {
+    flex-direction: column;
+  }
+
+  .book-cover,
+  .book-cover-placeholder {
+    width: 100%;
+    height: 240px;
+  }
+
   .book-header {
     flex-direction: column;
   }

@@ -34,6 +34,7 @@ export interface Book {
   price: number | null
   published_date: string | null
   page_count: number | null
+  cover_image_url: string | null
   created_at: string
   updated_at: string
   user_status: UserBook | null
@@ -55,6 +56,7 @@ export interface BookCreate {
   price?: number
   published_date?: string
   page_count?: number
+  cover_image_url?: string
 }
 
 export interface BookUpdate {
@@ -65,6 +67,7 @@ export interface BookUpdate {
   price?: number
   published_date?: string
   page_count?: number
+  cover_image_url?: string
 }
 
 export interface UserBookStatusUpdate {
