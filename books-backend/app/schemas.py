@@ -26,7 +26,6 @@ class BookBase(BaseModel):
     author: str = Field(..., min_length=1, max_length=100)
     isbn: Optional[str] = Field(None, max_length=20)
     description: Optional[str] = None
-    price: Optional[float] = Field(None, ge=0)
     published_date: Optional[datetime] = None
     page_count: Optional[int] = Field(None, ge=0)
     cover_image_url: Optional[str] = Field(None, max_length=500)
@@ -41,7 +40,6 @@ class BookUpdate(BaseModel):
     author: Optional[str] = Field(None, min_length=1, max_length=100)
     isbn: Optional[str] = Field(None, max_length=20)
     description: Optional[str] = None
-    price: Optional[float] = Field(None, ge=0)
     published_date: Optional[datetime] = None
     page_count: Optional[int] = Field(None, ge=0)
     cover_image_url: Optional[str] = Field(None, max_length=500)

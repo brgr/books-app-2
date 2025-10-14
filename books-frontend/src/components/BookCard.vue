@@ -110,9 +110,6 @@ function formatDate(dateStr: string | null): string {
       <span v-if="book.published_date" class="meta-item">
         <strong>Published:</strong> {{ formatDate(book.published_date) }}
       </span>
-      <span v-if="book.price" class="meta-item">
-        <strong>Price:</strong> ${{ book.price.toFixed(2) }}
-      </span>
     </div>
 
     <div class="book-status">

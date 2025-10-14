@@ -81,6 +81,5 @@ def sample_book_data():
         "author": "Test Author",
         "isbn": "1234567890",
         "description": "A test book",
-        "price": 19.99,
         "page_count": 300
     }

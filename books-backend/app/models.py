@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, Float, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Enum
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime, UTC
@@ -38,7 +38,6 @@ class Book(Base):
     author = Column(String(100), nullable=False)
     isbn = Column(String(20), unique=True)
     description = Column(Text, nullable=True)
-    price = Column(Float, nullable=True)
     published_date = Column(DateTime, nullable=True)
     page_count = Column(Integer, nullable=True)
     cover_image_url = Column(String(500), nullable=True)

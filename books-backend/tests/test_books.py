@@ -98,14 +98,14 @@ def test_update_book(client, auth_headers, sample_book_data):
     # Update the book
     update_data = {
         "title": "Updated Title",
-        "price": 29.99
+        "page_count": 350
     }
     response = client.put(f"/books/{book_id}", json=update_data, headers=auth_headers)
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     assert data["title"] == "Updated Title"
-    assert data["price"] == 29.99
+    assert data["page_count"] == 350
     assert data["author"] == sample_book_data["author"]  # Unchanged field
 
 
@@ -145,10 +145,10 @@ def test_book_validation(client, auth_headers):
     }, headers=auth_headers)
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
-    # Invalid price (negative)
+    # Invalid page count (negative)
     response = client.post("/books", json={
         "title": "Test Book",
         "author": "Test Author",
-        "price": -10
+        "page_count": -10
     }, headers=auth_headers)
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY

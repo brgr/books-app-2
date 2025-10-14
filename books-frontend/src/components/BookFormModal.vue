@@ -18,7 +18,6 @@ const formData = ref({
   author: '',
   isbn: '',
   description: '',
-  price: '',
   published_date: '',
   page_count: '',
   cover_image_url: '',
@@ -35,7 +34,6 @@ watch(() => props.book, (book) => {
       author: book.author,
       isbn: book.isbn || '',
       description: book.description || '',
-      price: book.price ? book.price.toString() : '',
       published_date: (book.published_date ? book.published_date.split('T')[0] : '') || '',
       page_count: book.page_count ? book.page_count.toString() : '',
       cover_image_url: book.cover_image_url || '',
@@ -53,7 +51,6 @@ watch(() => props.prefilledData, (data) => {
       author: data.author || '',
       isbn: data.isbn || '',
       description: data.description || '',
-      price: '',
       published_date: (data.published_date ? data.published_date.split('T')[0] : '') || '',
       page_count: data.page_count ? data.page_count.toString() : '',
       cover_image_url: data.thumbnail || '',
@@ -67,7 +64,6 @@ function resetForm() {
     author: '',
     isbn: '',
     description: '',
-    price: '',
     published_date: '',
     page_count: '',
     cover_image_url: '',
@@ -85,7 +81,6 @@ async function handleSubmit() {
       author: formData.value.author,
       isbn: formData.value.isbn || undefined,
       description: formData.value.description || undefined,
-      price: formData.value.price ? parseFloat(formData.value.price) : undefined,
       published_date: formData.value.published_date || undefined,
       page_count: formData.value.page_count ? parseInt(formData.value.page_count) : undefined,
       cover_image_url: formData.value.cover_image_url || undefined,
@@ -181,29 +176,14 @@ function handleClose() {
             </div>
           </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label for="published_date">Published Date</label>
-              <input
-                id="published_date"
-                v-model="formData.published_date"
-                type="date"
-                :disabled="loading"
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="price">Price</label>
-              <input
-                id="price"
-                v-model="formData.price"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                :disabled="loading"
-              />
-            </div>
+          <div class="form-group">
+            <label for="published_date">Published Date</label>
+            <input
+              id="published_date"
+              v-model="formData.published_date"
+              type="date"
+              :disabled="loading"
+            />
           </div>
 
           <div class="form-group">

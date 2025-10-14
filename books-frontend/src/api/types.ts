@@ -31,7 +31,6 @@ export interface Book {
   author: string
   isbn: string | null
   description: string | null
-  price: number | null
   published_date: string | null
   page_count: number | null
   cover_image_url: string | null
@@ -53,7 +52,6 @@ export interface BookCreate {
   author: string
   isbn?: string
   description?: string
-  price?: number
   published_date?: string
   page_count?: number
   cover_image_url?: string
@@ -64,7 +62,6 @@ export interface BookUpdate {
   author?: string
   isbn?: string
   description?: string
-  price?: number
   published_date?: string
   page_count?: number
   cover_image_url?: string
