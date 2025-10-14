@@ -3,8 +3,9 @@ import { ref, onMounted, computed } from 'vue'
 import { getBooks, deleteBook } from '../api/books'
 import BookCard from '../components/BookCard.vue'
 import BookFormModal from '../components/BookFormModal.vue'
+import BookSearchModal from '../components/BookSearchModal.vue'
 import NavigationBar from '../components/NavigationBar.vue'
-import { ReadingStatus, type Book, type PaginatedBooks } from '../api/types'
+import { ReadingStatus, type Book, type PaginatedBooks, type GoogleBookResult } from '../api/types'
 
 const booksData = ref<PaginatedBooks | null>(null)
 const loading = ref(false)
@@ -12,8 +13,10 @@ const error = ref('')
 const currentPage = ref(1)
 const pageSize = ref(20)
 
-const showModal = ref(false)
+const showSearchModal = ref(false)
+const showFormModal = ref(false)
 const editingBook = ref<Book | null>(null)
+const prefilledBookData = ref<GoogleBookResult | null>(null)
 
 const filterStatus = ref<ReadingStatus | ''>('')
 const searchQuery = ref('')
@@ -60,12 +63,30 @@ async function loadBooks() {
 
 function handleAddBook() {
   editingBook.value = null
-  showModal.value = true
+  prefilledBookData.value = null
+  showSearchModal.value = true
 }
 
 function handleEditBook(book: Book) {
   editingBook.value = book
-  showModal.value = true
+  prefilledBookData.value = null
+  showFormModal.value = true
+}
+
+function handleSearchModalClose() {
+  showSearchModal.value = false
+}
+
+function handleBookSelected(book: GoogleBookResult) {
+  prefilledBookData.value = book
+  showSearchModal.value = false
+  showFormModal.value = true
+}
+
+function handleManualEntry() {
+  prefilledBookData.value = null
+  showSearchModal.value = false
+  showFormModal.value = true
 }
 
 async function handleDeleteBook(book: Book) {
@@ -82,9 +103,10 @@ async function handleDeleteBook(book: Book) {
   }
 }
 
-function handleModalClose() {
-  showModal.value = false
+function handleFormModalClose() {
+  showFormModal.value = false
   editingBook.value = null
+  prefilledBookData.value = null
 }
 
 function handleBookSaved() {
@@ -191,10 +213,18 @@ function getStatusLabel(status: ReadingStatus): string {
       </div>
     </div>
 
+    <BookSearchModal
+      v-if="showSearchModal"
+      @close="handleSearchModalClose"
+      @select="handleBookSelected"
+      @manualEntry="handleManualEntry"
+    />
+
     <BookFormModal
-      v-if="showModal"
+      v-if="showFormModal"
       :book="editingBook"
-      @close="handleModalClose"
+      :prefilled-data="prefilledBookData"
+      @close="handleFormModalClose"
       @saved="handleBookSaved"
     />
   </div>

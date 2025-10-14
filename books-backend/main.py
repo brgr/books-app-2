@@ -10,9 +10,11 @@ from app.models import User, Book, UserBook
 from app.schemas import (
     UserCreate, UserResponse,
     BookCreate, BookUpdate, BookResponse, PaginatedBooks,
-    UserBookStatusUpdate, UserBookResponse
+    UserBookStatusUpdate, UserBookResponse,
+    GoogleBookResult
 )
 from app.config import settings
+from app.google_books import search_google_books
 from datetime import datetime, UTC
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
@@ -58,6 +60,27 @@ async def root():
 
 
 # Books CRUD endpoints
+
+@app.get("/books/search", response_model=list[GoogleBookResult])
+async def search_books(
+    q: str,
+    current_user: Annotated[User, Depends(get_current_user)]
+):
+    """
+    Search for books using the Google Books API.
+
+    Query parameter:
+    - q: Search query string
+    """
+    if not q or not q.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Search query cannot be empty"
+        )
+
+    results = await search_google_books(q)
+    return results
+
 
 @app.post("/books", response_model=BookResponse, status_code=status.HTTP_201_CREATED)
 def create_book(

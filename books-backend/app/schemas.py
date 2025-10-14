@@ -94,3 +94,16 @@ class PaginatedBooks(BaseModel):
     page: int
     page_size: int
     pages: int
+
+
+# Google Books search result
+class GoogleBookResult(BaseModel):
+    """Result from Google Books API search."""
+    title: str
+    author: str
+    isbn: Optional[str] = None
+    description: Optional[str] = None
+    published_date: Optional[str] = None
+    page_count: Optional[int] = None
+    thumbnail: Optional[str] = None
+    google_books_id: Optional[str] = None

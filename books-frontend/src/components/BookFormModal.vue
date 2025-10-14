@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { createBook, updateBook } from '../api/books'
-import type { Book, BookCreate, BookUpdate } from '../api/types'
+import type { Book, BookCreate, BookUpdate, GoogleBookResult } from '../api/types'
 
 const props = defineProps<{
   book?: Book | null
+  prefilledData?: GoogleBookResult | null
 }>()
 
 const emit = defineEmits<{
@@ -25,7 +26,7 @@ const formData = ref({
 const loading = ref(false)
 const error = ref('')
 
-// Initialize form with book data if editing
+// Initialize form with book data if editing or with prefilled data from search
 watch(() => props.book, (book) => {
   if (book) {
     formData.value = {
@@ -39,6 +40,21 @@ watch(() => props.book, (book) => {
     }
   } else {
     resetForm()
+  }
+}, { immediate: true })
+
+// Watch for prefilled data from Google Books search
+watch(() => props.prefilledData, (data) => {
+  if (data && !props.book) {
+    formData.value = {
+      title: data.title || '',
+      author: data.author || '',
+      isbn: data.isbn || '',
+      description: data.description || '',
+      price: '',
+      published_date: (data.published_date ? data.published_date.split('T')[0] : '') || '',
+      page_count: data.page_count ? data.page_count.toString() : '',
+    }
   }
 }, { immediate: true })
 

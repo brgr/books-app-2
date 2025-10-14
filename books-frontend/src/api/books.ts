@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { Book, PaginatedBooks, BookCreate, BookUpdate, UserBookStatusUpdate, UserBook } from './types'
+import type { Book, PaginatedBooks, BookCreate, BookUpdate, UserBookStatusUpdate, UserBook, GoogleBookResult } from './types'
 
 export async function getBooks(page = 1, pageSize = 20): Promise<PaginatedBooks> {
   const response = await apiClient.get<PaginatedBooks>('/books', {
@@ -34,4 +34,11 @@ export async function setReadingStatus(bookId: number, data: UserBookStatusUpdat
 
 export async function removeReadingStatus(bookId: number): Promise<void> {
   await apiClient.delete(`/books/${bookId}/status`)
+}
+
+export async function searchGoogleBooks(query: string): Promise<GoogleBookResult[]> {
+  const response = await apiClient.get<GoogleBookResult[]>('/books/search', {
+    params: { q: query },
+  })
+  return response.data
 }

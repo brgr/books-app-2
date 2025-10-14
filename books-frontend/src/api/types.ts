@@ -76,3 +76,14 @@ export interface UserCreate {
   username: string
   password: string
 }
+
+export interface GoogleBookResult {
+  title: string
+  author: string
+  isbn: string | null
+  description: string | null
+  published_date: string | null
+  page_count: number | null
+  thumbnail: string | null
+  google_books_id: string | null
+}

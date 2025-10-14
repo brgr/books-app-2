@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     # CORS (if needed later)
     allowed_origins: list[str] = ["*"]
 
+    # Google Books API (optional - search works without it but may have rate limits)
+    google_books_api_key: Optional[str] = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
