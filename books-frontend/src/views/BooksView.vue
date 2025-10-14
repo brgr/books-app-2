@@ -1,14 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { getBooks, deleteBook } from '../api/books'
 import BookCard from '../components/BookCard.vue'
 import BookFormModal from '../components/BookFormModal.vue'
 import BookSearchModal from '../components/BookSearchModal.vue'
 import NavigationBar from '../components/NavigationBar.vue'
 import { ReadingStatus, type Book, type PaginatedBooks, type GoogleBookResult } from '../api/types'
-
-const router = useRouter()
 
 const booksData = ref<PaginatedBooks | null>(null)
 const loading = ref(false)
@@ -83,10 +80,6 @@ function handleEditBook(book: Book) {
   editingBook.value = book
   prefilledBookData.value = null
   showFormModal.value = true
-}
-
-function handleViewBook(book: Book) {
-  router.push({ name: 'book-detail', params: { id: book.id } })
 }
 
 function handleSearchModalClose() {
@@ -223,26 +216,29 @@ function getStatusLabel(status: ReadingStatus): string {
           :key="book.id"
           :class="viewMode === 'grid' ? 'grid-item' : ''"
         >
-          <img
-            v-if="viewMode === 'grid' && book.cover_image_url"
-            :src="book.cover_image_url"
-            :alt="book.title"
-            :title="book.title + ' by ' + book.author"
-            class="grid-cover"
-            @click="handleViewBook(book)"
-          />
-          <div
-            v-else-if="viewMode === 'grid'"
-            class="grid-cover-placeholder"
-            :title="book.title + ' by ' + book.author"
-            @click="handleViewBook(book)"
+          <router-link
+            v-if="viewMode === 'grid'"
+            :to="{ name: 'book-detail', params: { id: book.id } }"
+            class="grid-cover-link"
           >
-            <div class="grid-no-cover-text">{{ book.title }}</div>
-          </div>
+            <img
+              v-if="book.cover_image_url"
+              :src="book.cover_image_url"
+              :alt="book.title"
+              :title="book.title + ' by ' + book.author"
+              class="grid-cover"
+            />
+            <div
+              v-else
+              class="grid-cover-placeholder"
+              :title="book.title + ' by ' + book.author"
+            >
+              <div class="grid-no-cover-text">{{ book.title }}</div>
+            </div>
+          </router-link>
           <BookCard
             v-else
             :book="book"
-            @click="handleViewBook(book)"
             @updated="handleEditBook(book)"
             @deleted="handleDeleteBook(book)"
           />
@@ -378,6 +374,11 @@ function getStatusLabel(status: ReadingStatus): string {
 .grid-item {
   display: flex;
   flex-direction: column;
+}
+
+.grid-cover-link {
+  text-decoration: none;
+  display: block;
 }
 
 .grid-cover {

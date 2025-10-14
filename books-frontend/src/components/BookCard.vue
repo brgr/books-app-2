@@ -8,7 +8,6 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  click: []
   updated: []
   deleted: []
 }>()
@@ -72,20 +71,23 @@ function formatDate(dateStr: string | null): string {
 <template>
   <div class="book-card">
     <div class="book-content">
-      <img
-        v-if="book.cover_image_url"
-        :src="book.cover_image_url"
-        :alt="book.title"
-        class="book-cover book-cover-clickable"
-        @click="emit('click')"
-      />
-      <div class="book-cover-placeholder book-cover-clickable" v-else @click="emit('click')">
-        No Cover
-      </div>
+      <router-link :to="{ name: 'book-detail', params: { id: book.id } }" class="book-cover-link">
+        <img
+          v-if="book.cover_image_url"
+          :src="book.cover_image_url"
+          :alt="book.title"
+          class="book-cover book-cover-clickable"
+        />
+        <div class="book-cover-placeholder book-cover-clickable" v-else>
+          No Cover
+        </div>
+      </router-link>
 
       <div class="book-details">
         <div class="book-header">
-          <h3 class="book-title-clickable" @click="emit('click')">{{ book.title }}</h3>
+          <router-link :to="{ name: 'book-detail', params: { id: book.id } }" class="book-title-link">
+            <h3 class="book-title-clickable">{{ book.title }}</h3>
+          </router-link>
           <div class="book-actions">
             <button @click="emit('updated')" class="btn-small" title="Edit book">
               Edit
@@ -161,6 +163,17 @@ function formatDate(dateStr: string | null): string {
 .book-content {
   display: flex;
   gap: var(--spacing-lg);
+}
+
+.book-cover-link {
+  text-decoration: none;
+  display: block;
+}
+
+.book-title-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
 }
 
 .book-cover,
