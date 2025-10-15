@@ -20,6 +20,7 @@ const prefilledBookData = ref<GoogleBookResult | null>(null)
 
 const filterStatus = ref<ReadingStatus | ''>('')
 const searchQuery = ref('')
+const showFilterDropdown = ref(false)
 
 // Load saved view mode from localStorage, default to 'list'
 const savedViewMode = localStorage.getItem('booksViewMode') as 'list' | 'grid' | null
@@ -137,6 +138,10 @@ function getStatusLabel(status: ReadingStatus): string {
   }
   return labels[status] || status
 }
+
+function toggleFilterDropdown() {
+  showFilterDropdown.value = !showFilterDropdown.value
+}
 </script>
 
 <template>
@@ -149,49 +154,82 @@ function getStatusLabel(status: ReadingStatus): string {
         {{ error }}
       </div>
 
-      <div class="filters">
-        <div class="filter-group">
+      <div class="search-header">
+        <div class="search-bar">
+          <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
           <input
             v-model="searchQuery"
             type="text"
-            placeholder="Search by title or author..."
+            placeholder="Search for words or #tags"
             class="search-input"
           />
         </div>
 
-        <div class="filter-group">
-          <select v-model="filterStatus" class="filter-select">
-            <option value="">All books</option>
-            <option :value="ReadingStatus.WANT_TO_READ">
-              {{ getStatusLabel(ReadingStatus.WANT_TO_READ) }}
-            </option>
-            <option :value="ReadingStatus.STARTED">
-              {{ getStatusLabel(ReadingStatus.STARTED) }}
-            </option>
-            <option :value="ReadingStatus.FINISHED">
-              {{ getStatusLabel(ReadingStatus.FINISHED) }}
-            </option>
-            <option :value="ReadingStatus.ABANDONED">
-              {{ getStatusLabel(ReadingStatus.ABANDONED) }}
-            </option>
-          </select>
+        <div class="filter-dropdown-wrapper">
+          <button @click="toggleFilterDropdown" class="filter-btn" title="Filter options">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+            </svg>
+          </button>
+
+          <div v-if="showFilterDropdown" class="filter-dropdown">
+            <div class="filter-dropdown-section">
+              <label class="filter-dropdown-label">Status</label>
+              <select v-model="filterStatus" class="filter-dropdown-select" @change="showFilterDropdown = false">
+                <option value="">All books</option>
+                <option :value="ReadingStatus.WANT_TO_READ">
+                  {{ getStatusLabel(ReadingStatus.WANT_TO_READ) }}
+                </option>
+                <option :value="ReadingStatus.STARTED">
+                  {{ getStatusLabel(ReadingStatus.STARTED) }}
+                </option>
+                <option :value="ReadingStatus.FINISHED">
+                  {{ getStatusLabel(ReadingStatus.FINISHED) }}
+                </option>
+                <option :value="ReadingStatus.ABANDONED">
+                  {{ getStatusLabel(ReadingStatus.ABANDONED) }}
+                </option>
+              </select>
+            </div>
+          </div>
         </div>
 
-        <div class="view-toggle">
-          <button
-            @click="viewMode = 'list'"
-            :class="['view-toggle-btn', { active: viewMode === 'list' }]"
-            title="List view"
-          >
-            List
-          </button>
-          <button
-            @click="viewMode = 'grid'"
-            :class="['view-toggle-btn', { active: viewMode === 'grid' }]"
-            title="Grid view"
-          >
-            Grid
-          </button>
+        <button
+          @click="viewMode = 'list'"
+          :class="['view-btn', { active: viewMode === 'list' }]"
+          title="List view"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"></line>
+            <line x1="8" y1="12" x2="21" y2="12"></line>
+            <line x1="8" y1="18" x2="21" y2="18"></line>
+            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+          </svg>
+        </button>
+
+        <button
+          @click="viewMode = 'grid'"
+          :class="['view-btn', { active: viewMode === 'grid' }]"
+          title="Grid view"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+        </button>
+      </div>
+
+      <div v-if="filterStatus" class="active-filters">
+        <div class="filter-tag">
+          Status: {{ getStatusLabel(filterStatus) }}
+          <button @click="filterStatus = ''" class="filter-tag-remove">×</button>
         </div>
       </div>
 
@@ -276,61 +314,154 @@ function getStatusLabel(status: ReadingStatus): string {
 </template>
 
 <style scoped>
-.filters {
+.search-header {
   display: flex;
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm);
   margin-bottom: var(--spacing-lg);
-  padding: var(--spacing-lg);
+  padding: var(--spacing-md);
   background-color: var(--color-bg-card);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
   align-items: center;
 }
 
-.filter-group {
+.search-bar {
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+}
+
+.search-icon {
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
 }
 
 .search-input {
-  width: 100%;
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 14px;
 }
 
-.filter-select {
-  width: 100%;
+.search-input:focus {
+  outline: none;
+  border: none;
 }
 
-.view-toggle {
+.filter-dropdown-wrapper {
+  position: relative;
+}
+
+.filter-btn,
+.view-btn {
   display: flex;
-  gap: 4px;
-  background-color: var(--color-bg);
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-sm);
+  background: transparent;
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
-  padding: 4px;
-}
-
-.view-toggle-btn {
-  padding: 6px 16px;
-  background: transparent;
-  border: none;
-  border-radius: calc(var(--border-radius) - 2px);
   cursor: pointer;
   color: var(--color-text-secondary);
-  font-size: 14px;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
+  min-width: 36px;
+  min-height: 36px;
 }
 
-.view-toggle-btn:hover {
+.filter-btn:hover,
+.view-btn:hover {
   color: var(--color-text);
-  background-color: var(--color-bg-card);
+  background-color: var(--color-bg);
+  border-color: var(--color-text-secondary);
 }
 
-.view-toggle-btn.active {
+.filter-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  box-shadow: var(--modal-shadow);
+  padding: var(--spacing-md);
+  min-width: 200px;
+  z-index: 100;
+}
+
+.filter-dropdown-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.filter-dropdown-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 0;
+}
+
+.filter-dropdown-select {
+  width: 100%;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  background-color: var(--color-bg-card);
+  color: var(--color-text);
+}
+
+.view-btn.active {
   background-color: var(--color-primary);
   color: white;
+  border-color: var(--color-primary);
 }
 
-.view-toggle-btn.active:hover {
+.view-btn.active:hover {
+  background-color: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.active-filters {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
   background-color: var(--color-primary);
+  color: white;
+  border-radius: var(--border-radius);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.filter-tag-remove {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 0;
+  font-size: 20px;
+  line-height: 1;
+  font-weight: 300;
+  opacity: 0.8;
+  transition: opacity 0.15s ease;
+}
+
+.filter-tag-remove:hover {
+  opacity: 1;
 }
 
 .empty-state {
@@ -414,15 +545,17 @@ function getStatusLabel(status: ReadingStatus): string {
 }
 
 @media (max-width: 768px) {
-  .filters {
-    flex-direction: column;
+  .search-header {
+    flex-wrap: wrap;
   }
 
-  .view-toggle {
-    width: 100%;
+  .search-bar {
+    flex: 1 1 100%;
+    order: -1;
   }
 
-  .view-toggle-btn {
+  .filter-btn,
+  .view-btn {
     flex: 1;
   }
 
