@@ -168,62 +168,64 @@ function toggleFilterDropdown() {
           />
         </div>
 
-        <div class="filter-dropdown-wrapper">
-          <button @click="toggleFilterDropdown" class="filter-btn" title="Filter options">
+        <div class="search-actions">
+          <div class="filter-dropdown-wrapper">
+            <button @click="toggleFilterDropdown" class="filter-btn" title="Filter options">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+              </svg>
+            </button>
+
+            <div v-if="showFilterDropdown" class="filter-dropdown">
+              <div class="filter-dropdown-section">
+                <label class="filter-dropdown-label">Status</label>
+                <select v-model="filterStatus" class="filter-dropdown-select" @change="showFilterDropdown = false">
+                  <option value="">All books</option>
+                  <option :value="ReadingStatus.WANT_TO_READ">
+                    {{ getStatusLabel(ReadingStatus.WANT_TO_READ) }}
+                  </option>
+                  <option :value="ReadingStatus.STARTED">
+                    {{ getStatusLabel(ReadingStatus.STARTED) }}
+                  </option>
+                  <option :value="ReadingStatus.FINISHED">
+                    {{ getStatusLabel(ReadingStatus.FINISHED) }}
+                  </option>
+                  <option :value="ReadingStatus.ABANDONED">
+                    {{ getStatusLabel(ReadingStatus.ABANDONED) }}
+                  </option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <button
+            @click="viewMode = 'list'"
+            :class="['view-btn', { active: viewMode === 'list' }]"
+            title="List view"
+          >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+              <line x1="8" y1="6" x2="21" y2="6"></line>
+              <line x1="8" y1="12" x2="21" y2="12"></line>
+              <line x1="8" y1="18" x2="21" y2="18"></line>
+              <line x1="3" y1="6" x2="3.01" y2="6"></line>
+              <line x1="3" y1="12" x2="3.01" y2="12"></line>
+              <line x1="3" y1="18" x2="3.01" y2="18"></line>
             </svg>
           </button>
 
-          <div v-if="showFilterDropdown" class="filter-dropdown">
-            <div class="filter-dropdown-section">
-              <label class="filter-dropdown-label">Status</label>
-              <select v-model="filterStatus" class="filter-dropdown-select" @change="showFilterDropdown = false">
-                <option value="">All books</option>
-                <option :value="ReadingStatus.WANT_TO_READ">
-                  {{ getStatusLabel(ReadingStatus.WANT_TO_READ) }}
-                </option>
-                <option :value="ReadingStatus.STARTED">
-                  {{ getStatusLabel(ReadingStatus.STARTED) }}
-                </option>
-                <option :value="ReadingStatus.FINISHED">
-                  {{ getStatusLabel(ReadingStatus.FINISHED) }}
-                </option>
-                <option :value="ReadingStatus.ABANDONED">
-                  {{ getStatusLabel(ReadingStatus.ABANDONED) }}
-                </option>
-              </select>
-            </div>
-          </div>
+          <button
+            @click="viewMode = 'grid'"
+            :class="['view-btn', { active: viewMode === 'grid' }]"
+            title="Grid view"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+          </button>
         </div>
-
-        <button
-          @click="viewMode = 'list'"
-          :class="['view-btn', { active: viewMode === 'list' }]"
-          title="List view"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="8" y1="6" x2="21" y2="6"></line>
-            <line x1="8" y1="12" x2="21" y2="12"></line>
-            <line x1="8" y1="18" x2="21" y2="18"></line>
-            <line x1="3" y1="6" x2="3.01" y2="6"></line>
-            <line x1="3" y1="12" x2="3.01" y2="12"></line>
-            <line x1="3" y1="18" x2="3.01" y2="18"></line>
-          </svg>
-        </button>
-
-        <button
-          @click="viewMode = 'grid'"
-          :class="['view-btn', { active: viewMode === 'grid' }]"
-          title="Grid view"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="7" height="7"></rect>
-            <rect x="14" y="3" width="7" height="7"></rect>
-            <rect x="14" y="14" width="7" height="7"></rect>
-            <rect x="3" y="14" width="7" height="7"></rect>
-          </svg>
-        </button>
       </div>
 
       <div v-if="filterStatus" class="active-filters">
@@ -321,11 +323,11 @@ function toggleFilterDropdown() {
   padding: var(--spacing-md) 0;
   background-color: var(--color-bg-card);
   align-items: center;
+  justify-content: space-between;
 }
 
 .search-bar {
-  flex: 1;
-  max-width: 500px;
+  flex: 0 1 500px;
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
@@ -338,6 +340,12 @@ function toggleFilterDropdown() {
 .search-icon {
   color: var(--color-text-secondary);
   flex-shrink: 0;
+}
+
+.search-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
 }
 
 .search-input {
