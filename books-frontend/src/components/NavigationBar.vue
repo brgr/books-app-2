@@ -56,7 +56,6 @@ function handleLogout() {
 <style scoped>
 .navbar {
   background-color: var(--color-bg-card);
-  border-bottom: 1px solid var(--color-border);
 }
 
 .navbar-content {
