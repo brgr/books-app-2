@@ -97,17 +97,22 @@ def _normalize_book_data(item: dict) -> Optional[dict]:
         thumbnail = None
         image_links = volume_info.get("imageLinks", {})
         if image_links:
-            # Prefer larger images
+            # Get thumbnail (prefer thumbnail over smallThumbnail)
             thumbnail = (
                 image_links.get("thumbnail") or
-                image_links.get("smallThumbnail") or
-                image_links.get("small") or
-                image_links.get("medium") or
-                image_links.get("large")
+                image_links.get("smallThumbnail")
             )
-            # Upgrade to HTTPS if needed
-            if thumbnail and thumbnail.startswith("http:"):
-                thumbnail = thumbnail.replace("http:", "https:")
+
+            if thumbnail:
+                # Upgrade to HTTPS if needed
+                if thumbnail.startswith("http:"):
+                    thumbnail = thumbnail.replace("http:", "https:")
+
+                # Replace zoom parameter with zoom=0 for highest resolution
+                # Google Books uses zoom=1 (default) or zoom=5 (small), zoom=0 gives highest res
+                if "zoom=" in thumbnail:
+                    import re
+                    thumbnail = re.sub(r'zoom=\d+', 'zoom=0', thumbnail)
 
         # Get Google Books ID
         google_books_id = item.get("id")
