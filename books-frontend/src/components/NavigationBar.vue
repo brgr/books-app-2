@@ -36,9 +36,6 @@ function handleLogout() {
           </svg>
           BOOKS
         </router-link>
-        <div class="navbar-links">
-          <router-link to="/" class="navbar-link">Books</router-link>
-        </div>
       </div>
 
       <div class="navbar-right">
