@@ -325,6 +325,7 @@ function toggleFilterDropdown() {
 
 .search-bar {
   flex: 1;
+  max-width: 500px;
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
