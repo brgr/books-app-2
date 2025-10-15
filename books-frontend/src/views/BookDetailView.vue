@@ -3,8 +3,9 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getBook, setReadingStatus, removeReadingStatus, deleteBook } from '../api/books'
 import BookFormModal from '../components/BookFormModal.vue'
+import BookSearchModal from '../components/BookSearchModal.vue'
 import NavigationBar from '../components/NavigationBar.vue'
-import { ReadingStatus, type Book } from '../api/types'
+import { ReadingStatus, type Book, type GoogleBookResult } from '../api/types'
 
 const router = useRouter()
 const route = useRoute()
@@ -14,6 +15,9 @@ const loading = ref(false)
 const error = ref('')
 const updatingStatus = ref(false)
 const showEditModal = ref(false)
+const showSearchModal = ref(false)
+const showFormModal = ref(false)
+const prefilledBookData = ref<GoogleBookResult | null>(null)
 
 const statusOptions = [
   { value: '', label: 'No status' },
@@ -123,15 +127,46 @@ function handleBookSaved() {
 function goBack() {
   router.push({ name: 'books' })
 }
+
+function handleAddBook() {
+  showSearchModal.value = true
+}
+
+function handleSearchModalClose() {
+  showSearchModal.value = false
+}
+
+function handleBookSelected(selectedBook: GoogleBookResult) {
+  prefilledBookData.value = selectedBook
+  showSearchModal.value = false
+  showFormModal.value = true
+}
+
+function handleManualEntry() {
+  prefilledBookData.value = null
+  showSearchModal.value = false
+  showFormModal.value = true
+}
+
+function handleFormModalClose() {
+  showFormModal.value = false
+  prefilledBookData.value = null
+}
+
+function handleNewBookSaved() {
+  showFormModal.value = false
+  prefilledBookData.value = null
+  router.push({ name: 'books' })
+}
 </script>
 
 <template>
   <div>
-    <NavigationBar />
+    <NavigationBar @add-book="handleAddBook" />
 
     <div class="container">
       <div class="back-button">
-        <button @click="goBack" class="btn-secondary">
+        <button @click="goBack">
           &larr; Back to Books
         </button>
       </div>
@@ -229,6 +264,20 @@ function goBack() {
       :book="book"
       @close="handleModalClose"
       @saved="handleBookSaved"
+    />
+
+    <BookSearchModal
+      v-if="showSearchModal"
+      @close="handleSearchModalClose"
+      @select="handleBookSelected"
+      @manualEntry="handleManualEntry"
+    />
+
+    <BookFormModal
+      v-if="showFormModal"
+      :prefilled-data="prefilledBookData"
+      @close="handleFormModalClose"
+      @saved="handleNewBookSaved"
     />
   </div>
 </template>

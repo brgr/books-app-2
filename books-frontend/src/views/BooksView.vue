@@ -141,15 +141,9 @@ function getStatusLabel(status: ReadingStatus): string {
 
 <template>
   <div>
-    <NavigationBar />
+    <NavigationBar @add-book="handleAddBook" />
 
     <div class="container">
-      <div class="header">
-        <h1>My Books</h1>
-        <button @click="handleAddBook" class="btn-primary">
-          Add Book
-        </button>
-      </div>
 
       <div v-if="error" class="error">
         {{ error }}
@@ -282,17 +276,6 @@ function getStatusLabel(status: ReadingStatus): string {
 </template>
 
 <style scoped>
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-lg);
-}
-
-.header h1 {
-  margin: 0;
-}
-
 .filters {
   display: flex;
   gap: var(--spacing-md);
@@ -431,12 +414,6 @@ function getStatusLabel(status: ReadingStatus): string {
 }
 
 @media (max-width: 768px) {
-  .header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--spacing-md);
-  }
-
   .filters {
     flex-direction: column;
   }
