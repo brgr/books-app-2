@@ -84,6 +84,12 @@ Preview the production build:
 npm run preview
 ```
 
+Serve the production build locally (uses the same command Dokku runs in production):
+
+```bash
+npm run start
+```
+
 ## API Configuration
 
 The frontend uses HTTP Basic Authentication to communicate with the backend API. Credentials are stored in localStorage for persistence across sessions.
