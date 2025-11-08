@@ -9,9 +9,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.database import get_db, engine
 from app.auth import get_current_user, create_user as db_create_user, get_user_by_username
-from app.models import User, Book, UserBook
+from app.models import Base, User, Book, UserBook
 from app.schemas import (
     UserCreate, UserResponse,
     BookCreate, BookUpdate, BookResponse, PaginatedBooks,
@@ -21,6 +21,9 @@ from app.schemas import (
 from app.config import settings
 from app.google_books import search_google_books
 from datetime import datetime, UTC
+
+# Ensure database schema exists (useful for fresh local setups)
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
 
