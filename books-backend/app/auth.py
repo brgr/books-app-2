@@ -1,8 +1,9 @@
-import secrets
 from typing import Annotated
-from pwdlib import PasswordHash
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from pwdlib import PasswordHash
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -58,7 +59,11 @@ def get_current_user(
 
 
 def create_user(db: Session, username: str, password: str) -> User:
-    """Create a new user."""
+    """Create the single allowed user account. For now, we basically don't allow further users."""
+    existing_users = db.query(func.count(User.id)).scalar()
+    if existing_users and existing_users > 0:
+        raise ValueError("A user already exists.")
+
     hashed_password = hash_password(password)
     user = User(username=username, hashed_password=hashed_password)
     db.add(user)

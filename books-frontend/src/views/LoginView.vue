@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { login, register, getCurrentUser } from '../api/auth'
+import { login, getCurrentUser } from '../api/auth'
 
 const router = useRouter()
 const route = useRoute()
 
-const isRegistering = ref(false)
 const username = ref('')
 const password = ref('')
 const error = ref('')
@@ -17,12 +16,6 @@ async function handleSubmit() {
   loading.value = true
 
   try {
-    if (isRegistering.value) {
-      // Register new user
-      await register(username.value, password.value)
-    }
-
-    // Login
     login(username.value, password.value)
 
     // Verify login worked
@@ -38,17 +31,12 @@ async function handleSubmit() {
     loading.value = false
   }
 }
-
-function toggleMode() {
-  isRegistering.value = !isRegistering.value
-  error.value = ''
-}
 </script>
 
 <template>
   <div class="container-narrow">
     <div class="card" style="margin-top: 4rem;">
-      <h2 class="text-center">{{ isRegistering ? 'Register' : 'Login' }}</h2>
+      <h2 class="text-center">Login</h2>
 
       <div v-if="error" class="error">
         {{ error }}
@@ -82,27 +70,13 @@ function toggleMode() {
         </div>
 
         <button type="submit" class="btn-primary" style="width: 100%;" :disabled="loading">
-          {{ loading ? 'Please wait...' : (isRegistering ? 'Register' : 'Login') }}
+          {{ loading ? 'Please wait...' : 'Login' }}
         </button>
       </form>
 
       <p class="text-center text-small mt-1">
-        {{ isRegistering ? 'Already have an account?' : "Don't have an account?" }}
-        <a href="#" @click.prevent="toggleMode">
-          {{ isRegistering ? 'Login' : 'Register' }}
-        </a>
+        The account is created via <code>python manage.py create-superuser</code> on the backend.
       </p>
     </div>
   </div>
 </template>
-
-<style scoped>
-a {
-  color: var(--color-primary);
-  text-decoration: none;
-}
-
-a:hover {
-  text-decoration: underline;
-}
-</style>

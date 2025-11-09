@@ -10,10 +10,10 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from app.database import get_db, engine
-from app.auth import get_current_user, create_user as db_create_user, get_user_by_username
+from app.auth import get_current_user
 from app.models import Base, User, Book, UserBook
 from app.schemas import (
-    UserCreate, UserResponse,
+    UserResponse,
     BookCreate, BookUpdate, BookResponse, PaginatedBooks,
     UserBookStatusUpdate, UserBookResponse,
     GoogleBookResult
@@ -42,27 +42,6 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 # Mount static files for uploaded images
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-
-
-@app.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register_user(
-    user_data: UserCreate,
-    db: Annotated[Session, Depends(get_db)]
-):
-    """Register a new user."""
-    # Check if username already exists
-    existing_user = get_user_by_username(db, user_data.username)
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already registered"
-        )
-
-    # Create new user
-    user = db_create_user(db, user_data.username, user_data.password)
-    return user
-
-
 @app.get("/users/me", response_model=UserResponse)
 def read_current_user(current_user: Annotated[User, Depends(get_current_user)]):
     """Get current authenticated user info."""

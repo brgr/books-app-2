@@ -162,36 +162,3 @@ def test_reading_status_requires_auth(client, created_book):
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-
-def test_different_users_have_separate_statuses(client, sample_book_data):
-    """Test that different users can have different statuses for the same book."""
-    # Create first user and book
-    user1_creds = {"username": "user1", "password": "pass123"}
-    client.post("/register", json=user1_creds)
-
-    from base64 import b64encode
-    user1_auth = b64encode(f"{user1_creds['username']}:{user1_creds['password']}".encode()).decode()
-    user1_headers = {"Authorization": f"Basic {user1_auth}"}
-
-    book_response = client.post("/books", json=sample_book_data, headers=user1_headers)
-    book_id = book_response.json()["id"]
-
-    # User1 sets status to "started"
-    client.put(f"/books/{book_id}/status", json={"status": "started"}, headers=user1_headers)
-
-    # Create second user
-    user2_creds = {"username": "user2", "password": "pass123"}
-    client.post("/register", json=user2_creds)
-
-    user2_auth = b64encode(f"{user2_creds['username']}:{user2_creds['password']}".encode()).decode()
-    user2_headers = {"Authorization": f"Basic {user2_auth}"}
-
-    # User2 sets status to "finished"
-    client.put(f"/books/{book_id}/status", json={"status": "finished"}, headers=user2_headers)
-
-    # Verify each user sees their own status
-    response1 = client.get(f"/books/{book_id}", headers=user1_headers)
-    assert response1.json()["user_status"]["status"] == "started"
-
-    response2 = client.get(f"/books/{book_id}", headers=user2_headers)
-    assert response2.json()["user_status"]["status"] == "finished"

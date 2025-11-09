@@ -1,13 +1,7 @@
 import { apiClient, setAuthCredentials as setClientAuth, clearAuthCredentials as clearClientAuth, isAuthenticated } from './client'
-import type { User, UserCreate } from './types'
+import type { User } from './types'
 
 export { isAuthenticated }
-
-export async function register(username: string, password: string): Promise<User> {
-  const userData: UserCreate = { username, password }
-  const response = await apiClient.post<User>('/register', userData)
-  return response.data
-}
 
 export async function getCurrentUser(): Promise<User> {
   const response = await apiClient.get<User>('/users/me')

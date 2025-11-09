@@ -72,11 +72,6 @@ export interface UserBookStatusUpdate {
   notes?: string
 }
 
-export interface UserCreate {
-  username: string
-  password: string
-}
-
 export interface GoogleBookResult {
   title: string
   author: string

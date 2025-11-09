@@ -4,6 +4,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.auth import create_user
 from app.database import get_db
 from app.models import Base
 from main import app
@@ -57,10 +58,9 @@ def test_user_credentials():
 
 
 @pytest.fixture
-def test_user(client, test_user_credentials):
-    """Create a test user and return credentials."""
-    response = client.post("/register", json=test_user_credentials)
-    assert response.status_code == 201
+def test_user(db_session, test_user_credentials):
+    """Create a test user directly in the database and return credentials."""
+    create_user(db_session, test_user_credentials["username"], test_user_credentials["password"])
     return test_user_credentials
 
 

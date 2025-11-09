@@ -1,49 +1,7 @@
 import pytest
 from fastapi import status
 
-
-def test_register_user(client):
-    """Test user registration."""
-    response = client.post("/register", json={
-        "username": "newuser",
-        "password": "securepass123"
-    })
-
-    assert response.status_code == status.HTTP_201_CREATED
-    data = response.json()
-    assert data["username"] == "newuser"
-    assert "id" in data
-    assert "created_at" in data
-    assert "password" not in data
-    assert "hashed_password" not in data
-
-
-def test_register_duplicate_username(client, test_user):
-    """Test registering with an existing username fails."""
-    response = client.post("/register", json={
-        "username": test_user["username"],
-        "password": "differentpass"
-    })
-
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert "already registered" in response.json()["detail"].lower()
-
-
-def test_register_invalid_data(client):
-    """Test registration with invalid data."""
-    # Too short username
-    response = client.post("/register", json={
-        "username": "ab",
-        "password": "validpass123"
-    })
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-
-    # Too short password
-    response = client.post("/register", json={
-        "username": "validuser",
-        "password": "short"
-    })
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+from app.auth import create_user
 
 
 def test_get_current_user(client, test_user, auth_headers):
@@ -82,3 +40,11 @@ def test_invalid_credentials(client, test_user):
 
     response = client.get("/users/me", headers=headers)
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_single_user_limit(db_session, test_user_credentials):
+    """Ensure only one user can be created."""
+    create_user(db_session, test_user_credentials["username"], test_user_credentials["password"])
+
+    with pytest.raises(ValueError):
+        create_user(db_session, "anotheruser", "anotherpass123")
