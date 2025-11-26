@@ -9,7 +9,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   updated: []
-  deleted: []
 }>()
 
 const updatingStatus = ref(false)
@@ -88,14 +87,6 @@ function formatDate(dateStr: string | null): string {
           <router-link :to="{ name: 'book-detail', params: { id: book.id } }" class="book-title-link">
             <h3 class="book-title-clickable">{{ book.title }}</h3>
           </router-link>
-          <div class="book-actions">
-            <button @click="emit('updated')" class="btn-small" title="Edit book">
-              Edit
-            </button>
-            <button @click="emit('deleted')" class="btn-small btn-danger" title="Delete book">
-              Delete
-            </button>
-          </div>
         </div>
 
         <p class="book-author">by {{ book.author }}</p>
@@ -233,11 +224,6 @@ function formatDate(dateStr: string | null): string {
   color: var(--color-primary);
 }
 
-.book-actions {
-  display: flex;
-  gap: var(--spacing-sm);
-}
-
 .book-author {
   color: var(--color-text-secondary);
   margin-bottom: var(--spacing-md);
@@ -306,10 +292,6 @@ function formatDate(dateStr: string | null): string {
 
   .book-header {
     flex-direction: column;
-  }
-
-  .book-actions {
-    margin-top: var(--spacing-sm);
   }
 
   .book-status {

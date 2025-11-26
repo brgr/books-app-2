@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
-import { getBooks, deleteBook } from '../api/books'
+import { getBooks } from '../api/books'
 import BookCard from '../components/BookCard.vue'
 import BookFormModal from '../components/BookFormModal.vue'
 import BookSearchModal from '../components/BookSearchModal.vue'
 import NavigationBar from '../components/NavigationBar.vue'
-import { ReadingStatus, type Book, type PaginatedBooks, type GoogleBookResult } from '../api/types'
+import { ReadingStatus, type PaginatedBooks, type GoogleBookResult } from '../api/types'
 
 const booksData = ref<PaginatedBooks | null>(null)
 const loading = ref(false)
@@ -15,7 +15,6 @@ const pageSize = ref(20)
 
 const showSearchModal = ref(false)
 const showFormModal = ref(false)
-const editingBook = ref<Book | null>(null)
 const prefilledBookData = ref<GoogleBookResult | null>(null)
 
 const filterStatus = ref<ReadingStatus | ''>('')
@@ -72,15 +71,8 @@ async function loadBooks() {
 }
 
 function handleAddBook() {
-  editingBook.value = null
   prefilledBookData.value = null
   showSearchModal.value = true
-}
-
-function handleEditBook(book: Book) {
-  editingBook.value = book
-  prefilledBookData.value = null
-  showFormModal.value = true
 }
 
 function handleSearchModalClose() {
@@ -99,23 +91,8 @@ function handleManualEntry() {
   showFormModal.value = true
 }
 
-async function handleDeleteBook(book: Book) {
-  if (!confirm(`Are you sure you want to delete "${book.title}"?`)) {
-    return
-  }
-
-  try {
-    await deleteBook(book.id)
-    loadBooks()
-  } catch (err: any) {
-    console.error('Failed to delete book:', err)
-    alert('Failed to delete book. Please try again.')
-  }
-}
-
 function handleFormModalClose() {
   showFormModal.value = false
-  editingBook.value = null
   prefilledBookData.value = null
 }
 
@@ -275,8 +252,7 @@ function toggleFilterDropdown() {
           <BookCard
             v-else
             :book="book"
-            @updated="handleEditBook(book)"
-            @deleted="handleDeleteBook(book)"
+            @updated="loadBooks()"
           />
         </div>
       </div>
@@ -309,7 +285,6 @@ function toggleFilterDropdown() {
 
     <BookFormModal
       v-if="showFormModal"
-      :book="editingBook"
       :prefilled-data="prefilledBookData"
       @close="handleFormModalClose"
       @saved="handleBookSaved"
