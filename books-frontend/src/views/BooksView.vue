@@ -252,7 +252,6 @@ function toggleFilterDropdown() {
           <BookCard
             v-else
             :book="book"
-            @updated="loadBooks()"
           />
         </div>
       </div>

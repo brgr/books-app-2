@@ -1,25 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { setReadingStatus, removeReadingStatus } from '../api/books'
+import { computed } from 'vue'
 import { ReadingStatus, type Book } from '../api/types'
 
 const props = defineProps<{
   book: Book
 }>()
 
-const emit = defineEmits<{
-  updated: []
-}>()
-
-const updatingStatus = ref(false)
-
-const statusOptions = [
-  { value: '', label: 'No status' },
-  { value: ReadingStatus.WANT_TO_READ, label: 'Want to read' },
-  { value: ReadingStatus.STARTED, label: 'Started' },
-  { value: ReadingStatus.FINISHED, label: 'Finished' },
-  { value: ReadingStatus.ABANDONED, label: 'Abandoned' },
-]
+const readingStatus = computed(() => props.book.user_status?.status || null)
 
 function getStatusColor(status: ReadingStatus | null): string {
   if (!status) return 'var(--color-text-secondary)'
@@ -38,27 +25,17 @@ function getStatusColor(status: ReadingStatus | null): string {
   }
 }
 
-async function handleStatusChange(event: Event) {
-  const newStatus = (event.target as HTMLSelectElement).value
-  updatingStatus.value = true
+function getStatusLabel(status: ReadingStatus | null): string {
+  if (!status) return 'N/A'
 
-  try {
-    if (newStatus === '') {
-      // Remove status
-      await removeReadingStatus(props.book.id)
-    } else {
-      // Set status
-      await setReadingStatus(props.book.id, {
-        status: newStatus as ReadingStatus,
-      })
-    }
-    emit('updated')
-  } catch (error) {
-    console.error('Failed to update reading status:', error)
-    alert('Failed to update reading status')
-  } finally {
-    updatingStatus.value = false
+  const labels: Record<ReadingStatus, string> = {
+    [ReadingStatus.WANT_TO_READ]: 'Want to read',
+    [ReadingStatus.STARTED]: 'Started',
+    [ReadingStatus.FINISHED]: 'Finished',
+    [ReadingStatus.ABANDONED]: 'Abandoned',
   }
+
+  return labels[status] || status
 }
 
 function formatDate(dateStr: string | null): string {
@@ -107,19 +84,14 @@ function formatDate(dateStr: string | null): string {
       </span>
     </div>
 
-    <div class="book-status">
-      <label for="status">Reading status:</label>
-      <select
-        id="status"
-        :value="book.user_status?.status || ''"
-        @change="handleStatusChange"
-        :disabled="updatingStatus"
-        :style="{ borderColor: getStatusColor(book.user_status?.status || null) }"
+    <div v-if="readingStatus" class="book-status">
+      <span class="book-status-label">Reading status:</span>
+      <span
+        class="book-status-pill"
+        :style="{ borderColor: getStatusColor(readingStatus), color: getStatusColor(readingStatus) }"
       >
-        <option v-for="option in statusOptions" :key="option.value" :value="option.value">
-          {{ option.label }}
-        </option>
-      </select>
+        {{ getStatusLabel(readingStatus) }}
+      </span>
     </div>
 
     <div v-if="book.user_status" class="book-dates text-small text-muted">
@@ -256,21 +228,22 @@ function formatDate(dateStr: string | null): string {
 
 .book-status {
   margin-bottom: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
 }
 
-.book-status label {
-  display: inline-block;
-  margin-right: var(--spacing-sm);
-  margin-bottom: 0;
+.book-status-label {
   font-size: 14px;
+  color: var(--color-text-secondary);
 }
 
-.book-status select {
-  width: auto;
-  min-width: 200px;
-  display: inline-block;
-  border-width: 2px;
-  transition: border-color 0.15s ease;
+.book-status-pill {
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .book-dates {
@@ -295,13 +268,8 @@ function formatDate(dateStr: string | null): string {
   }
 
   .book-status {
-    display: flex;
+    align-items: flex-start;
     flex-direction: column;
-  }
-
-  .book-status select {
-    width: 100%;
-    margin-top: var(--spacing-xs);
   }
 }
 </style>
