@@ -322,10 +322,11 @@ function toggleFilterDropdown() {
   display: flex;
   gap: var(--spacing-sm);
   margin-bottom: var(--spacing-lg);
-  padding: var(--spacing-md) 0;
+  padding: var(--spacing-md);
   background-color: var(--color-bg-card);
   align-items: center;
   justify-content: space-between;
+  border-radius: var(--border-radius);
 }
 
 .search-bar {
@@ -333,10 +334,20 @@ function toggleFilterDropdown() {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-lg);
   background-color: var(--color-bg-card);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.search-bar:hover {
+  border-color: var(--color-text-secondary);
+}
+
+.search-bar:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px rgba(88, 86, 214, 0.35);
 }
 
 .search-icon {
@@ -348,6 +359,7 @@ function toggleFilterDropdown() {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+  padding: 0 var(--spacing-xs);
 }
 
 .search-input {
