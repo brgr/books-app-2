@@ -107,3 +107,29 @@ class GoogleBookResult(BaseModel):
     page_count: Optional[int] = None
     thumbnail: Optional[str] = None
     google_books_id: Optional[str] = None
+
+
+# Export schemas
+class ExportBookEntry(BaseModel):
+    id: int
+    title: str
+    author: str
+    isbn: Optional[str] = None
+    description: Optional[str] = None
+    published_date: Optional[datetime] = None
+    page_count: Optional[int] = None
+    status: ReadingStatus
+    notes: Optional[str] = None
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+    book_created_at: datetime
+    book_updated_at: datetime
+    user_book_created_at: datetime
+    user_book_updated_at: datetime
+
+
+class UserBooksExportResponse(BaseModel):
+    schema_version: str = "v1"
+    exported_at: datetime
+    user: UserResponse
+    books: list[ExportBookEntry]

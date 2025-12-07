@@ -1,26 +1,26 @@
-from typing import Annotated
-import os
-import uuid
 import shutil
+import uuid
+from datetime import datetime, UTC
 from pathlib import Path
+from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, status, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
-from app.database import get_db, engine
 from app.auth import get_current_user
+from app.config import settings
+from app.database import get_db, engine
+from app.google_books import search_google_books
 from app.models import Base, User, Book, UserBook
 from app.schemas import (
     UserResponse,
     BookCreate, BookUpdate, BookResponse, PaginatedBooks,
     UserBookStatusUpdate, UserBookResponse,
-    GoogleBookResult
+    GoogleBookResult,
+    UserBooksExportResponse
 )
-from app.config import settings
-from app.google_books import search_google_books
-from datetime import datetime, UTC
 
 # Ensure database schema exists (useful for fresh local setups)
 Base.metadata.create_all(bind=engine)
@@ -46,6 +46,47 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 def read_current_user(current_user: Annotated[User, Depends(get_current_user)]):
     """Get current authenticated user info."""
     return current_user
+
+
+@app.get("/users/me/export", response_model=UserBooksExportResponse)
+def export_user_books(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)]
+):
+    """Export the current user's books along with their reading state."""
+    user_books = (
+        db.query(UserBook, Book)
+        .join(Book, UserBook.book_id == Book.id)
+        .filter(UserBook.user_id == current_user.id)
+        .order_by(Book.id.asc())
+        .all()
+    )
+
+    books_payload = []
+    for user_book, book in user_books:
+        books_payload.append({
+            "id": book.id,
+            "title": book.title,
+            "author": book.author,
+            "isbn": book.isbn,
+            "description": book.description,
+            "published_date": book.published_date,
+            "page_count": book.page_count,
+            "status": user_book.status,
+            "notes": user_book.notes,
+            "started_at": user_book.started_at,
+            "finished_at": user_book.finished_at,
+            "book_created_at": book.created_at,
+            "book_updated_at": book.updated_at,
+            "user_book_created_at": user_book.created_at,
+            "user_book_updated_at": user_book.updated_at
+        })
+
+    return {
+        "exported_at": datetime.now(UTC),
+        "user": current_user,
+        "books": books_payload
+    }
 
 
 @app.get("/")
