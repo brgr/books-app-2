@@ -23,8 +23,14 @@ one.
 
 ## Development
 
-Run type checks with the ty:
+Run type checks with Ty:
 
 ```bash
 uv run ty check
+```
+
+Run lint checks with Ruff:
+
+```bash
+uv run ruff check
 ```

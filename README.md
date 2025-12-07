@@ -137,6 +137,12 @@ cd books-backend
 uv run ty check
 ```
 
+Linting:
+```bash
+cd books-backend
+uv run ruff check
+```
+
 Run tests:
 ```bash
 cd books-backend

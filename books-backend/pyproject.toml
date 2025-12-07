@@ -19,4 +19,5 @@ dev = [
     "ty>=0.0.1a32",
     "pytest>=8.0.0",
     "httpx>=0.27.0", # Required by TestClient
+    "ruff>=0.14.8",
 ]
