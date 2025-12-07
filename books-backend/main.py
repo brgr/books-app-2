@@ -29,7 +29,7 @@ app = FastAPI(title=settings.app_name, debug=settings.debug)
 
 # Configure CORS
 app.add_middleware(
-    CORSMiddleware,
+    CORSMiddleware,  # type: ignore[arg-type]
     allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
@@ -133,10 +133,10 @@ def create_book(
 
 @app.get("/books", response_model=PaginatedBooks)
 def list_books(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
     page: int = 1,
-    page_size: int = 20,
-    current_user: Annotated[User, Depends(get_current_user)] = None,
-    db: Annotated[Session, Depends(get_db)] = None
+    page_size: int = 20
 ):
     """List all books with pagination. Includes user's reading status for each book."""
     # Validate pagination parameters
@@ -272,7 +272,8 @@ async def upload_book_cover(
         )
 
     # Generate unique filename
-    file_extension = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+    filename = file.filename or ""
+    file_extension = filename.rsplit(".", 1)[-1] if "." in filename else "jpg"
     unique_filename = f"{uuid.uuid4()}.{file_extension}"
     file_path = UPLOAD_DIR / unique_filename
 

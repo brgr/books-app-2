@@ -20,3 +20,11 @@ python manage.py create-superuser --username alice --password secretpass
 The command uses the same `DATABASE_URL` configuration as the API.  
 If an account already exists, the command aborts, and you must delete the user record manually before creating another
 one.
+
+## Development
+
+Run type checks with the ty:
+
+```bash
+uv run ty check
+```

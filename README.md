@@ -131,6 +131,12 @@ Once the backend is running, visit `http://localhost:8000/docs` for interactive 
 
 ### Backend Development
 
+Type checking:
+```bash
+cd books-backend
+uv run ty check
+```
+
 Run tests:
 ```bash
 cd books-backend
