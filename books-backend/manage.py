@@ -2,21 +2,18 @@
 """Management commands for the Books backend."""
 
 import argparse
-from getpass import getpass
 import sys
+from getpass import getpass
 
 from pydantic import ValidationError
 
 from app.auth import create_user
-from app.database import SessionLocal, engine
-from app.models import Base
+from app.database import SessionLocal
 from app.schemas import UserCreate
 
 
 def handle_create_superuser(args: argparse.Namespace) -> int:
     """Create the single allowed user account."""
-    # Ensure database schema exists before interacting with it
-    Base.metadata.create_all(bind=engine)
 
     username = (args.username or "").strip()
     password = args.password
