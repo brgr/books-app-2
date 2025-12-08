@@ -27,7 +27,6 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     username = Column(String(50), unique=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     # Relationship to user's books
     user_books = relationship("UserBook", back_populates="user", cascade="all, delete-orphan")
@@ -47,8 +46,6 @@ class Book(Base):
     published_date = Column(DateTime, nullable=True)
     page_count = Column(Integer, nullable=True)
     cover_image_url = Column(String(500), nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
     # Relationship to users who have this book
     user_books = relationship("UserBook", back_populates="book", cascade="all, delete-orphan")
@@ -67,8 +64,6 @@ class UserBook(Base):
     started_at = Column(DateTime, nullable=True)
     finished_at = Column(DateTime, nullable=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
     # Relationships
     user = relationship("User", back_populates="user_books")

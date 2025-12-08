@@ -11,7 +11,6 @@ def test_create_book(client, auth_headers, sample_book_data):
     assert data["author"] == sample_book_data["author"]
     assert data["isbn"] == sample_book_data["isbn"]
     assert "id" in data
-    assert "created_at" in data
 
 
 def test_create_book_requires_auth(client, sample_book_data):

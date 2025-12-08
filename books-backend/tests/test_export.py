@@ -19,12 +19,27 @@ def test_user_books_export_sorted_by_id(client, auth_headers, sample_book_data, 
 
     for book, new_status in zip(reversed(created_books), status_updates):
         notes = f"Note for {book['title']}"
-        response = client.put(
-            f"/books/{book['id']}/status",
-            json={"status": new_status, "notes": notes},
-            headers=auth_headers
-        )
-        assert response.status_code == status.HTTP_200_OK
+        if new_status == "finished":
+            start_response = client.put(
+                f"/books/{book['id']}/status",
+                json={"status": "started"},
+                headers=auth_headers
+            )
+            assert start_response.status_code == status.HTTP_200_OK
+
+            response = client.put(
+                f"/books/{book['id']}/status",
+                json={"status": "finished", "notes": notes},
+                headers=auth_headers
+            )
+            assert response.status_code == status.HTTP_200_OK
+        else:
+            response = client.put(
+                f"/books/{book['id']}/status",
+                json={"status": new_status, "notes": notes},
+                headers=auth_headers
+            )
+            assert response.status_code == status.HTTP_200_OK
         expected_status_by_id[book["id"]] = {"status": new_status, "notes": notes}
 
     response = client.get("/users/me/export", headers=auth_headers)

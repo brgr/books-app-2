@@ -2,7 +2,7 @@ import shutil
 import uuid
 from datetime import datetime, UTC
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import Depends, FastAPI, HTTPException, status, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,9 +11,15 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
 from app.config import settings
-from app.database import get_db, engine
+from app.database import get_db
 from app.google_books import search_google_books
-from app.models import Base, User, Book, UserBook
+from app.book_events import (
+    ensure_added_event,
+    project_user_book_state,
+    record_finished_reading,
+    record_started_reading,
+)
+from app.models import User, Book, UserBook
 from app.schemas import (
     UserResponse,
     BookCreate, BookUpdate, BookResponse, PaginatedBooks,
@@ -21,9 +27,6 @@ from app.schemas import (
     GoogleBookResult,
     UserBooksExportResponse
 )
-
-# Ensure database schema exists (useful for fresh local setups)
-Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
 
@@ -65,6 +68,7 @@ def export_user_books(
 
     books_payload = []
     for user_book, book in user_books:
+        project_user_book_state(db, user_book)
         books_payload.append({
             "id": book.id,
             "title": book.title,
@@ -76,11 +80,7 @@ def export_user_books(
             "status": user_book.status,
             "notes": user_book.notes,
             "started_at": user_book.started_at,
-            "finished_at": user_book.finished_at,
-            "book_created_at": book.created_at,
-            "book_updated_at": book.updated_at,
-            "user_book_created_at": user_book.created_at,
-            "user_book_updated_at": user_book.updated_at
+            "finished_at": user_book.finished_at
         })
 
     return {
@@ -154,10 +154,12 @@ def list_books(
 
     # Attach user's reading status to each book
     for book in books:
-        user_book = db.query(UserBook).filter(
+        user_book: UserBook | None = db.query(UserBook).filter(
             UserBook.user_id == current_user.id,
             UserBook.book_id == book.id
         ).first()
+        if user_book:
+            project_user_book_state(db, user_book)
         book.user_status = user_book
 
     # Calculate total pages
@@ -187,10 +189,12 @@ def get_book(
         )
 
     # Attach user's reading status
-    user_book = db.query(UserBook).filter(
+    user_book: UserBook | None = db.query(UserBook).filter(
         UserBook.user_id == current_user.id,
         UserBook.book_id == book.id
     ).first()
+    if user_book:
+        project_user_book_state(db, user_book)
     book.user_status = user_book
 
     return book
@@ -321,42 +325,43 @@ def set_reading_status(
             detail="Book not found"
         )
 
-    # Check if user already has this book
-    user_book = db.query(UserBook).filter(
-        UserBook.user_id == current_user.id,
-        UserBook.book_id == book_id
-    ).first()
+    from app.models import ReadingStatus
 
-    if user_book:
-        # Update existing status
-        user_book.status = status_data.status
-        if status_data.notes is not None:
-            user_book.notes = status_data.notes
+    user_id = cast(int, current_user.id)
 
-        # Auto-set timestamps based on status
-        from app.models import ReadingStatus
-        if status_data.status == ReadingStatus.STARTED and not user_book.started_at:
-            user_book.started_at = datetime.now(UTC)
-        elif status_data.status == ReadingStatus.FINISHED and not user_book.finished_at:
-            user_book.finished_at = datetime.now(UTC)
-    else:
-        # Create new user book entry
-        user_book = UserBook(
-            user_id=current_user.id,
-            book_id=book_id,
-            status=status_data.status,
-            notes=status_data.notes
+    try:
+        user_book = ensure_added_event(db, user_id=user_id, book_id=book_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    # Reset notes if explicitly provided
+    if status_data.notes is not None:
+        user_book.notes = status_data.notes
+
+    project_user_book_state(db, user_book)
+    if status_data.status == ReadingStatus.WANT_TO_READ and user_book.status != ReadingStatus.WANT_TO_READ:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot revert to 'want_to_read' after reading has started",
         )
 
-        # Auto-set timestamps based on status
-        from app.models import ReadingStatus
+    user_book_id = cast(int, user_book.id)
+
+    try:
         if status_data.status == ReadingStatus.STARTED:
-            user_book.started_at = datetime.now(UTC)
+            record_started_reading(db, user_book_id=user_book_id)
         elif status_data.status == ReadingStatus.FINISHED:
-            user_book.finished_at = datetime.now(UTC)
+            record_finished_reading(db, user_book_id=user_book_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
 
-        db.add(user_book)
-
+    project_user_book_state(db, user_book)
     db.commit()
     db.refresh(user_book)
     return user_book

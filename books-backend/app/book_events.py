@@ -14,17 +14,6 @@ from app.models import (
 )
 
 
-def ensure_book_event_types(session: Session) -> None:
-    """Insert the initial event types if they are missing."""
-    existing_codes = {
-        code for (code,) in session.query(BookEventType.code).all()
-    }
-    for code in BookEventCode:
-        if code.value not in existing_codes:
-            session.add(BookEventType(code=code.value))
-    session.flush()
-
-
 def _get_event_type(session: Session, code: BookEventCode) -> BookEventType:
     event_type: BookEventType | None = (
         session.query(BookEventType)
@@ -66,7 +55,6 @@ def record_added_to_library(
 
     Raises ValueError if an add event already exists for this user_book.
     """
-    ensure_book_event_types(session)
     user_book = _ensure_user_book(session, user_id=user_id, book_id=book_id)
 
     existing_add = _latest_event(session, cast(int, user_book.id), BookEventCode.ADDED_TO_LIBRARY)
@@ -99,6 +87,31 @@ def _ensure_user_book(session: Session, user_id: int, book_id: int) -> UserBook:
     return user_book
 
 
+def ensure_added_event(session: Session, user_id: int, book_id: int) -> UserBook:
+    """Guarantee a user_book row and its initial add event exist."""
+    user_book: UserBook | None = (
+        session.query(UserBook)
+        .filter(UserBook.user_id == user_id, UserBook.book_id == book_id)
+        .first()
+    )
+
+    if user_book is None:
+        record_added_to_library(session, user_id=user_id, book_id=book_id)
+        user_book = (
+            session.query(UserBook)
+            .filter(UserBook.user_id == user_id, UserBook.book_id == book_id)
+            .first()
+        )
+        if user_book is None:
+            raise ValueError("Failed to create user_book for add event")
+        return user_book
+
+    existing_add = _latest_event(session, user_book.id, BookEventCode.ADDED_TO_LIBRARY)
+    if not existing_add:
+        record_added_to_library(session, user_id=user_id, book_id=book_id)
+    return user_book
+
+
 def record_started_reading(
     session: Session,
     user_book_id: int,
@@ -108,8 +121,6 @@ def record_started_reading(
 
     Requires that the book was added and is not already in an open reading cycle.
     """
-    ensure_book_event_types(session)
-
     add_event = _latest_event(session, user_book_id, BookEventCode.ADDED_TO_LIBRARY)
     if not add_event:
         raise ValueError("Cannot start reading before adding to library")
@@ -137,8 +148,6 @@ def record_finished_reading(
     occurred_at: Optional[datetime] = None,
 ) -> BookEvent:
     """Append a finish event if there is an open reading cycle."""
-    ensure_book_event_types(session)
-
     add_event = _latest_event(session, user_book_id, BookEventCode.ADDED_TO_LIBRARY)
     if not add_event:
         raise ValueError("Cannot finish reading before adding to library")
@@ -161,3 +170,25 @@ def record_finished_reading(
     session.add(event)
     session.flush()
     return event
+
+
+def project_user_book_state(session: Session, user_book: UserBook) -> UserBook:
+    """Project the current reading state from the event stream onto the user_book snapshot fields."""
+    user_book_id = cast(int, user_book.id)
+    latest_start = _latest_event(session, user_book_id, BookEventCode.STARTED_READING)
+    latest_finish = _latest_event(session, user_book_id, BookEventCode.FINISHED_READING)
+
+    if latest_finish and _is_after(latest_finish, latest_start):
+        user_book.status = ReadingStatus.FINISHED
+        user_book.finished_at = latest_finish.occurred_at
+    elif latest_start:
+        user_book.status = ReadingStatus.STARTED
+        user_book.finished_at = None
+    else:
+        user_book.status = ReadingStatus.WANT_TO_READ
+        user_book.finished_at = None
+
+    user_book.started_at = latest_start.occurred_at if latest_start else None
+    session.flush()
+
+    return user_book

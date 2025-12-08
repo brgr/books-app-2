@@ -15,7 +15,6 @@ class UserCreate(UserBase):
 
 class UserResponse(UserBase):
     id: int
-    created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -47,8 +46,6 @@ class BookUpdate(BaseModel):
 
 class BookResponse(BookBase):
     id: int
-    created_at: datetime
-    updated_at: datetime
     user_status: Optional["UserBookResponse"] = None  # Include user's reading status if available
 
     model_config = ConfigDict(from_attributes=True)
@@ -81,8 +78,6 @@ class UserBookResponse(UserBookBase):
     book_id: int
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
-    created_at: datetime
-    updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -122,10 +117,6 @@ class ExportBookEntry(BaseModel):
     notes: Optional[str] = None
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
-    book_created_at: datetime
-    book_updated_at: datetime
-    user_book_created_at: datetime
-    user_book_updated_at: datetime
 
 
 class UserBooksExportResponse(BaseModel):

@@ -53,8 +53,25 @@ def test_update_reading_status(client, auth_headers, created_book):
 
 
 def test_set_finished_status(client, auth_headers, created_book):
-    """Test setting finished status sets finished_at timestamp."""
+    """Finishing requires a start event and sets finished_at."""
     book_id = created_book["id"]
+
+    # Attempting to finish without starting should fail
+    response = client.put(
+        f"/books/{book_id}/status",
+        json={"status": "finished"},
+        headers=auth_headers
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "Cannot finish reading before starting" in response.json()["detail"]
+
+    # Start then finish
+    response = client.put(
+        f"/books/{book_id}/status",
+        json={"status": "started"},
+        headers=auth_headers
+    )
+    assert response.status_code == status.HTTP_200_OK
 
     response = client.put(
         f"/books/{book_id}/status",
@@ -109,6 +126,11 @@ def test_get_book_includes_user_status(client, auth_headers, created_book):
     # Set reading status
     client.put(
         f"/books/{book_id}/status",
+        json={"status": "started"},
+        headers=auth_headers
+    )
+    client.put(
+        f"/books/{book_id}/status",
         json={"status": "finished", "notes": "Excellent!"},
         headers=auth_headers
     )
@@ -144,6 +166,25 @@ def test_remove_reading_status(client, auth_headers, created_book):
     assert book["user_status"] is None
 
 
+def test_cannot_revert_to_want_after_start(client, auth_headers, created_book):
+    book_id = created_book["id"]
+
+    response = client.put(
+        f"/books/{book_id}/status",
+        json={"status": "started"},
+        headers=auth_headers
+    )
+    assert response.status_code == status.HTTP_200_OK
+
+    response = client.put(
+        f"/books/{book_id}/status",
+        json={"status": "want_to_read"},
+        headers=auth_headers
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "Cannot revert to 'want_to_read'" in response.json()["detail"]
+
+
 def test_remove_nonexistent_reading_status(client, auth_headers, created_book):
     """Test removing a reading status that doesn't exist."""
     book_id = created_book["id"]
@@ -161,4 +202,3 @@ def test_reading_status_requires_auth(client, created_book):
         json={"status": "started"}
     )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
-

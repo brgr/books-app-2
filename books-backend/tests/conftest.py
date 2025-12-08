@@ -1,4 +1,6 @@
 import pytest
+from alembic import command
+from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -21,6 +23,20 @@ engine = create_engine(
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
+def run_migrations():
+    """Upgrade the test database to the latest revision."""
+    # Reset schema (including alembic_version) so upgrades run fully each time.
+    Base.metadata.drop_all(bind=engine)
+    with engine.begin() as conn:
+        conn.exec_driver_sql("DROP TABLE IF EXISTS alembic_version")
+
+    config = Config("alembic.ini")
+    config.set_main_option("sqlalchemy.url", SQLALCHEMY_TEST_DATABASE_URL)
+    with engine.begin() as connection:
+        config.attributes["connection"] = connection
+        command.upgrade(config, "head")
+
+
 def override_get_db():
     """Override the get_db dependency for tests."""
     db = TestingSessionLocal()
@@ -33,7 +49,7 @@ def override_get_db():
 @pytest.fixture(scope="function")
 def db_session():
     """Create a fresh database for each test."""
-    Base.metadata.create_all(bind=engine)
+    run_migrations()
     db = TestingSessionLocal()
     try:
         yield db

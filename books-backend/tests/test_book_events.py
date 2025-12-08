@@ -3,7 +3,6 @@ from datetime import datetime, UTC
 import pytest
 from app.auth import create_user
 from app.book_events import (
-    ensure_book_event_types,
     record_added_to_library,
     record_finished_reading,
     record_started_reading,
@@ -21,9 +20,6 @@ def _create_user_and_book(db_session):
 
 
 def test_event_type_seeding_is_idempotent(db_session):
-    ensure_book_event_types(db_session)
-    ensure_book_event_types(db_session)
-
     codes = {code for (code,) in db_session.query(BookEventType.code).all()}
     assert codes == {c.value for c in BookEventCode}
 
