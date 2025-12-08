@@ -58,6 +58,7 @@ def db_session():
         Base.metadata.drop_all(bind=engine)
 
 
+# noinspection PyUnresolvedReferences
 @pytest.fixture(scope="function")
 def client(db_session):
     """Create a test client with database override."""
@@ -85,6 +86,7 @@ def auth_headers(test_user):
     """Get HTTP Basic Auth headers for test user."""
     from base64 import b64encode
     credentials = f"{test_user['username']}:{test_user['password']}"
+    # noinspection PyTypeChecker
     encoded = b64encode(credentials.encode()).decode()
     return {"Authorization": f"Basic {encoded}"}
 

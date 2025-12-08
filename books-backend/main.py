@@ -285,6 +285,7 @@ async def upload_book_cover(
     # Save file
     try:
         with file_path.open("wb") as buffer:
+            # noinspection PyTypeChecker
             shutil.copyfileobj(file.file, buffer)
     except Exception as e:
         raise HTTPException(
