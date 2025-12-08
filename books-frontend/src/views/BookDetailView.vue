@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { getBook, setReadingStatus, removeReadingStatus, deleteBook } from '../api/books'
+import {computed, ref, onMounted} from 'vue'
+import {useRouter, useRoute} from 'vue-router'
+import {getBook, setReadingStatus, deleteBook} from '../api/books'
 import BookFormModal from '../components/BookFormModal.vue'
 import BookSearchModal from '../components/BookSearchModal.vue'
 import NavigationBar from '../components/NavigationBar.vue'
-import { ReadingStatus, type Book, type GoogleBookResult } from '../api/types'
+import {ReadingStatus, type Book, type GoogleBookResult} from '../api/types'
 
 const router = useRouter()
 const route = useRoute()
@@ -18,14 +18,6 @@ const showEditModal = ref(false)
 const showSearchModal = ref(false)
 const showFormModal = ref(false)
 const prefilledBookData = ref<GoogleBookResult | null>(null)
-
-const statusOptions = [
-  { value: '', label: 'No status' },
-  { value: ReadingStatus.WANT_TO_READ, label: 'Want to read' },
-  { value: ReadingStatus.STARTED, label: 'Started' },
-  { value: ReadingStatus.FINISHED, label: 'Finished' },
-  { value: ReadingStatus.ABANDONED, label: 'Abandoned' },
-]
 
 onMounted(() => {
   loadBook()
@@ -51,43 +43,40 @@ async function loadBook() {
   }
 }
 
-async function handleStatusChange(event: Event) {
-  if (!book.value) return
+const canStartReading = computed(() => {
+  const status = book.value?.user_status?.status || null
+  return status === null || status === ReadingStatus.WANT_TO_READ
+})
 
-  const newStatus = (event.target as HTMLSelectElement).value
+const canFinishReading = computed(() => book.value?.user_status?.status === ReadingStatus.STARTED)
+
+async function handleStartReading() {
+  if (!book.value) return
   updatingStatus.value = true
 
   try {
-    if (newStatus === '') {
-      await removeReadingStatus(book.value.id)
-    } else {
-      await setReadingStatus(book.value.id, {
-        status: newStatus as ReadingStatus,
-      })
-    }
+    await setReadingStatus(book.value.id, {status: ReadingStatus.STARTED})
     await loadBook()
   } catch (error) {
-    console.error('Failed to update reading status:', error)
-    alert('Failed to update reading status')
+    console.error('Failed to start reading:', error)
+    alert('Failed to start reading')
   } finally {
     updatingStatus.value = false
   }
 }
 
-function getStatusColor(status: ReadingStatus | null): string {
-  if (!status) return 'var(--color-text-secondary)'
+async function handleFinishReading() {
+  if (!book.value) return
+  updatingStatus.value = true
 
-  switch (status) {
-    case ReadingStatus.WANT_TO_READ:
-      return 'var(--color-primary)'
-    case ReadingStatus.STARTED:
-      return 'var(--color-warning)'
-    case ReadingStatus.FINISHED:
-      return 'var(--color-success)'
-    case ReadingStatus.ABANDONED:
-      return 'var(--color-text-secondary)'
-    default:
-      return 'var(--color-text-secondary)'
+  try {
+    await setReadingStatus(book.value.id, {status: ReadingStatus.FINISHED})
+    await loadBook()
+  } catch (error) {
+    console.error('Failed to finish reading:', error)
+    alert('Failed to finish reading')
+  } finally {
+    updatingStatus.value = false
   }
 }
 
@@ -109,7 +98,7 @@ async function handleDelete() {
 
   try {
     await deleteBook(book.value.id)
-    router.push({ name: 'books' })
+    router.push({name: 'books'})
   } catch (err: any) {
     console.error('Failed to delete book:', err)
     alert('Failed to delete book. Please try again.')
@@ -125,7 +114,7 @@ function handleBookSaved() {
 }
 
 function goBack() {
-  router.push({ name: 'books' })
+  router.push({name: 'books'})
 }
 
 function handleAddBook() {
@@ -156,13 +145,13 @@ function handleFormModalClose() {
 function handleNewBookSaved() {
   showFormModal.value = false
   prefilledBookData.value = null
-  router.push({ name: 'books' })
+  router.push({name: 'books'})
 }
 </script>
 
 <template>
   <div>
-    <NavigationBar @add-book="handleAddBook" />
+    <NavigationBar @add-book="handleAddBook"/>
 
     <div class="container">
       <div class="back-button">
@@ -183,10 +172,10 @@ function handleNewBookSaved() {
         <div class="book-header">
           <div class="book-cover-section">
             <img
-              v-if="book.cover_image_url"
-              :src="book.cover_image_url"
-              :alt="book.title"
-              class="book-cover-large"
+                v-if="book.cover_image_url"
+                :src="book.cover_image_url"
+                :alt="book.title"
+                class="book-cover-large"
             />
             <div v-else class="book-cover-large book-cover-placeholder">
               No Cover
@@ -207,18 +196,24 @@ function handleNewBookSaved() {
             </div>
 
             <div class="book-status-section">
-              <label for="status">Reading status:</label>
-              <select
-                id="status"
-                :value="book.user_status?.status || ''"
-                @change="handleStatusChange"
-                :disabled="updatingStatus"
-                :style="{ borderColor: getStatusColor(book.user_status?.status || null) }"
-              >
-                <option v-for="option in statusOptions" :key="option.value" :value="option.value">
-                  {{ option.label }}
-                </option>
-              </select>
+              <div class="status-actions">
+                <button
+                    v-if="canStartReading"
+                    class="btn-secondary"
+                    @click="handleStartReading"
+                    :disabled="updatingStatus"
+                >
+                  Start Reading
+                </button>
+                <button
+                    v-if="canFinishReading"
+                    class="btn-primary"
+                    @click="handleFinishReading"
+                    :disabled="updatingStatus"
+                >
+                  Finish Reading
+                </button>
+              </div>
             </div>
 
             <div v-if="book.user_status" class="book-dates">
@@ -260,24 +255,24 @@ function handleNewBookSaved() {
     </div>
 
     <BookFormModal
-      v-if="showEditModal && book"
-      :book="book"
-      @close="handleModalClose"
-      @saved="handleBookSaved"
+        v-if="showEditModal && book"
+        :book="book"
+        @close="handleModalClose"
+        @saved="handleBookSaved"
     />
 
     <BookSearchModal
-      v-if="showSearchModal"
-      @close="handleSearchModalClose"
-      @select="handleBookSelected"
-      @manualEntry="handleManualEntry"
+        v-if="showSearchModal"
+        @close="handleSearchModalClose"
+        @select="handleBookSelected"
+        @manualEntry="handleManualEntry"
     />
 
     <BookFormModal
-      v-if="showFormModal"
-      :prefilled-data="prefilledBookData"
-      @close="handleFormModalClose"
-      @saved="handleNewBookSaved"
+        v-if="showFormModal"
+        :prefilled-data="prefilledBookData"
+        @close="handleFormModalClose"
+        @saved="handleNewBookSaved"
     />
   </div>
 </template>
@@ -351,24 +346,14 @@ function handleNewBookSaved() {
 
 .book-status-section {
   margin-bottom: var(--spacing-lg);
-  padding: var(--spacing-md);
-  background-color: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius);
+  padding: 0;
+  background-color: transparent;
+  border: none;
 }
 
-.book-status-section label {
-  display: block;
-  margin-bottom: var(--spacing-sm);
-  font-weight: 500;
-  font-size: 14px;
-}
-
-.book-status-section select {
-  width: 100%;
-  max-width: 300px;
-  border-width: 2px;
-  transition: border-color 0.15s ease;
+.status-actions {
+  display: flex;
+  gap: var(--spacing-sm);
 }
 
 .book-dates {
