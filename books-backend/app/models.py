@@ -1,8 +1,9 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Enum, UniqueConstraint
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime, UTC
 import enum
+import uuid
 
 Base = declarative_base()
 
@@ -12,6 +13,12 @@ class ReadingStatus(enum.Enum):
     STARTED = "started"
     FINISHED = "finished"
     ABANDONED = "abandoned"
+
+
+class BookEventCode(enum.Enum):
+    ADDED_TO_LIBRARY = "added_to_library"
+    STARTED_READING = "started_reading"
+    FINISHED_READING = "finished_reading"
 
 
 class User(Base):
@@ -29,7 +36,6 @@ class User(Base):
         return f"<User(username='{self.username}')>"
 
 
-# TODO: Generated with Claude... still to update (more than one author e.g.)
 class Book(Base):
     __tablename__ = 'books'
 
@@ -67,6 +73,39 @@ class UserBook(Base):
     # Relationships
     user = relationship("User", back_populates="user_books")
     book = relationship("Book", back_populates="user_books")
+    events = relationship("BookEvent", back_populates="user_book", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<UserBook(user_id={self.user_id}, book_id={self.book_id}, status='{self.status.value}')>"
+
+
+class BookEventType(Base):
+    __tablename__ = 'book_event_types'
+
+    id = Column(Integer, primary_key=True)
+    code = Column(String(50), unique=True, nullable=False)
+
+    def __repr__(self):
+        return f"<BookEventType(code='{self.code}')>"
+
+
+class BookEvent(Base):
+    __tablename__ = 'book_events'
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_book_id = Column(Integer, ForeignKey('user_books.id', ondelete='CASCADE'), nullable=False)
+    event_type_id = Column(Integer, ForeignKey('book_event_types.id'), nullable=False)
+    occurred_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
+
+    user_book = relationship("UserBook", back_populates="events")
+    event_type = relationship("BookEventType")
+
+    __table_args__ = (
+        UniqueConstraint('id', name='uq_book_events_id'),
+    )
+
+    def __repr__(self):
+        return (
+            f"<BookEvent(id='{self.id}', user_book_id={self.user_book_id}, "
+            f"event_type_id={self.event_type_id}, occurred_at={self.occurred_at})>"
+        )

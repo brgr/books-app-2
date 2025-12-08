@@ -54,6 +54,7 @@ def export_user_books(
     db: Annotated[Session, Depends(get_db)]
 ):
     """Export the current user's books along with their reading state."""
+    # TODO: derive reading state from book events instead of the legacy status fields.
     user_books = (
         db.query(UserBook, Book)
         .join(Book, UserBook.book_id == Book.id)
