@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import { getBooks } from '../api/books'
+import { getMediaUrl } from '../api/client'
 import BookCard from '../components/BookCard.vue'
 import BookFormModal from '../components/BookFormModal.vue'
 import BookSearchModal from '../components/BookSearchModal.vue'
@@ -236,7 +237,7 @@ function toggleFilterDropdown() {
           >
             <img
               v-if="book.cover_image_url"
-              :src="book.cover_image_url"
+              :src="getMediaUrl(book.cover_image_url)"
               :alt="book.title"
               :title="book.title + ' by ' + book.author"
               class="grid-cover"

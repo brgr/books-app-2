@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { ReadingStatus, type Book } from '../api/types'
+import { getMediaUrl } from '../api/client'
 
 const props = defineProps<{
   book: Book
@@ -50,7 +51,7 @@ function formatDate(dateStr: string | null): string {
       <router-link :to="{ name: 'book-detail', params: { id: book.id } }" class="book-cover-link">
         <img
           v-if="book.cover_image_url"
-          :src="book.cover_image_url"
+          :src="getMediaUrl(book.cover_image_url)"
           :alt="book.title"
           class="book-cover book-cover-clickable"
         />

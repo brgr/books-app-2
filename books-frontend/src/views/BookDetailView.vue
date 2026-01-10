@@ -2,6 +2,7 @@
 import {computed, ref, onMounted} from 'vue'
 import {useRouter, useRoute} from 'vue-router'
 import {getBook, setReadingStatus, deleteBook, getBookEvents} from '../api/books'
+import {getMediaUrl} from '../api/client'
 import BookFormModal from '../components/BookFormModal.vue'
 import BookSearchModal from '../components/BookSearchModal.vue'
 import NavigationBar from '../components/NavigationBar.vue'
@@ -185,7 +186,7 @@ function handleNewBookSaved() {
           <div class="book-cover-section">
             <img
                 v-if="book.cover_image_url"
-                :src="book.cover_image_url"
+                :src="getMediaUrl(book.cover_image_url)"
                 :alt="book.title"
                 class="book-cover-large"
             />
