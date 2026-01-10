@@ -19,13 +19,14 @@ from app.book_events import (
     record_finished_reading,
     record_started_reading,
 )
-from app.models import User, Book, UserBook
+from app.models import User, Book, UserBook, BookEvent
 from app.schemas import (
     UserResponse,
     BookCreate, BookUpdate, BookResponse, PaginatedBooks,
     UserBookStatusUpdate, UserBookResponse,
     GoogleBookResult,
-    UserBooksExportResponse
+    UserBooksExportResponse,
+    BookEventResponse,
 )
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
@@ -389,3 +390,45 @@ def remove_reading_status(
     db.delete(user_book)
     db.commit()
     return None
+
+
+@app.get("/books/{book_id}/events", response_model=list[BookEventResponse])
+def get_book_events(
+    book_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)]
+):
+    """Get all events for a book for the current user, ordered by most recent first."""
+    # Check if book exists
+    book = db.query(Book).filter(Book.id == book_id).first()
+    if not book:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Book not found"
+        )
+
+    # Get user's relationship with this book
+    user_book = db.query(UserBook).filter(
+        UserBook.user_id == current_user.id,
+        UserBook.book_id == book_id
+    ).first()
+
+    if not user_book:
+        return []
+
+    # Get all events for this user_book, ordered by occurred_at desc
+    events = (
+        db.query(BookEvent)
+        .filter(BookEvent.user_book_id == user_book.id)
+        .order_by(BookEvent.occurred_at.desc(), BookEvent.id.desc())
+        .all()
+    )
+
+    return [
+        BookEventResponse(
+            id=event.id,
+            event_type=event.event_type.code,
+            occurred_at=event.occurred_at,
+        )
+        for event in events
+    ]

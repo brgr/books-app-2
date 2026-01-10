@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import {computed, ref, onMounted} from 'vue'
 import {useRouter, useRoute} from 'vue-router'
-import {getBook, setReadingStatus, deleteBook} from '../api/books'
+import {getBook, setReadingStatus, deleteBook, getBookEvents} from '../api/books'
 import BookFormModal from '../components/BookFormModal.vue'
 import BookSearchModal from '../components/BookSearchModal.vue'
 import NavigationBar from '../components/NavigationBar.vue'
-import {ReadingStatus, type Book, type GoogleBookResult} from '../api/types'
+import EventTimeline from '../components/EventTimeline.vue'
+import {ReadingStatus, type Book, type GoogleBookResult, type BookEvent} from '../api/types'
 
 const router = useRouter()
 const route = useRoute()
 
 const book = ref<Book | null>(null)
+const events = ref<BookEvent[]>([])
 const loading = ref(false)
 const error = ref('')
 const updatingStatus = ref(false)
@@ -35,11 +37,21 @@ async function loadBook() {
 
   try {
     book.value = await getBook(bookId)
+    await loadEvents(bookId)
   } catch (err: any) {
     console.error('Failed to load book:', err)
     error.value = err.response?.data?.detail || 'Failed to load book. Please try again.'
   } finally {
     loading.value = false
+  }
+}
+
+async function loadEvents(bookId: number) {
+  try {
+    events.value = await getBookEvents(bookId)
+  } catch (err) {
+    console.error('Failed to load events:', err)
+    // Don't show error to user for events, they're not critical
   }
 }
 
@@ -250,6 +262,8 @@ function handleNewBookSaved() {
               </div>
             </div>
           </div>
+
+          <EventTimeline :events="events" />
         </div>
       </div>
     </div>

@@ -82,3 +82,17 @@ export interface GoogleBookResult {
   thumbnail: string | null
   google_books_id: string | null
 }
+
+export const BookEventType = {
+  ADDED_TO_LIBRARY: 'added_to_library',
+  STARTED_READING: 'started_reading',
+  FINISHED_READING: 'finished_reading',
+} as const
+
+export type BookEventType = typeof BookEventType[keyof typeof BookEventType]
+
+export interface BookEvent {
+  id: string
+  event_type: BookEventType
+  occurred_at: string
+}

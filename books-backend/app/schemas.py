@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 from typing import Optional
-from app.models import ReadingStatus
+from app.models import ReadingStatus, BookEventCode
 
 
 # User schemas
@@ -124,3 +124,13 @@ class UserBooksExportResponse(BaseModel):
     exported_at: datetime
     user: UserResponse
     books: list[ExportBookEntry]
+
+
+# Book event schemas
+class BookEventResponse(BaseModel):
+    """Response schema for a book event."""
+    id: str
+    event_type: BookEventCode
+    occurred_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
