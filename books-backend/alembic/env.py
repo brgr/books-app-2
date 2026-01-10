@@ -12,7 +12,7 @@ from app.models import Base
 config = context.config
 
 # Prefer DATABASE_URL from the environment so migrations hit the mounted storage path.
-database_url = os.getenv("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
+database_url = os.getenv("DATABASE_URL") or config.get_main_option("sqlalchemy.url") or ""
 config.set_main_option("sqlalchemy.url", database_url)
 
 # Interpret the config file for Python logging.
