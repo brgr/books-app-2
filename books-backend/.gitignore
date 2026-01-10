@@ -11,3 +11,6 @@ wheels/
 
 # Database files
 *.db
+
+# Uploaded media files
+media/

@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     # Google Books API (optional - search works without it but may have rate limits)
     google_books_api_key: Optional[str] = None
 
+    # File uploads
+    media_root: str = "media"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

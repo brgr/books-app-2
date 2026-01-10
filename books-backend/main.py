@@ -10,15 +10,16 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
-from app.config import settings
-from app.database import get_db
-from app.google_books import search_google_books
 from app.book_events import (
     ensure_added_event,
     project_user_book_state,
     record_finished_reading,
     record_started_reading,
 )
+from app.config import settings
+from app.database import get_db
+from app.google_books import search_google_books
+from app.image_utils import download_cover_image
 from app.models import User, Book, UserBook, BookEvent
 from app.schemas import (
     UserResponse,
@@ -41,11 +42,13 @@ app.add_middleware(
 )
 
 # Create uploads directory if it doesn't exist
-UPLOAD_DIR = Path("uploads/covers")
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+COVERS_DIR = Path(settings.media_root) / "covers"
+COVERS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Mount static files for uploaded images
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+app.mount(f"/{settings.media_root}", StaticFiles(directory=settings.media_root), name="uploads")
+
+
 @app.get("/users/me", response_model=UserResponse)
 def read_current_user(current_user: Annotated[User, Depends(get_current_user)]):
     """Get current authenticated user info."""
@@ -54,8 +57,8 @@ def read_current_user(current_user: Annotated[User, Depends(get_current_user)]):
 
 @app.get("/users/me/export", response_model=UserBooksExportResponse)
 def export_user_books(
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)]
+        current_user: Annotated[User, Depends(get_current_user)],
+        db: Annotated[Session, Depends(get_db)]
 ):
     """Export the current user's books along with their reading state."""
     # TODO: derive reading state from book events instead of the legacy status fields.
@@ -100,8 +103,8 @@ async def root():
 
 @app.get("/books/search", response_model=list[GoogleBookResult])
 async def search_books(
-    q: str,
-    current_user: Annotated[User, Depends(get_current_user)]
+        q: str,
+        current_user: Annotated[User, Depends(get_current_user)]
 ):
     """
     Search for books using the Google Books API.
@@ -120,13 +123,22 @@ async def search_books(
 
 
 @app.post("/books", response_model=BookResponse, status_code=status.HTTP_201_CREATED)
-def create_book(
-    book_data: BookCreate,
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)]
+async def create_book(
+        book_data: BookCreate,
+        current_user: Annotated[User, Depends(get_current_user)],
+        db: Annotated[Session, Depends(get_db)]
 ):
     """Create a new book."""
-    book = Book(**book_data.model_dump())
+    data = book_data.model_dump()
+
+    # Download cover image if it's an external URL
+    cover_url = data.get("cover_image_url")
+    if cover_url and cover_url.startswith("http"):
+        local_path = await download_cover_image(cover_url)
+        if local_path:
+            data["cover_image_url"] = local_path
+
+    book = Book(**data)
     db.add(book)
     db.commit()
     db.refresh(book)
@@ -135,10 +147,10 @@ def create_book(
 
 @app.get("/books", response_model=PaginatedBooks)
 def list_books(
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)],
-    page: int = 1,
-    page_size: int = 20
+        current_user: Annotated[User, Depends(get_current_user)],
+        db: Annotated[Session, Depends(get_db)],
+        page: int = 1,
+        page_size: int = 20
 ):
     """List all books with pagination. Includes user's reading status for each book."""
     # Validate pagination parameters
@@ -177,9 +189,9 @@ def list_books(
 
 @app.get("/books/{book_id}", response_model=BookResponse)
 def get_book(
-    book_id: int,
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)]
+        book_id: int,
+        current_user: Annotated[User, Depends(get_current_user)],
+        db: Annotated[Session, Depends(get_db)]
 ):
     """Get a single book by ID. Includes user's reading status."""
     book = db.query(Book).filter(Book.id == book_id).first()
@@ -202,11 +214,11 @@ def get_book(
 
 
 @app.put("/books/{book_id}", response_model=BookResponse)
-def update_book(
-    book_id: int,
-    book_data: BookUpdate,
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)]
+async def update_book(
+        book_id: int,
+        book_data: BookUpdate,
+        current_user: Annotated[User, Depends(get_current_user)],
+        db: Annotated[Session, Depends(get_db)]
 ):
     """Update a book."""
     book = db.query(Book).filter(Book.id == book_id).first()
@@ -218,6 +230,14 @@ def update_book(
 
     # Update only provided fields
     update_data = book_data.model_dump(exclude_unset=True)
+
+    # Download cover image if it's an external URL
+    cover_url = update_data.get("cover_image_url")
+    if cover_url and cover_url.startswith("http"):
+        local_path = await download_cover_image(cover_url)
+        if local_path:
+            update_data["cover_image_url"] = local_path
+
     for key, value in update_data.items():
         setattr(book, key, value)
 
@@ -236,9 +256,9 @@ def update_book(
 
 @app.delete("/books/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_book(
-    book_id: int,
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)]
+        book_id: int,
+        current_user: Annotated[User, Depends(get_current_user)],
+        db: Annotated[Session, Depends(get_db)]
 ):
     """Delete a book."""
     book = db.query(Book).filter(Book.id == book_id).first()
@@ -255,10 +275,10 @@ def delete_book(
 
 @app.post("/books/{book_id}/cover", response_model=BookResponse)
 async def upload_book_cover(
-    book_id: int,
-    file: Annotated[UploadFile, File(...)],
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)]
+        book_id: int,
+        file: Annotated[UploadFile, File(...)],
+        current_user: Annotated[User, Depends(get_current_user)],
+        db: Annotated[Session, Depends(get_db)]
 ):
     """Upload a cover image for a book."""
     # Check if book exists
@@ -281,7 +301,7 @@ async def upload_book_cover(
     filename = file.filename or ""
     file_extension = filename.rsplit(".", 1)[-1] if "." in filename else "jpg"
     unique_filename = f"{uuid.uuid4()}.{file_extension}"
-    file_path = UPLOAD_DIR / unique_filename
+    file_path = COVERS_DIR / unique_filename
 
     # Save file
     try:
@@ -295,7 +315,7 @@ async def upload_book_cover(
         )
 
     # Update book with cover URL
-    book.cover_image_url = f"/uploads/covers/{unique_filename}"
+    book.cover_image_url = f"/{settings.media_root}/covers/{unique_filename}"
     db.commit()
     db.refresh(book)
 
@@ -313,10 +333,10 @@ async def upload_book_cover(
 
 @app.put("/books/{book_id}/status", response_model=UserBookResponse)
 def set_reading_status(
-    book_id: int,
-    status_data: UserBookStatusUpdate,
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)]
+        book_id: int,
+        status_data: UserBookStatusUpdate,
+        current_user: Annotated[User, Depends(get_current_user)],
+        db: Annotated[Session, Depends(get_db)]
 ):
     """Set or update the reading status for a book for the current user."""
     # Check if book exists
@@ -371,9 +391,9 @@ def set_reading_status(
 
 @app.delete("/books/{book_id}/status", status_code=status.HTTP_204_NO_CONTENT)
 def remove_reading_status(
-    book_id: int,
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)]
+        book_id: int,
+        current_user: Annotated[User, Depends(get_current_user)],
+        db: Annotated[Session, Depends(get_db)]
 ):
     """Remove a book from the current user's reading list."""
     user_book = db.query(UserBook).filter(
@@ -394,9 +414,9 @@ def remove_reading_status(
 
 @app.get("/books/{book_id}/events", response_model=list[BookEventResponse])
 def get_book_events(
-    book_id: int,
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)]
+        book_id: int,
+        current_user: Annotated[User, Depends(get_current_user)],
+        db: Annotated[Session, Depends(get_db)]
 ):
     """Get all events for a book for the current user, ordered by most recent first."""
     # Check if book exists
