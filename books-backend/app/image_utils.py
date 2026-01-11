@@ -49,7 +49,7 @@ async def download_cover_image(url: str) -> str | None:
                     extension = "jpg"  # Default to jpg
 
             # Ensure upload directory exists
-            covers_dir = Path(settings.media_root) / "covers"
+            covers_dir = Path(settings.uploads_dir) / "covers"
             covers_dir.mkdir(parents=True, exist_ok=True)
 
             # Generate unique filename and save
@@ -58,7 +58,7 @@ async def download_cover_image(url: str) -> str | None:
 
             file_path.write_bytes(response.content)
 
-            return f"/{settings.media_root}/covers/{unique_filename}"
+            return f"/{settings.uploads_dir}/covers/{unique_filename}"
 
     except httpx.HTTPError as e:
         print(f"Failed to download cover image from {url}: {e}")
