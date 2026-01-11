@@ -42,11 +42,11 @@ app.add_middleware(
 )
 
 # Create uploads directory if it doesn't exist
-COVERS_DIR = Path(settings.media_root) / "covers"
+COVERS_DIR = Path(settings.uploads_dir) / "covers"
 COVERS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Mount static files for uploaded images
-app.mount(f"/{settings.media_root}", StaticFiles(directory=settings.media_root), name="uploads")
+app.mount(f"/{settings.uploads_dir}", StaticFiles(directory=settings.uploads_dir), name="uploads")
 
 
 @app.get("/users/me", response_model=UserResponse)
@@ -315,7 +315,7 @@ async def upload_book_cover(
         )
 
     # Update book with cover URL
-    book.cover_image_url = f"/{settings.media_root}/covers/{unique_filename}"
+    book.cover_image_url = f"/{settings.uploads_dir}/covers/{unique_filename}"
     db.commit()
     db.refresh(book)
 

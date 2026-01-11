@@ -18,8 +18,9 @@ class Settings(BaseSettings):
     # Google Books API (optional - search works without it but may have rate limits)
     google_books_api_key: Optional[str] = None
 
-    # File uploads
-    media_root: str = "media"
+    # File uploads: user-generated assets (e.g., downloaded/posted book covers). A separate
+    # static assets directory can be added later if needed; this is only for uploads.
+    uploads_dir: str = "uploads"
 
     model_config = SettingsConfigDict(
         env_file=".env",
