@@ -1,6 +1,5 @@
 """Utilities for downloading and storing book cover images."""
 import uuid
-from pathlib import Path
 
 import httpx
 
@@ -49,7 +48,7 @@ async def download_cover_image(url: str) -> str | None:
                     extension = "jpg"  # Default to jpg
 
             # Ensure upload directory exists
-            covers_dir = Path(settings.uploads_dir) / "covers"
+            covers_dir = settings.uploads_dir_path / "covers"
             covers_dir.mkdir(parents=True, exist_ok=True)
 
             # Generate unique filename and save
@@ -58,7 +57,7 @@ async def download_cover_image(url: str) -> str | None:
 
             file_path.write_bytes(response.content)
 
-            return f"/{settings.uploads_dir}/covers/{unique_filename}"
+            return f"{settings.uploads_url_prefix}/covers/{unique_filename}"
 
     except httpx.HTTPError as e:
         print(f"Failed to download cover image from {url}: {e}")
