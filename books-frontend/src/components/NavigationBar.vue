@@ -53,6 +53,8 @@ function handleLogout() {
 <style scoped>
 .navbar {
   background-color: var(--color-bg-card);
+  overflow-x: hidden;
+  width: 100%;
 }
 
 .navbar-content {
@@ -62,6 +64,7 @@ function handleLogout() {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  overflow: hidden;
 }
 
 .navbar-left {
@@ -146,16 +149,19 @@ function handleLogout() {
 
 @media (max-width: 768px) {
   .navbar-content {
-    flex-wrap: wrap;
-    gap: var(--spacing-md);
+    flex-wrap: nowrap;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
   }
 
   .navbar-left {
-    flex: 1 1 auto;
-    gap: var(--spacing-md);
+    flex: 0 1 auto;
+    min-width: 0;
+    gap: var(--spacing-sm);
   }
 
   .navbar-right {
+    flex: 0 0 auto;
     gap: var(--spacing-sm);
   }
 
@@ -165,7 +171,13 @@ function handleLogout() {
 
   .btn-add {
     font-size: 13px;
-    padding: var(--spacing-xs) var(--spacing-md);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    white-space: nowrap;
+  }
+
+  .navbar-link-btn {
+    padding: var(--spacing-xs);
+    font-size: 13px;
   }
 }
 </style>

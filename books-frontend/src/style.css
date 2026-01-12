@@ -41,6 +41,10 @@
   box-sizing: border-box;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -49,10 +53,13 @@ body {
   line-height: 1.5;
   color: var(--color-text);
   background-color: var(--color-bg);
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 #app {
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 /* Typography */
@@ -185,6 +192,7 @@ label {
   max-width: 1200px;
   margin: 0 auto;
   padding: var(--spacing-lg);
+  overflow-x: hidden;
 }
 
 .container-narrow {
@@ -231,9 +239,10 @@ label {
   border-radius: var(--border-radius);
   box-shadow: var(--modal-shadow);
   max-width: 600px;
-  width: 100%;
+  width: min(600px, calc(100vw - 2 * var(--spacing-lg)));
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .modal-header {
@@ -298,5 +307,24 @@ label {
 
   .form-row {
     flex-direction: column;
+  }
+}
+
+@media (max-width: 600px) {
+  .modal-overlay {
+    padding: var(--spacing-md);
+    align-items: flex-start;
+  }
+
+  .modal {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: var(--spacing-md);
   }
 }
