@@ -60,6 +60,11 @@ src/
    VITE_API_URL=http://localhost:8000
    ```
 
+If you want to test from another device on your network (e.g., your phone):
+- Start the backend so it listens on all interfaces: `uv run fastapi dev main.py --host 0.0.0.0 --port 8000` (from `books-backend/`).
+- Set `VITE_API_URL` to your machine's LAN IP, e.g. `VITE_API_URL=http://192.168.1.23:8000`.
+- Run the frontend dev server bound to all interfaces: `npm run dev -- --host 0.0.0.0`.
+
 ## Development
 
 Run the development server:
