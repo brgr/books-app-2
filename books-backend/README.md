@@ -34,3 +34,9 @@ Run lint checks with Ruff:
 ```bash
 uv run ruff check
 ```
+
+Run the API locally with FastAPI's dev server (binds to all interfaces so you can test from your phone):
+
+```bash
+uv run fastapi dev main.py --host 0.0.0.0 --port 8000
+```
