@@ -426,10 +426,18 @@ function handleNewBookSaved() {
 }
 
 @media (max-width: 768px) {
+  .book-detail {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    background-color: transparent;
+  }
+
   .book-header {
     flex-direction: column;
     align-items: center;
     text-align: center;
+    padding: var(--spacing-lg);
   }
 
   .book-cover-large {
@@ -451,6 +459,10 @@ function handleNewBookSaved() {
 
   .book-status-section select {
     max-width: 100%;
+  }
+
+  .book-body {
+    padding: var(--spacing-lg);
   }
 
   .metadata-grid {

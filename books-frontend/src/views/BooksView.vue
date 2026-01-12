@@ -302,10 +302,14 @@ function toggleFilterDropdown() {
   align-items: center;
   justify-content: space-between;
   border-radius: var(--border-radius);
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .search-bar {
-  flex: 0 1 500px;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 500px;
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
@@ -509,6 +513,7 @@ function toggleFilterDropdown() {
 
 .books-container {
   margin-top: var(--spacing-lg);
+  overflow-x: hidden;
 }
 
 .books-list {
@@ -518,13 +523,20 @@ function toggleFilterDropdown() {
 
 .books-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: var(--spacing-lg);
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--spacing-md);
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .grid-item {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .grid-cover-link {
@@ -534,6 +546,7 @@ function toggleFilterDropdown() {
 
 .grid-cover {
   width: 100%;
+  max-width: 100%;
   aspect-ratio: 2/3;
   object-fit: cover;
   border-radius: var(--border-radius);
@@ -549,6 +562,7 @@ function toggleFilterDropdown() {
 
 .grid-cover-placeholder {
   width: 100%;
+  max-width: 100%;
   aspect-ratio: 2/3;
   display: flex;
   align-items: center;
@@ -588,6 +602,7 @@ function toggleFilterDropdown() {
 
   .search-bar {
     flex: 1 1 100%;
+    max-width: 100%;
     order: -1;
   }
 
@@ -604,7 +619,14 @@ function toggleFilterDropdown() {
   }
 
   .books-grid {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: var(--spacing-md);
+  }
+}
+
+@media (max-width: 480px) {
+  .books-grid {
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
     gap: var(--spacing-md);
   }
 }

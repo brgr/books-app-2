@@ -308,12 +308,25 @@ function handleKeyPress(event: KeyboardEvent) {
 }
 
 @media (max-width: 768px) {
+  .search-input-group {
+    flex-direction: column;
+  }
+
+  .search-input-group button {
+    width: 100%;
+  }
+
   .result-content {
     flex-direction: column;
   }
 
   .result-item {
     flex-direction: column;
+    width: 100%;
+  }
+
+  .results-list {
+    overflow-x: hidden;
   }
 
   .btn-select {
