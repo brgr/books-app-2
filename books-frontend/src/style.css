@@ -141,6 +141,9 @@ button:disabled, .btn:disabled {
 /* Forms */
 input, select, textarea {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: block;
   padding: var(--spacing-sm);
   font-size: 14px;
   font-family: inherit;
@@ -150,6 +153,15 @@ input, select, textarea {
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
   transition: border-color 0.15s ease;
+}
+
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"] {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  -webkit-appearance: none;
 }
 
 input:focus, select:focus, textarea:focus {
@@ -166,15 +178,18 @@ label {
 
 .form-group {
   margin-bottom: var(--spacing-md);
+  min-width: 0;
 }
 
 .form-row {
   display: flex;
   gap: var(--spacing-md);
+  width: 100%;
 }
 
 .form-row .form-group {
   flex: 1;
+  min-width: 0;
 }
 
 /* Cards */
@@ -231,7 +246,7 @@ label {
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: var(--spacing-lg);
+  padding: var(--spacing-sm);
 }
 
 .modal {
@@ -239,10 +254,11 @@ label {
   border-radius: var(--border-radius);
   box-shadow: var(--modal-shadow);
   max-width: 600px;
-  width: min(600px, calc(100vw - 2 * var(--spacing-lg)));
+  width: min(600px, calc(100vw - 2 * var(--spacing-sm)));
   max-height: 90vh;
   overflow-y: auto;
   overflow-x: hidden;
+  margin: 0 auto;
 }
 
 .modal-header {
@@ -259,6 +275,13 @@ label {
 
 .modal-body {
   padding: var(--spacing-lg);
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.modal-body form {
+  width: 100%;
 }
 
 .modal-footer {
@@ -312,13 +335,13 @@ label {
 
 @media (max-width: 600px) {
   .modal-overlay {
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm);
     align-items: flex-start;
   }
 
   .modal {
-    width: 100%;
-    max-width: 100%;
+    width: calc(100vw - 2 * var(--spacing-sm));
+    max-width: calc(100vw - 2 * var(--spacing-sm));
     border-radius: 0;
   }
 }
