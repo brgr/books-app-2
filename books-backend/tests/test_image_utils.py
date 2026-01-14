@@ -12,7 +12,7 @@ async def test_download_cover_image_from_google_books():
     result = await download_cover_image(url)
 
     assert result is not None
-    assert result.startswith("/media/covers/")
+    assert result.startswith("/uploads/covers/")
     assert result.endswith((".jpg", ".png", ".webp", ".gif"))
 
 
