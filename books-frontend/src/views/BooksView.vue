@@ -606,6 +606,11 @@ function toggleFilterDropdown() {
     order: -1;
   }
 
+  /* Prevent iOS Safari zooming inputs with font-size under 16px. */
+  .search-input {
+    font-size: 16px;
+  }
+
   .filter-btn {
     flex: 1;
   }
