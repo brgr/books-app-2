@@ -8,6 +8,7 @@ import BookSearchModal from '../components/BookSearchModal.vue'
 import NavigationBar from '../components/NavigationBar.vue'
 import EventTimeline from '../components/EventTimeline.vue'
 import {ReadingStatus, type Book, type GoogleBookResult, type BookEvent} from '../api/types'
+import {formatShortDate} from '../utils/date'
 
 const router = useRouter()
 const route = useRoute()
@@ -91,11 +92,6 @@ async function handleFinishReading() {
   } finally {
     updatingStatus.value = false
   }
-}
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return 'N/A'
-  return new Date(dateStr).toLocaleDateString()
 }
 
 function handleEdit() {
@@ -231,10 +227,10 @@ function handleNewBookSaved() {
 
             <div v-if="book.user_status" class="book-dates">
               <div v-if="book.user_status.started_at" class="date-item">
-                <strong>Started:</strong> {{ formatDate(book.user_status.started_at) }}
+                <strong>Started:</strong> {{ formatShortDate(book.user_status.started_at) }}
               </div>
               <div v-if="book.user_status.finished_at" class="date-item">
-                <strong>Finished:</strong> {{ formatDate(book.user_status.finished_at) }}
+                <strong>Finished:</strong> {{ formatShortDate(book.user_status.finished_at) }}
               </div>
             </div>
           </div>
@@ -256,10 +252,10 @@ function handleNewBookSaved() {
                 <strong>Pages:</strong> {{ book.page_count }}
               </div>
               <div v-if="book.published_date" class="metadata-item">
-                <strong>Published:</strong> {{ formatDate(book.published_date) }}
+                <strong>Published:</strong> {{ formatShortDate(book.published_date) }}
               </div>
               <div class="metadata-item">
-                <strong>Added:</strong> {{ formatDate(book.created_at) }}
+                <strong>Added:</strong> {{ formatShortDate(book.created_at) }}
               </div>
             </div>
           </div>
@@ -303,6 +299,7 @@ function handleNewBookSaved() {
   border-radius: var(--border-radius);
   box-shadow: var(--shadow);
   overflow: hidden;
+  max-width: 100%;
 }
 
 .book-header {
@@ -311,15 +308,20 @@ function handleNewBookSaved() {
   padding: var(--spacing-xl);
   background-color: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+  max-width: 100%;
 }
 
 .book-cover-section {
   flex-shrink: 0;
+  max-width: 100%;
 }
 
 .book-cover-large {
-  width: 240px;
-  height: 360px;
+  width: min(240px, 100%);
+  max-width: 100%;
+  aspect-ratio: 2 / 3;
+  height: auto;
   object-fit: cover;
   border-radius: var(--border-radius);
   box-shadow: var(--shadow);
@@ -339,24 +341,33 @@ function handleNewBookSaved() {
 .book-info {
   flex: 1;
   min-width: 0;
+  width: 100%;
 }
 
 .book-info h1 {
   margin: 0 0 var(--spacing-sm) 0;
   font-size: 2rem;
   line-height: 1.2;
+  word-break: break-word;
 }
 
 .book-author {
   margin: 0 0 var(--spacing-lg) 0;
   color: var(--color-text-secondary);
   font-size: 1.125rem;
+  word-break: break-word;
 }
 
 .book-actions {
   display: flex;
   gap: var(--spacing-md);
   margin-bottom: var(--spacing-xl);
+  flex-wrap: wrap;
+}
+
+.book-actions button {
+  flex: 1 1 180px;
+  min-width: 0;
 }
 
 .book-status-section {
@@ -369,6 +380,7 @@ function handleNewBookSaved() {
 .status-actions {
   display: flex;
   gap: var(--spacing-sm);
+  flex-wrap: wrap;
 }
 
 .book-dates {
@@ -388,6 +400,7 @@ function handleNewBookSaved() {
 
 .book-body {
   padding: var(--spacing-xl);
+  overflow-x: hidden;
 }
 
 .book-description {
@@ -403,6 +416,8 @@ function handleNewBookSaved() {
   line-height: 1.6;
   color: var(--color-text);
   white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .book-metadata h2 {
@@ -412,13 +427,17 @@ function handleNewBookSaved() {
 
 .metadata-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: var(--spacing-md);
+  width: 100%;
 }
 
 .metadata-item {
   font-size: 14px;
   color: var(--color-text-secondary);
+  min-width: 0;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .metadata-item strong {
@@ -441,8 +460,9 @@ function handleNewBookSaved() {
   }
 
   .book-cover-large {
-    width: 200px;
-    height: 300px;
+    width: min(200px, 100%);
+    height: auto;
+    aspect-ratio: 2 / 3;
   }
 
   .book-info h1 {

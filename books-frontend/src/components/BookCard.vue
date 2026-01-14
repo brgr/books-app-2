@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { ReadingStatus, type Book } from '../api/types'
 import { getMediaUrl } from '../api/client'
+import { formatShortDate } from '../utils/date'
 
 const props = defineProps<{
   book: Book
@@ -39,10 +40,6 @@ function getStatusLabel(status: ReadingStatus | null): string {
   return labels[status] || status
 }
 
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return 'N/A'
-  return new Date(dateStr).toLocaleDateString()
-}
 </script>
 
 <template>
@@ -81,7 +78,7 @@ function formatDate(dateStr: string | null): string {
         <strong>Pages:</strong> {{ book.page_count }}
       </span>
       <span v-if="book.published_date" class="meta-item">
-        <strong>Published:</strong> {{ formatDate(book.published_date) }}
+        <strong>Published:</strong> {{ formatShortDate(book.published_date) }}
       </span>
     </div>
 
@@ -97,10 +94,10 @@ function formatDate(dateStr: string | null): string {
 
     <div v-if="book.user_status" class="book-dates text-small text-muted">
       <div v-if="book.user_status.started_at">
-        Started: {{ formatDate(book.user_status.started_at) }}
+        Started: {{ formatShortDate(book.user_status.started_at) }}
       </div>
       <div v-if="book.user_status.finished_at">
-        Finished: {{ formatDate(book.user_status.finished_at) }}
+        Finished: {{ formatShortDate(book.user_status.finished_at) }}
       </div>
     </div>
       </div>
@@ -117,6 +114,7 @@ function formatDate(dateStr: string | null): string {
   padding: var(--spacing-lg);
   margin-bottom: var(--spacing-md);
   transition: box-shadow 0.15s ease;
+  overflow: hidden;
 }
 
 .book-card:hover {
@@ -186,6 +184,7 @@ function formatDate(dateStr: string | null): string {
   margin: 0;
   font-size: 1.25rem;
   flex: 1;
+  word-break: break-word;
 }
 
 .book-title-clickable {
@@ -201,12 +200,15 @@ function formatDate(dateStr: string | null): string {
   color: var(--color-text-secondary);
   margin-bottom: var(--spacing-md);
   font-size: 14px;
+  word-break: break-word;
 }
 
 .book-description {
   margin-bottom: var(--spacing-md);
   line-height: 1.6;
   color: var(--color-text);
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .book-meta {
@@ -221,6 +223,8 @@ function formatDate(dateStr: string | null): string {
 .meta-item {
   font-size: 12px;
   color: var(--color-text-secondary);
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .meta-item strong {
@@ -251,6 +255,7 @@ function formatDate(dateStr: string | null): string {
   padding-top: var(--spacing-sm);
   display: flex;
   gap: var(--spacing-md);
+  flex-wrap: wrap;
 }
 
 @media (max-width: 768px) {
