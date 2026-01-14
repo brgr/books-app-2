@@ -475,6 +475,7 @@ function handleNewBookSaved() {
 
   .book-actions button {
     width: 100%;
+    flex: 0 0 auto;
   }
 
   .book-status-section select {
