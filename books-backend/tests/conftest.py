@@ -82,13 +82,11 @@ def test_user(db_session, test_user_credentials):
 
 
 @pytest.fixture
-def auth_headers(test_user):
-    """Get HTTP Basic Auth headers for test user."""
-    from base64 import b64encode
-    credentials = f"{test_user['username']}:{test_user['password']}"
-    # noinspection PyTypeChecker
-    encoded = b64encode(credentials.encode()).decode()
-    return {"Authorization": f"Basic {encoded}"}
+def auth_headers(client, test_user):
+    """Get Bearer token headers for test user."""
+    response = client.post("/token", data=test_user)
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture

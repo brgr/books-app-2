@@ -22,7 +22,7 @@ The application consists of two main components:
 
 ### User Management
 - User registration with password hashing (Argon2)
-- HTTP Basic Authentication
+- OAuth2 password flow with JWT Bearer tokens
 - Secure password storage
 
 ### Book Management
@@ -113,7 +113,8 @@ Once the backend is running, visit `http://localhost:8000/docs` for interactive 
 ### Key Endpoints
 
 #### Authentication
-- `POST /register` - Register a new user
+- `POST /token` - OAuth2 password flow login (returns access + refresh tokens)
+- `POST /auth/refresh` - Refresh access token
 - `GET /users/me` - Get current user info (requires auth)
 
 #### Books

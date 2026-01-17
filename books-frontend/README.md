@@ -61,7 +61,9 @@ src/
    ```
 
 If you want to test from another device on your network (e.g., your phone):
-- Start the backend so it listens on all interfaces: `uv run fastapi dev main.py --host 0.0.0.0 --port 8000` (from `books-backend/`).
+
+- Start the backend so it listens on all interfaces: `uv run fastapi dev main.py --host 0.0.0.0 --port 8000` (from
+  `books-backend/`).
 - Set `VITE_API_URL` to your machine's LAN IP, e.g. `VITE_API_URL=http://192.168.1.23:8000`.
 - Run the frontend dev server bound to all interfaces: `npm run dev -- --host 0.0.0.0`.
 
@@ -97,7 +99,8 @@ npm run start
 
 ## API Configuration
 
-The frontend uses HTTP Basic Authentication to communicate with the backend API. Credentials are stored in localStorage for persistence across sessions.
+The frontend uses the OAuth2 password flow with JWT Bearer tokens to communicate with the backend API. The access token
+is stored in localStorage for persistence across sessions.
 
 ### API Endpoints Used
 
@@ -125,6 +128,7 @@ This frontend follows a minimalist design approach inspired by linkding:
 ## Browser Support
 
 Modern browsers with ES6+ support:
+
 - Chrome/Edge 90+
 - Firefox 88+
 - Safari 14+

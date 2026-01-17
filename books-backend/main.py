@@ -4,11 +4,18 @@ from datetime import datetime, UTC
 from typing import Annotated, cast
 
 from fastapi import Depends, FastAPI, HTTPException, status, UploadFile, File
+from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user
+from app.auth import (
+    authenticate_user,
+    create_access_token,
+    create_refresh_token,
+    decode_refresh_token,
+    get_current_user,
+)
 from app.book_events import (
     ensure_added_event,
     project_user_book_state,
@@ -21,6 +28,9 @@ from app.google_books import search_google_books
 from app.image_utils import download_cover_image
 from app.models import User, Book, UserBook, BookEvent
 from app.schemas import (
+    AccessTokenResponse,
+    RefreshRequest,
+    TokenResponse,
     UserResponse,
     BookCreate, BookUpdate, BookResponse, PaginatedBooks,
     UserBookStatusUpdate, UserBookResponse,
@@ -46,6 +56,48 @@ COVERS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Mount static files for uploaded images
 app.mount(settings.uploads_url_prefix, StaticFiles(directory=settings.uploads_dir_path), name="uploads")
+
+
+@app.post("/token", response_model=TokenResponse)
+def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: Annotated[Session, Depends(get_db)]):
+    """OAuth2 password flow: exchange credentials for a JWT access token."""
+    user = authenticate_user(db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    username = str(user.username)
+    token = create_access_token(username)
+    refresh_token = create_refresh_token(username)
+    return {
+        "access_token": token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "expires_in": settings.jwt_access_token_exp_minutes * 60,
+        "refresh_expires_in": settings.jwt_refresh_token_exp_minutes * 60,
+    }
+
+
+@app.post("/auth/refresh", response_model=AccessTokenResponse)
+def exchange_refresh_token_for_new_access_token(payload: RefreshRequest, db: Annotated[Session, Depends(get_db)]):
+    """Exchange a refresh token for a new access token."""
+    username = decode_refresh_token(payload.refresh_token)
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    token = create_access_token(str(user.username))
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "expires_in": settings.jwt_access_token_exp_minutes * 60,
+    }
 
 
 @app.get("/users/me", response_model=UserResponse)

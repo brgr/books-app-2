@@ -16,7 +16,7 @@ async function handleSubmit() {
   loading.value = true
 
   try {
-    login(username.value, password.value)
+    await login(username.value, password.value)
 
     // Verify login worked
     await getCurrentUser()
