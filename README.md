@@ -175,7 +175,7 @@ npm run preview
 DATABASE_URL=sqlite:///./books.db
 APP_NAME=Books API
 DEBUG=False
-ALLOWED_ORIGINS=["*"]
+ALLOWED_ORIGINS=http://localhost:5173
 ```
 
 ## TODO

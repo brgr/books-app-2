@@ -15,7 +15,7 @@ OAuth2 password flow with JWT tokens. Uses **HttpOnly cookies** (browser clients
 ```bash
 # Generate secret: python -c "import secrets; print(secrets.token_urlsafe(32))"
 JWT_SECRET=<your-random-secret>
-ALLOWED_ORIGINS='["https://yourdomain.com"]'
+ALLOWED_ORIGINS=https://yourdomain.com
 ```
 
 **Defaults `change-me` and `["*"]` are insecure - must change for production.**
@@ -27,6 +27,6 @@ ALLOWED_ORIGINS='["https://yourdomain.com"]'
 | `JWT_SECRET` | `change-me` | Secret for signing JWTs |
 | `JWT_ACCESS_TOKEN_EXP_MINUTES` | `60` | Access token expiry |
 | `JWT_REFRESH_TOKEN_EXP_MINUTES` | `43200` | Refresh token expiry (30 days) |
-| `ALLOWED_ORIGINS` | `["*"]` | CORS allowed origins |
+| `ALLOWED_ORIGINS` | `http://localhost:5173` | CORS allowed origins (explicit origins required when cookies are used) |
 | `COOKIE_SECURE` | `true` | HTTPS-only cookies (set `false` for local network HTTP) |
 | `COOKIE_SAMESITE` | `lax` | Cookie SameSite attribute |
