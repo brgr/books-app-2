@@ -14,3 +14,5 @@ wheels/
 
 # Uploaded files
 uploads/
+
+.env
