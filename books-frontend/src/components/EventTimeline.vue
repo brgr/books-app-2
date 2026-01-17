@@ -54,6 +54,9 @@ function formatTime(dateStr: string): string {
         <div class="timeline-content">
           <div class="event-label">{{ formatEventType(event) }}</div>
           <div class="event-date">{{ formatDate(event.occurred_at) }} at {{ formatTime(event.occurred_at) }}</div>
+          <div v-if="event.event_type === BookEventType.NOTE_SET && event.note" class="event-note">
+            {{ event.note }}
+          </div>
         </div>
       </div>
     </div>
@@ -131,5 +134,13 @@ function formatTime(dateStr: string): string {
   color: var(--color-text-secondary);
   font-size: 12px;
   margin-top: 2px;
+}
+
+.event-note {
+  margin-top: var(--spacing-xs);
+  white-space: pre-wrap;
+  color: var(--color-text);
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
 </style>

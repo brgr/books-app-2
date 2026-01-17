@@ -18,6 +18,8 @@ const events = ref<BookEvent[]>([])
 const loading = ref(false)
 const error = ref('')
 const updatingStatus = ref(false)
+const notesDraft = ref('')
+const notesSaving = ref(false)
 const showEditModal = ref(false)
 const showSearchModal = ref(false)
 const showFormModal = ref(false)
@@ -39,6 +41,7 @@ async function loadBook() {
 
   try {
     book.value = await getBook(bookId)
+    notesDraft.value = book.value.user_status?.notes ?? ''
     await loadEvents(bookId)
   } catch (err: any) {
     console.error('Failed to load book:', err)
@@ -63,6 +66,16 @@ const canStartReading = computed(() => {
 })
 
 const canFinishReading = computed(() => book.value?.user_status?.status === ReadingStatus.STARTED)
+
+function normalizeNotes(value: string): string | null {
+  return value === '' ? null : value
+}
+
+const notesDirty = computed(() => {
+  if (!book.value) return false
+  const currentNotes = book.value.user_status?.notes ?? null
+  return normalizeNotes(notesDraft.value) !== currentNotes
+})
 
 async function handleStartReading() {
   if (!book.value) return
@@ -91,6 +104,28 @@ async function handleFinishReading() {
     alert('Failed to finish reading')
   } finally {
     updatingStatus.value = false
+  }
+}
+
+async function handleSaveNotes() {
+  if (!book.value) return
+  if (!notesDirty.value) return
+
+  notesSaving.value = true
+  try {
+    const status = book.value.user_status?.status ?? ReadingStatus.WANT_TO_READ
+    const updatedStatus = await setReadingStatus(book.value.id, {
+      status,
+      notes: notesDraft.value,
+    })
+    book.value.user_status = updatedStatus
+    notesDraft.value = updatedStatus.notes ?? ''
+    await loadEvents(book.value.id)
+  } catch (error) {
+    console.error('Failed to save notes:', error)
+    alert('Failed to save notes')
+  } finally {
+    notesSaving.value = false
   }
 }
 
@@ -240,6 +275,25 @@ function handleNewBookSaved() {
           <div v-if="book.description" class="book-description">
             <h2>Description</h2>
             <p>{{ book.description }}</p>
+          </div>
+
+          <div class="book-notes">
+            <h2>Notes</h2>
+            <textarea
+                v-model="notesDraft"
+                class="notes-textarea"
+                rows="6"
+                placeholder="Add your notes about this book..."
+            ></textarea>
+            <div class="notes-actions">
+              <button
+                  class="btn-primary"
+                  @click="handleSaveNotes"
+                  :disabled="notesSaving || !notesDirty"
+              >
+                {{ notesSaving ? 'Saving...' : 'Save Notes' }}
+              </button>
+            </div>
           </div>
 
           <div class="book-metadata">
@@ -418,6 +472,35 @@ function handleNewBookSaved() {
   white-space: pre-wrap;
   word-break: break-word;
   overflow-wrap: anywhere;
+}
+
+.book-notes {
+  margin-bottom: var(--spacing-xl);
+}
+
+.book-notes h2 {
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: 1.25rem;
+}
+
+.notes-textarea {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.notes-actions {
+  margin-top: var(--spacing-sm);
+  display: flex;
+  justify-content: flex-end;
 }
 
 .book-metadata h2 {
