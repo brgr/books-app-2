@@ -64,7 +64,9 @@ class BookUpdate(BaseModel):
 
 class BookResponse(BookBase):
     id: int
-    user_status: Optional["UserBookResponse"] = None  # Include user's reading status if available
+    user_status: Optional["UserBookResponse"] = (
+        None  # Include user's reading status if available
+    )
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -86,6 +88,7 @@ class UserBookUpdate(BaseModel):
 
 class UserBookStatusUpdate(BaseModel):
     """Simpler schema for updating just status via PUT endpoint."""
+
     status: ReadingStatus
     notes: Optional[str] = None
 
@@ -112,6 +115,7 @@ class PaginatedBooks(BaseModel):
 # Google Books search result
 class GoogleBookResult(BaseModel):
     """Result from Google Books API search."""
+
     title: str
     author: str
     isbn: Optional[str] = None
@@ -147,8 +151,10 @@ class UserBooksExportResponse(BaseModel):
 # Book event schemas
 class BookEventResponse(BaseModel):
     """Response schema for a book event."""
+
     id: str
     event_type: BookEventCode
     occurred_at: datetime
+    note: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

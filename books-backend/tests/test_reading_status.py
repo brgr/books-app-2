@@ -16,7 +16,7 @@ def test_set_reading_status(client, auth_headers, created_book):
     response = client.put(
         f"/books/{book_id}/status",
         json={"status": "started", "notes": "Great book so far!"},
-        headers=auth_headers
+        headers=auth_headers,
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -36,14 +36,14 @@ def test_update_reading_status(client, auth_headers, created_book):
     client.put(
         f"/books/{book_id}/status",
         json={"status": "want_to_read"},
-        headers=auth_headers
+        headers=auth_headers,
     )
 
     # Update to started
     response = client.put(
         f"/books/{book_id}/status",
         json={"status": "started", "notes": "Now reading"},
-        headers=auth_headers
+        headers=auth_headers,
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -58,25 +58,19 @@ def test_set_finished_status(client, auth_headers, created_book):
 
     # Attempting to finish without starting should fail
     response = client.put(
-        f"/books/{book_id}/status",
-        json={"status": "finished"},
-        headers=auth_headers
+        f"/books/{book_id}/status", json={"status": "finished"}, headers=auth_headers
     )
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "Cannot finish reading before starting" in response.json()["detail"]
 
     # Start then finish
     response = client.put(
-        f"/books/{book_id}/status",
-        json={"status": "started"},
-        headers=auth_headers
+        f"/books/{book_id}/status", json={"status": "started"}, headers=auth_headers
     )
     assert response.status_code == status.HTTP_200_OK
 
     response = client.put(
-        f"/books/{book_id}/status",
-        json={"status": "finished"},
-        headers=auth_headers
+        f"/books/{book_id}/status", json={"status": "finished"}, headers=auth_headers
     )
 
     assert response.status_code == status.HTTP_200_OK
@@ -89,9 +83,7 @@ def test_set_finished_status(client, auth_headers, created_book):
 def test_reading_status_on_nonexistent_book(client, auth_headers):
     """Test setting status on a book that doesn't exist."""
     response = client.put(
-        "/books/99999/status",
-        json={"status": "started"},
-        headers=auth_headers
+        "/books/99999/status", json={"status": "started"}, headers=auth_headers
     )
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -104,9 +96,7 @@ def test_book_list_includes_user_status(client, auth_headers, sample_book_data):
 
     # Set reading status
     client.put(
-        f"/books/{book_id}/status",
-        json={"status": "started"},
-        headers=auth_headers
+        f"/books/{book_id}/status", json={"status": "started"}, headers=auth_headers
     )
 
     # List books
@@ -125,14 +115,12 @@ def test_get_book_includes_user_status(client, auth_headers, created_book):
 
     # Set reading status
     client.put(
-        f"/books/{book_id}/status",
-        json={"status": "started"},
-        headers=auth_headers
+        f"/books/{book_id}/status", json={"status": "started"}, headers=auth_headers
     )
     client.put(
         f"/books/{book_id}/status",
         json={"status": "finished", "notes": "Excellent!"},
-        headers=auth_headers
+        headers=auth_headers,
     )
 
     # Get the book
@@ -151,9 +139,7 @@ def test_remove_reading_status(client, auth_headers, created_book):
 
     # Set reading status
     client.put(
-        f"/books/{book_id}/status",
-        json={"status": "started"},
-        headers=auth_headers
+        f"/books/{book_id}/status", json={"status": "started"}, headers=auth_headers
     )
 
     # Remove status
@@ -170,16 +156,14 @@ def test_cannot_revert_to_want_after_start(client, auth_headers, created_book):
     book_id = created_book["id"]
 
     response = client.put(
-        f"/books/{book_id}/status",
-        json={"status": "started"},
-        headers=auth_headers
+        f"/books/{book_id}/status", json={"status": "started"}, headers=auth_headers
     )
     assert response.status_code == status.HTTP_200_OK
 
     response = client.put(
         f"/books/{book_id}/status",
         json={"status": "want_to_read"},
-        headers=auth_headers
+        headers=auth_headers,
     )
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "Cannot revert to 'want_to_read'" in response.json()["detail"]
@@ -197,8 +181,36 @@ def test_reading_status_requires_auth(client, created_book):
     """Test that reading status endpoints require authentication."""
     book_id = created_book["id"]
 
+    response = client.put(f"/books/{book_id}/status", json={"status": "started"})
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+def test_note_events_are_recorded(client, auth_headers, created_book):
+    book_id = created_book["id"]
+
     response = client.put(
         f"/books/{book_id}/status",
-        json={"status": "started"}
+        json={"status": "started", "notes": "First note"},
+        headers=auth_headers,
     )
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert response.status_code == status.HTTP_200_OK
+
+    response = client.put(
+        f"/books/{book_id}/status",
+        json={"status": "started", "notes": "Updated note"},
+        headers=auth_headers,
+    )
+    assert response.status_code == status.HTTP_200_OK
+
+    response = client.put(
+        f"/books/{book_id}/status",
+        json={"status": "started", "notes": ""},
+        headers=auth_headers,
+    )
+    assert response.status_code == status.HTTP_200_OK
+
+    events_response = client.get(f"/books/{book_id}/events", headers=auth_headers)
+    assert events_response.status_code == status.HTTP_200_OK
+    event_types = [event["event_type"] for event in events_response.json()]
+
+    assert "note_set" in event_types
