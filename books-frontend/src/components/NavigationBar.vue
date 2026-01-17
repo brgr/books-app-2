@@ -1,25 +1,17 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { getCurrentUser, logout } from '../api/auth'
-import type { User } from '../api/types'
+import { isAuthenticated, logout } from '../api/auth'
 
 const emit = defineEmits<{
   addBook: []
 }>()
 
 const router = useRouter()
-const user = ref<User | null>(null)
-
-onMounted(async () => {
-  try {
-    user.value = await getCurrentUser()
-  } catch (error) {
-    console.error('Failed to get current user:', error)
-  }
-})
+const showLogout = ref(isAuthenticated())
 
 async function handleLogout() {
+  showLogout.value = false
   await logout()
   router.push('/login')
 }
@@ -42,7 +34,7 @@ async function handleLogout() {
         <button @click="emit('addBook')" class="btn-primary btn-add">
           Add book
         </button>
-        <div v-if="user" class="navbar-user">
+        <div v-if="showLogout" class="navbar-user">
           <button @click="handleLogout" class="navbar-link-btn">Logout</button>
         </div>
       </div>
