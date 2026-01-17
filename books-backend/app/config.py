@@ -1,6 +1,7 @@
 from typing import Optional
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,7 +16,10 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # CORS (if needed later)
-    allowed_origins: list[str] = ["*"]
+    allowed_origins: list[str] = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
 
     # Google Books API (optional - search works without it but may have rate limits)
     google_books_api_key: Optional[str] = None
@@ -37,8 +41,18 @@ class Settings(BaseSettings):
     cookie_domain: str | None = None  # None = current domain only
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", case_sensitive=False
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        enable_decoding=False,
     )
+
+    @field_validator("allowed_origins", mode="before")
+    @classmethod
+    def parse_allowed_origins(cls, value):
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        return value
 
     @property
     def uploads_dir_path(self) -> Path:
