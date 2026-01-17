@@ -65,6 +65,8 @@ If you want to test from another device on your network (e.g., your phone):
 - Start the backend so it listens on all interfaces: `uv run fastapi dev main.py --host 0.0.0.0 --port 8000` (from
   `books-backend/`).
 - Set `VITE_API_URL` to your machine's LAN IP, e.g. `VITE_API_URL=http://192.168.1.23:8000`.
+- In the backend `.env`, set `COOKIE_SECURE=false` (required for HTTP on local network IPs).
+- In the backend `.env`, set `ALLOWED_ORIGINS` to include your frontend URL, e.g. `ALLOWED_ORIGINS='["http://192.168.1.23:5173"]'`.
 - Run the frontend dev server bound to all interfaces: `npm run dev -- --host 0.0.0.0`.
 
 ## Development
@@ -99,8 +101,8 @@ npm run start
 
 ## API Configuration
 
-The frontend uses the OAuth2 password flow with JWT Bearer tokens to communicate with the backend API. The access token
-is stored in localStorage for persistence across sessions.
+The frontend uses HttpOnly cookies for authentication (protecting against XSS attacks). The backend also supports
+Authorization headers for API clients and Swagger UI.
 
 ### API Endpoints Used
 

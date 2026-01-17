@@ -3,7 +3,16 @@ import uuid
 from datetime import datetime, UTC
 from typing import Annotated, cast
 
-from fastapi import Depends, FastAPI, HTTPException, status, UploadFile, File
+from fastapi import (
+    Depends,
+    FastAPI,
+    HTTPException,
+    status,
+    UploadFile,
+    File,
+    Response,
+    Request,
+)
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -15,6 +24,10 @@ from app.auth import (
     create_refresh_token,
     decode_refresh_token,
     get_current_user,
+    set_auth_cookies,
+    set_access_token_cookie,
+    clear_auth_cookies,
+    REFRESH_TOKEN_COOKIE,
 )
 from app.book_events import (
     ensure_added_event,
@@ -32,8 +45,12 @@ from app.schemas import (
     RefreshRequest,
     TokenResponse,
     UserResponse,
-    BookCreate, BookUpdate, BookResponse, PaginatedBooks,
-    UserBookStatusUpdate, UserBookResponse,
+    BookCreate,
+    BookUpdate,
+    BookResponse,
+    PaginatedBooks,
+    UserBookStatusUpdate,
+    UserBookResponse,
     GoogleBookResult,
     UserBooksExportResponse,
     BookEventResponse,
@@ -55,12 +72,24 @@ COVERS_DIR = settings.uploads_dir_path / "covers"
 COVERS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Mount static files for uploaded images
-app.mount(settings.uploads_url_prefix, StaticFiles(directory=settings.uploads_dir_path), name="uploads")
+app.mount(
+    settings.uploads_url_prefix,
+    StaticFiles(directory=settings.uploads_dir_path),
+    name="uploads",
+)
 
 
 @app.post("/token", response_model=TokenResponse)
-def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: Annotated[Session, Depends(get_db)]):
-    """OAuth2 password flow: exchange credentials for a JWT access token."""
+def login(
+    response: Response,
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """OAuth2 password flow: exchange credentials for a JWT access token.
+
+    Sets HttpOnly cookies for browser clients. Also returns tokens in the
+    response body for API clients and Swagger UI compatibility.
+    """
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -70,10 +99,15 @@ def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: Annota
         )
 
     username = str(user.username)
-    token = create_access_token(username)
+    access_token = create_access_token(username)
     refresh_token = create_refresh_token(username)
+
+    # Set HttpOnly cookies for browser clients
+    set_auth_cookies(response, access_token, refresh_token)
+
+    # Also return tokens in body for API clients
     return {
-        "access_token": token,
+        "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer",
         "expires_in": settings.jwt_access_token_exp_minutes * 60,
@@ -82,9 +116,31 @@ def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: Annota
 
 
 @app.post("/auth/refresh", response_model=AccessTokenResponse)
-def exchange_refresh_token_for_new_access_token(payload: RefreshRequest, db: Annotated[Session, Depends(get_db)]):
-    """Exchange a refresh token for a new access token."""
-    username = decode_refresh_token(payload.refresh_token)
+def exchange_refresh_token_for_new_access_token(
+    request: Request,
+    response: Response,
+    db: Annotated[Session, Depends(get_db)],
+    payload: RefreshRequest | None = None,
+):
+    """Exchange a refresh token for a new access token.
+
+    Accepts refresh token from either:
+    1. HttpOnly cookie (preferred for browser clients)
+    2. Request body (for API clients)
+    """
+    # Try cookie first, then request body
+    refresh_token = request.cookies.get(REFRESH_TOKEN_COOKIE)
+    if not refresh_token and payload:
+        refresh_token = payload.refresh_token
+
+    if not refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    username = decode_refresh_token(refresh_token)
     user = db.query(User).filter(User.username == username).first()
     if not user:
         raise HTTPException(
@@ -92,12 +148,24 @@ def exchange_refresh_token_for_new_access_token(payload: RefreshRequest, db: Ann
             detail="Invalid refresh token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    token = create_access_token(str(user.username))
+
+    access_token = create_access_token(str(user.username))
+
+    # Set new access token cookie for browser clients
+    set_access_token_cookie(response, access_token)
+
     return {
-        "access_token": token,
+        "access_token": access_token,
         "token_type": "bearer",
         "expires_in": settings.jwt_access_token_exp_minutes * 60,
     }
+
+
+@app.post("/auth/logout")
+def logout(response: Response):
+    """Clear authentication cookies to log out the user."""
+    clear_auth_cookies(response)
+    return {"message": "Logged out successfully"}
 
 
 @app.get("/users/me", response_model=UserResponse)
@@ -108,8 +176,8 @@ def read_current_user(current_user: Annotated[User, Depends(get_current_user)]):
 
 @app.get("/users/me/export", response_model=UserBooksExportResponse)
 def export_user_books(
-        current_user: Annotated[User, Depends(get_current_user)],
-        db: Annotated[Session, Depends(get_db)]
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Export the current user's books along with their reading state."""
     # TODO: derive reading state from book events instead of the legacy status fields.
@@ -124,24 +192,26 @@ def export_user_books(
     books_payload = []
     for user_book, book in user_books:
         project_user_book_state(db, user_book)
-        books_payload.append({
-            "id": book.id,
-            "title": book.title,
-            "author": book.author,
-            "isbn": book.isbn,
-            "description": book.description,
-            "published_date": book.published_date,
-            "page_count": book.page_count,
-            "status": user_book.status,
-            "notes": user_book.notes,
-            "started_at": user_book.started_at,
-            "finished_at": user_book.finished_at
-        })
+        books_payload.append(
+            {
+                "id": book.id,
+                "title": book.title,
+                "author": book.author,
+                "isbn": book.isbn,
+                "description": book.description,
+                "published_date": book.published_date,
+                "page_count": book.page_count,
+                "status": user_book.status,
+                "notes": user_book.notes,
+                "started_at": user_book.started_at,
+                "finished_at": user_book.finished_at,
+            }
+        )
 
     return {
         "exported_at": datetime.now(UTC),
         "user": current_user,
-        "books": books_payload
+        "books": books_payload,
     }
 
 
@@ -152,10 +222,10 @@ async def root():
 
 # Books CRUD endpoints
 
+
 @app.get("/books/search", response_model=list[GoogleBookResult])
 async def search_books(
-        q: str,
-        current_user: Annotated[User, Depends(get_current_user)]
+    q: str, current_user: Annotated[User, Depends(get_current_user)]
 ):
     """
     Search for books using the Google Books API.
@@ -166,7 +236,7 @@ async def search_books(
     if not q or not q.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Search query cannot be empty"
+            detail="Search query cannot be empty",
         )
 
     results = await search_google_books(q)
@@ -175,9 +245,9 @@ async def search_books(
 
 @app.post("/books", response_model=BookResponse, status_code=status.HTTP_201_CREATED)
 async def create_book(
-        book_data: BookCreate,
-        current_user: Annotated[User, Depends(get_current_user)],
-        db: Annotated[Session, Depends(get_db)]
+    book_data: BookCreate,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Create a new book."""
     data = book_data.model_dump()
@@ -198,10 +268,10 @@ async def create_book(
 
 @app.get("/books", response_model=PaginatedBooks)
 def list_books(
-        current_user: Annotated[User, Depends(get_current_user)],
-        db: Annotated[Session, Depends(get_db)],
-        page: int = 1,
-        page_size: int = 20
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    page: int = 1,
+    page_size: int = 20,
 ):
     """List all books with pagination. Includes user's reading status for each book."""
     # Validate pagination parameters
@@ -218,10 +288,11 @@ def list_books(
 
     # Attach user's reading status to each book
     for book in books:
-        user_book: UserBook | None = db.query(UserBook).filter(
-            UserBook.user_id == current_user.id,
-            UserBook.book_id == book.id
-        ).first()
+        user_book: UserBook | None = (
+            db.query(UserBook)
+            .filter(UserBook.user_id == current_user.id, UserBook.book_id == book.id)
+            .first()
+        )
         if user_book:
             project_user_book_state(db, user_book)
         book.user_status = user_book
@@ -234,29 +305,29 @@ def list_books(
         "total": total,
         "page": page,
         "page_size": page_size,
-        "pages": pages
+        "pages": pages,
     }
 
 
 @app.get("/books/{book_id}", response_model=BookResponse)
 def get_book(
-        book_id: int,
-        current_user: Annotated[User, Depends(get_current_user)],
-        db: Annotated[Session, Depends(get_db)]
+    book_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Get a single book by ID. Includes user's reading status."""
     book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Book not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
         )
 
     # Attach user's reading status
-    user_book: UserBook | None = db.query(UserBook).filter(
-        UserBook.user_id == current_user.id,
-        UserBook.book_id == book.id
-    ).first()
+    user_book: UserBook | None = (
+        db.query(UserBook)
+        .filter(UserBook.user_id == current_user.id, UserBook.book_id == book.id)
+        .first()
+    )
     if user_book:
         project_user_book_state(db, user_book)
     book.user_status = user_book
@@ -266,17 +337,16 @@ def get_book(
 
 @app.put("/books/{book_id}", response_model=BookResponse)
 async def update_book(
-        book_id: int,
-        book_data: BookUpdate,
-        current_user: Annotated[User, Depends(get_current_user)],
-        db: Annotated[Session, Depends(get_db)]
+    book_id: int,
+    book_data: BookUpdate,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Update a book."""
     book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Book not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
         )
 
     # Update only provided fields
@@ -296,10 +366,11 @@ async def update_book(
     db.refresh(book)
 
     # Attach user's reading status
-    user_book = db.query(UserBook).filter(
-        UserBook.user_id == current_user.id,
-        UserBook.book_id == book.id
-    ).first()
+    user_book = (
+        db.query(UserBook)
+        .filter(UserBook.user_id == current_user.id, UserBook.book_id == book.id)
+        .first()
+    )
     book.user_status = user_book
 
     return book
@@ -307,16 +378,15 @@ async def update_book(
 
 @app.delete("/books/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_book(
-        book_id: int,
-        current_user: Annotated[User, Depends(get_current_user)],
-        db: Annotated[Session, Depends(get_db)]
+    book_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Delete a book."""
     book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Book not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
         )
 
     db.delete(book)
@@ -326,18 +396,17 @@ def delete_book(
 
 @app.post("/books/{book_id}/cover", response_model=BookResponse)
 async def upload_book_cover(
-        book_id: int,
-        file: Annotated[UploadFile, File(...)],
-        current_user: Annotated[User, Depends(get_current_user)],
-        db: Annotated[Session, Depends(get_db)]
+    book_id: int,
+    file: Annotated[UploadFile, File(...)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Upload a cover image for a book."""
     # Check if book exists
     book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Book not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
         )
 
     # Validate file type
@@ -345,7 +414,7 @@ async def upload_book_cover(
     if file.content_type not in allowed_types:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid file type. Allowed types: {', '.join(allowed_types)}"
+            detail=f"Invalid file type. Allowed types: {', '.join(allowed_types)}",
         )
 
     # Generate unique filename
@@ -362,7 +431,7 @@ async def upload_book_cover(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to save file: {str(e)}"
+            detail=f"Failed to save file: {str(e)}",
         )
 
     # Update book with cover URL
@@ -371,10 +440,11 @@ async def upload_book_cover(
     db.refresh(book)
 
     # Attach user's reading status
-    user_book = db.query(UserBook).filter(
-        UserBook.user_id == current_user.id,
-        UserBook.book_id == book.id
-    ).first()
+    user_book = (
+        db.query(UserBook)
+        .filter(UserBook.user_id == current_user.id, UserBook.book_id == book.id)
+        .first()
+    )
     book.user_status = user_book
 
     return book
@@ -382,20 +452,20 @@ async def upload_book_cover(
 
 # Reading status endpoints
 
+
 @app.put("/books/{book_id}/status", response_model=UserBookResponse)
 def set_reading_status(
-        book_id: int,
-        status_data: UserBookStatusUpdate,
-        current_user: Annotated[User, Depends(get_current_user)],
-        db: Annotated[Session, Depends(get_db)]
+    book_id: int,
+    status_data: UserBookStatusUpdate,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Set or update the reading status for a book for the current user."""
     # Check if book exists
     book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Book not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
         )
 
     from app.models import ReadingStatus
@@ -415,7 +485,10 @@ def set_reading_status(
         user_book.notes = status_data.notes
 
     project_user_book_state(db, user_book)
-    if status_data.status == ReadingStatus.WANT_TO_READ and user_book.status != ReadingStatus.WANT_TO_READ:
+    if (
+        status_data.status == ReadingStatus.WANT_TO_READ
+        and user_book.status != ReadingStatus.WANT_TO_READ
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot revert to 'want_to_read' after reading has started",
@@ -442,20 +515,21 @@ def set_reading_status(
 
 @app.delete("/books/{book_id}/status", status_code=status.HTTP_204_NO_CONTENT)
 def remove_reading_status(
-        book_id: int,
-        current_user: Annotated[User, Depends(get_current_user)],
-        db: Annotated[Session, Depends(get_db)]
+    book_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Remove a book from the current user's reading list."""
-    user_book = db.query(UserBook).filter(
-        UserBook.user_id == current_user.id,
-        UserBook.book_id == book_id
-    ).first()
+    user_book = (
+        db.query(UserBook)
+        .filter(UserBook.user_id == current_user.id, UserBook.book_id == book_id)
+        .first()
+    )
 
     if not user_book:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Book not in your reading list"
+            detail="Book not in your reading list",
         )
 
     db.delete(user_book)
@@ -465,24 +539,24 @@ def remove_reading_status(
 
 @app.get("/books/{book_id}/events", response_model=list[BookEventResponse])
 def get_book_events(
-        book_id: int,
-        current_user: Annotated[User, Depends(get_current_user)],
-        db: Annotated[Session, Depends(get_db)]
+    book_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Get all events for a book for the current user, ordered by most recent first."""
     # Check if book exists
     book = db.query(Book).filter(Book.id == book_id).first()
     if not book:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Book not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
         )
 
     # Get user's relationship with this book
-    user_book = db.query(UserBook).filter(
-        UserBook.user_id == current_user.id,
-        UserBook.book_id == book_id
-    ).first()
+    user_book = (
+        db.query(UserBook)
+        .filter(UserBook.user_id == current_user.id, UserBook.book_id == book_id)
+        .first()
+    )
 
     if not user_book:
         return []

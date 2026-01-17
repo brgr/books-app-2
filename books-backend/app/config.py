@@ -31,10 +31,13 @@ class Settings(BaseSettings):
     jwt_access_token_exp_minutes: int = 60
     jwt_refresh_token_exp_minutes: int = 60 * 24 * 30
 
+    # Cookie settings
+    cookie_secure: bool = True  # Set to False for local network testing over HTTP (localhost works with True)
+    cookie_samesite: str = "lax"  # "lax", "strict", or "none"
+    cookie_domain: str | None = None  # None = current domain only
+
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=False
     )
 
     @property
