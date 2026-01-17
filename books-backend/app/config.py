@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     uploads_dir: str = "uploads"
     uploads_url_path: str = "uploads"
 
+    # Auth
+    jwt_secret: str = "change-me"
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_exp_minutes: int = 60
+    jwt_refresh_token_exp_minutes: int = 60 * 24 * 30
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
