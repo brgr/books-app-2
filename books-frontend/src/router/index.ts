@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { isAuthenticated, restoreAuthFromStorage } from '../api/auth'
+import { isAuthenticated, checkAuthStatus } from '../api/auth'
 import { setupAuthInterceptor } from '../api/client'
 import LoginView from '../views/LoginView.vue'
 import BooksView from '../views/BooksView.vue'
@@ -29,14 +29,24 @@ const router = createRouter({
   ],
 })
 
-// Restore authentication from localStorage on app start
-restoreAuthFromStorage()
-
 // Setup API client to handle authentication errors
 setupAuthInterceptor(router)
 
+// Track if initial auth check has completed
+let authCheckComplete = false
+let authCheckPromise: Promise<boolean> | null = null
+
 // Navigation guard
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
+  // On first navigation, verify auth status via API (HttpOnly cookies)
+  if (!authCheckComplete) {
+    if (!authCheckPromise) {
+      authCheckPromise = checkAuthStatus()
+    }
+    await authCheckPromise
+    authCheckComplete = true
+  }
+
   const requiresAuth = to.meta.requiresAuth
 
   if (requiresAuth && !isAuthenticated()) {

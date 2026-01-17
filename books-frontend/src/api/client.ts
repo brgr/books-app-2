@@ -13,43 +13,28 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  // Send cookies with every request (HttpOnly auth cookies)
+  withCredentials: true,
 })
 
-// Helper to set auth token
-export function setAuthToken(token: string) {
-  apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`
+// Track authentication state (verified via /users/me endpoint)
+let authenticated = false
+
+export function setAuthenticated(value: boolean) {
+  authenticated = value
 }
 
-// Helper to clear auth token
-export function clearAuthToken() {
-  delete apiClient.defaults.headers.common['Authorization']
-}
-
-// Helper to check if user is authenticated
 export function isAuthenticated(): boolean {
-  return !!apiClient.defaults.headers.common['Authorization']
+  return authenticated
 }
 
-type RefreshResponse = {
-  access_token: string
-  token_type: 'bearer'
-  expires_in: number
-}
-
-async function tryRefreshAccessToken(): Promise<string | null> {
-  const refreshToken = localStorage.getItem('refresh_token')
-  if (!refreshToken) return null
-
+async function tryRefreshAccessToken(): Promise<boolean> {
   try {
-    const response = await axios.post<RefreshResponse>(`${API_BASE_URL}/auth/refresh`, {
-      refresh_token: refreshToken,
-    })
-    const token = response.data.access_token
-    setAuthToken(token)
-    localStorage.setItem('auth_token', token)
-    return token
+    // Refresh endpoint reads refresh token from HttpOnly cookie
+    await apiClient.post('/auth/refresh')
+    return true
   } catch {
-    return null
+    return false
   }
 }
 
@@ -62,20 +47,20 @@ export function setupAuthInterceptor(router: any) {
       if (error.response && (error.response.status === 401 || error.response.status === 403)) {
         const originalRequest = error.config as typeof error.config & { _retry?: boolean }
 
-        if (originalRequest && !originalRequest._retry) {
+        // Don't retry refresh or logout endpoints to avoid loops
+        const isAuthEndpoint = originalRequest?.url?.includes('/auth/')
+
+        if (originalRequest && !originalRequest._retry && !isAuthEndpoint) {
           originalRequest._retry = true
-          const token = await tryRefreshAccessToken()
-          if (token) {
-            originalRequest.headers = originalRequest.headers || {}
-            originalRequest.headers['Authorization'] = `Bearer ${token}`
+          const refreshed = await tryRefreshAccessToken()
+          if (refreshed) {
+            // Retry the original request (cookies are sent automatically)
             return apiClient(originalRequest)
           }
         }
 
-        // Clear authentication after refresh failure
-        clearAuthToken()
-        localStorage.removeItem('auth_token')
-        localStorage.removeItem('refresh_token')
+        // Clear authentication state after refresh failure
+        authenticated = false
 
         // Redirect to login page if not already there
         if (router.currentRoute.value.name !== 'login') {
