@@ -16,7 +16,7 @@ from fastapi import (
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.auth import (
     authenticate_user,
@@ -33,13 +33,14 @@ from app.book_events import (
     ensure_added_event,
     project_user_book_state,
     record_finished_reading,
+    record_note_event,
     record_started_reading,
 )
 from app.config import settings
 from app.database import get_db
 from app.google_books import search_google_books
 from app.image_utils import download_cover_image
-from app.models import User, Book, UserBook, BookEvent
+from app.models import User, Book, UserBook, BookEvent, BookEventCode
 from app.schemas import (
     AccessTokenResponse,
     RefreshRequest,
@@ -480,32 +481,50 @@ def set_reading_status(
             detail=str(exc),
         ) from exc
 
-    # Reset notes if explicitly provided
-    if status_data.notes is not None:
-        user_book.notes = status_data.notes
-
     project_user_book_state(db, user_book)
-    if (
-        status_data.status == ReadingStatus.WANT_TO_READ
-        and user_book.status != ReadingStatus.WANT_TO_READ
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot revert to 'want_to_read' after reading has started",
-        )
 
     user_book_id = cast(int, user_book.id)
 
     try:
-        if status_data.status == ReadingStatus.STARTED:
+        if (
+            status_data.status == ReadingStatus.WANT_TO_READ
+            and user_book.status != ReadingStatus.WANT_TO_READ
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot revert to 'want_to_read' after reading has started",
+            )
+
+        if (
+            status_data.status == ReadingStatus.STARTED
+            and user_book.status != ReadingStatus.STARTED
+        ):
             record_started_reading(db, user_book_id=user_book_id)
-        elif status_data.status == ReadingStatus.FINISHED:
+        elif (
+            status_data.status == ReadingStatus.FINISHED
+            and user_book.status != ReadingStatus.FINISHED
+        ):
             record_finished_reading(db, user_book_id=user_book_id)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
+
+    notes_provided = "notes" in status_data.model_fields_set
+    if notes_provided:
+        normalized_notes = status_data.notes
+        if normalized_notes == "":
+            normalized_notes = None
+
+        if normalized_notes != user_book.notes:
+            record_note_event(
+                db,
+                user_book_id=user_book_id,
+                code=BookEventCode.NOTE_SET,
+                note=normalized_notes,
+            )
+            user_book.notes = normalized_notes
 
     project_user_book_state(db, user_book)
     db.commit()
@@ -564,6 +583,7 @@ def get_book_events(
     # Get all events for this user_book, ordered by occurred_at desc
     events = (
         db.query(BookEvent)
+        .options(joinedload(BookEvent.note_entry))
         .filter(BookEvent.user_book_id == user_book.id)
         .order_by(BookEvent.occurred_at.desc(), BookEvent.id.desc())
         .all()
@@ -574,6 +594,7 @@ def get_book_events(
             id=event.id,
             event_type=event.event_type.code,
             occurred_at=event.occurred_at,
+            note=event.note_entry.note if event.note_entry else None,
         )
         for event in events
     ]

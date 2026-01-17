@@ -5,16 +5,18 @@ defineProps<{
   events: BookEvent[]
 }>()
 
-function formatEventType(eventType: string): string {
-  switch (eventType) {
+function formatEventType(event: BookEvent): string {
+  switch (event.event_type) {
     case BookEventType.ADDED_TO_LIBRARY:
       return 'Added to library'
     case BookEventType.STARTED_READING:
       return 'Started reading'
     case BookEventType.FINISHED_READING:
       return 'Finished reading'
+    case BookEventType.NOTE_SET:
+      return event.note ? 'Note updated' : 'Note cleared'
     default:
-      return eventType
+      return event.event_type
   }
 }
 
@@ -50,7 +52,7 @@ function formatTime(dateStr: string): string {
       >
         <div class="timeline-dot"></div>
         <div class="timeline-content">
-          <div class="event-label">{{ formatEventType(event.event_type) }}</div>
+          <div class="event-label">{{ formatEventType(event) }}</div>
           <div class="event-date">{{ formatDate(event.occurred_at) }} at {{ formatTime(event.occurred_at) }}</div>
         </div>
       </div>

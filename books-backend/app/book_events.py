@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.models import (
     BookEvent,
     BookEventCode,
+    BookEventNote,
     BookEventType,
     ReadingStatus,
     UserBook,
@@ -16,20 +17,22 @@ from app.models import (
 
 def _get_event_type(session: Session, code: BookEventCode) -> BookEventType:
     event_type: BookEventType | None = (
-        session.query(BookEventType)
-        .filter(BookEventType.code == code.value)
-        .first()
+        session.query(BookEventType).filter(BookEventType.code == code.value).first()
     )
     if event_type is not None:
         return event_type
     raise ValueError(f"Event type '{code.value}' not seeded")
 
 
-def _latest_event(session: Session, user_book_id: int, code: BookEventCode) -> Optional[BookEvent]:
+def _latest_event(
+    session: Session, user_book_id: int, code: BookEventCode
+) -> Optional[BookEvent]:
     return (
         session.query(BookEvent)
         .join(BookEventType, BookEvent.event_type_id == BookEventType.id)
-        .filter(BookEvent.user_book_id == user_book_id, BookEventType.code == code.value)
+        .filter(
+            BookEvent.user_book_id == user_book_id, BookEventType.code == code.value
+        )
         .order_by(BookEvent.occurred_at.desc(), BookEvent.id.desc())
         .first()
     )
@@ -57,7 +60,9 @@ def record_added_to_library(
     """
     user_book = _ensure_user_book(session, user_id=user_id, book_id=book_id)
 
-    existing_add = _latest_event(session, cast(int, user_book.id), BookEventCode.ADDED_TO_LIBRARY)
+    existing_add = _latest_event(
+        session, cast(int, user_book.id), BookEventCode.ADDED_TO_LIBRARY
+    )
     if existing_add:
         raise ValueError("Book already added to library for this user")
 
@@ -81,7 +86,9 @@ def _ensure_user_book(session: Session, user_id: int, book_id: int) -> UserBook:
     if user_book is not None:
         return user_book
 
-    user_book = UserBook(user_id=user_id, book_id=book_id, status=ReadingStatus.WANT_TO_READ)
+    user_book = UserBook(
+        user_id=user_id, book_id=book_id, status=ReadingStatus.WANT_TO_READ
+    )
     session.add(user_book)
     session.flush()
     return user_book
@@ -129,7 +136,9 @@ def record_started_reading(
     latest_finish = _latest_event(session, user_book_id, BookEventCode.FINISHED_READING)
 
     if latest_start and not (latest_finish and _is_after(latest_finish, latest_start)):
-        raise ValueError("Cannot start reading while a reading cycle is already in progress")
+        raise ValueError(
+            "Cannot start reading while a reading cycle is already in progress"
+        )
 
     event_type = _get_event_type(session, BookEventCode.STARTED_READING)
     event = BookEvent(
@@ -168,6 +177,27 @@ def record_finished_reading(
         occurred_at=occurred_at or datetime.now(UTC),
     )
     session.add(event)
+    session.flush()
+    return event
+
+
+def record_note_event(
+    session: Session,
+    user_book_id: int,
+    code: BookEventCode,
+    note: Optional[str],
+    occurred_at: Optional[datetime] = None,
+) -> BookEvent:
+    """Append a note event for the user_book."""
+    event_type = _get_event_type(session, code)
+    event = BookEvent(
+        user_book_id=user_book_id,
+        event_type_id=event_type.id,
+        occurred_at=occurred_at or datetime.now(UTC),
+    )
+    session.add(event)
+    session.flush()
+    session.add(BookEventNote(event_id=event.id, note=note))
     session.flush()
     return event
 

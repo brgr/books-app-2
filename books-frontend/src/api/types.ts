@@ -87,6 +87,7 @@ export const BookEventType = {
   ADDED_TO_LIBRARY: 'added_to_library',
   STARTED_READING: 'started_reading',
   FINISHED_READING: 'finished_reading',
+  NOTE_SET: 'note_set',
 } as const
 
 export type BookEventType = typeof BookEventType[keyof typeof BookEventType]
@@ -95,4 +96,5 @@ export interface BookEvent {
   id: string
   event_type: BookEventType
   occurred_at: string
+  note?: string | null
 }

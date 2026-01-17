@@ -1,4 +1,13 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Enum, UniqueConstraint
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    DateTime,
+    Text,
+    ForeignKey,
+    Enum,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime, UTC
@@ -19,24 +28,27 @@ class BookEventCode(enum.Enum):
     ADDED_TO_LIBRARY = "added_to_library"
     STARTED_READING = "started_reading"
     FINISHED_READING = "finished_reading"
+    NOTE_SET = "note_set"
 
 
 class User(Base):
-    __tablename__ = 'users'
+    __tablename__ = "users"
 
     id = Column(Integer, primary_key=True)
     username = Column(String(50), unique=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
 
     # Relationship to user's books
-    user_books = relationship("UserBook", back_populates="user", cascade="all, delete-orphan")
+    user_books = relationship(
+        "UserBook", back_populates="user", cascade="all, delete-orphan"
+    )
 
     def __repr__(self):
         return f"<User(username='{self.username}')>"
 
 
 class Book(Base):
-    __tablename__ = 'books'
+    __tablename__ = "books"
 
     id = Column(Integer, primary_key=True)
     title = Column(String(255), nullable=False)
@@ -48,19 +60,23 @@ class Book(Base):
     cover_image_url = Column(String(500), nullable=True)
 
     # Relationship to users who have this book
-    user_books = relationship("UserBook", back_populates="book", cascade="all, delete-orphan")
+    user_books = relationship(
+        "UserBook", back_populates="book", cascade="all, delete-orphan"
+    )
 
     def __repr__(self):
         return f"<Book(title='{self.title}', author='{self.author}')>"
 
 
 class UserBook(Base):
-    __tablename__ = 'user_books'
+    __tablename__ = "user_books"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    book_id = Column(Integer, ForeignKey('books.id'), nullable=False)
-    status = Column(Enum(ReadingStatus), nullable=False, default=ReadingStatus.WANT_TO_READ)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    book_id = Column(Integer, ForeignKey("books.id"), nullable=False)
+    status = Column(
+        Enum(ReadingStatus), nullable=False, default=ReadingStatus.WANT_TO_READ
+    )
     started_at = Column(DateTime, nullable=True)
     finished_at = Column(DateTime, nullable=True)
     notes = Column(Text, nullable=True)
@@ -68,14 +84,16 @@ class UserBook(Base):
     # Relationships
     user = relationship("User", back_populates="user_books")
     book = relationship("Book", back_populates="user_books")
-    events = relationship("BookEvent", back_populates="user_book", cascade="all, delete-orphan")
+    events = relationship(
+        "BookEvent", back_populates="user_book", cascade="all, delete-orphan"
+    )
 
     def __repr__(self):
         return f"<UserBook(user_id={self.user_id}, book_id={self.book_id}, status='{self.status.value}')>"
 
 
 class BookEventType(Base):
-    __tablename__ = 'book_event_types'
+    __tablename__ = "book_event_types"
 
     id = Column(Integer, primary_key=True)
     code = Column(String(50), unique=True, nullable=False)
@@ -85,22 +103,42 @@ class BookEventType(Base):
 
 
 class BookEvent(Base):
-    __tablename__ = 'book_events'
+    __tablename__ = "book_events"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_book_id = Column(Integer, ForeignKey('user_books.id', ondelete='CASCADE'), nullable=False)
-    event_type_id = Column(Integer, ForeignKey('book_event_types.id'), nullable=False)
+    user_book_id = Column(
+        Integer, ForeignKey("user_books.id", ondelete="CASCADE"), nullable=False
+    )
+    event_type_id = Column(Integer, ForeignKey("book_event_types.id"), nullable=False)
     occurred_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
 
     user_book = relationship("UserBook", back_populates="events")
     event_type = relationship("BookEventType")
-
-    __table_args__ = (
-        UniqueConstraint('id', name='uq_book_events_id'),
+    note_entry = relationship(
+        "BookEventNote",
+        back_populates="event",
+        uselist=False,
+        cascade="all, delete-orphan",
     )
+
+    __table_args__ = (UniqueConstraint("id", name="uq_book_events_id"),)
 
     def __repr__(self):
         return (
             f"<BookEvent(id='{self.id}', user_book_id={self.user_book_id}, "
             f"event_type_id={self.event_type_id}, occurred_at={self.occurred_at})>"
         )
+
+
+class BookEventNote(Base):
+    __tablename__ = "book_event_notes"
+
+    event_id = Column(
+        String(36), ForeignKey("book_events.id", ondelete="CASCADE"), primary_key=True
+    )
+    note = Column(Text, nullable=True)
+
+    event = relationship("BookEvent", back_populates="note_entry")
+
+    def __repr__(self):
+        return f"<BookEventNote(event_id='{self.event_id}')>"
