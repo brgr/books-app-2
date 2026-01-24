@@ -9,6 +9,7 @@ from app.models import (
     BookEvent,
     BookEventCode,
     BookEventNote,
+    BookEventProgress,
     BookEventType,
     ReadingStatus,
     UserBook,
@@ -202,11 +203,32 @@ def record_note_event(
     return event
 
 
+def record_progress_event(
+    session: Session,
+    user_book_id: int,
+    page: int,
+    occurred_at: Optional[datetime] = None,
+) -> BookEvent:
+    """Append a progress event for the user_book."""
+    event_type = _get_event_type(session, BookEventCode.PROGRESS_SET)
+    event = BookEvent(
+        user_book_id=user_book_id,
+        event_type_id=event_type.id,
+        occurred_at=occurred_at or datetime.now(UTC),
+    )
+    session.add(event)
+    session.flush()
+    session.add(BookEventProgress(event_id=event.id, page=page))
+    session.flush()
+    return event
+
+
 def project_user_book_state(session: Session, user_book: UserBook) -> UserBook:
     """Project the current reading state from the event stream onto the user_book snapshot fields."""
     user_book_id = cast(int, user_book.id)
     latest_start = _latest_event(session, user_book_id, BookEventCode.STARTED_READING)
     latest_finish = _latest_event(session, user_book_id, BookEventCode.FINISHED_READING)
+    latest_progress = _latest_event(session, user_book_id, BookEventCode.PROGRESS_SET)
 
     if latest_finish and _is_after(latest_finish, latest_start):
         user_book.status = ReadingStatus.FINISHED
@@ -219,6 +241,15 @@ def project_user_book_state(session: Session, user_book: UserBook) -> UserBook:
         user_book.finished_at = None
 
     user_book.started_at = latest_start.occurred_at if latest_start else None
+    if latest_progress:
+        progress_entry = (
+            session.query(BookEventProgress)
+            .filter(BookEventProgress.event_id == latest_progress.id)
+            .first()
+        )
+        user_book.current_page = progress_entry.page if progress_entry else None
+    else:
+        user_book.current_page = None
     session.flush()
 
     return user_book

@@ -29,6 +29,7 @@ class BookEventCode(enum.Enum):
     STARTED_READING = "started_reading"
     FINISHED_READING = "finished_reading"
     NOTE_SET = "note_set"
+    PROGRESS_SET = "progress_set"
 
 
 class User(Base):
@@ -80,6 +81,7 @@ class UserBook(Base):
     started_at = Column(DateTime, nullable=True)
     finished_at = Column(DateTime, nullable=True)
     notes = Column(Text, nullable=True)
+    current_page = Column(Integer, nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="user_books")
@@ -120,6 +122,12 @@ class BookEvent(Base):
         uselist=False,
         cascade="all, delete-orphan",
     )
+    progress_entry = relationship(
+        "BookEventProgress",
+        back_populates="event",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (UniqueConstraint("id", name="uq_book_events_id"),)
 
@@ -142,3 +150,17 @@ class BookEventNote(Base):
 
     def __repr__(self):
         return f"<BookEventNote(event_id='{self.event_id}')>"
+
+
+class BookEventProgress(Base):
+    __tablename__ = "book_event_progress"
+
+    event_id = Column(
+        String(36), ForeignKey("book_events.id", ondelete="CASCADE"), primary_key=True
+    )
+    page = Column(Integer, nullable=False)
+
+    event = relationship("BookEvent", back_populates="progress_entry")
+
+    def __repr__(self):
+        return f"<BookEventProgress(event_id='{self.event_id}', page={self.page})>"

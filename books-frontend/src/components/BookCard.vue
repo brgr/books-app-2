@@ -99,6 +99,10 @@ function getStatusLabel(status: ReadingStatus | null): string {
       <div v-if="book.user_status.finished_at">
         Finished: {{ formatShortDate(book.user_status.finished_at) }}
       </div>
+      <div v-if="book.user_status.current_page !== null">
+        Progress: {{ book.user_status.current_page }}
+        <span v-if="book.page_count">/ {{ book.page_count }}</span>
+      </div>
     </div>
       </div>
     </div>

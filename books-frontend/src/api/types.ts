@@ -21,6 +21,7 @@ export interface UserBook {
   started_at: string | null
   finished_at: string | null
   notes: string | null
+  current_page: number | null
   created_at: string
   updated_at: string
 }
@@ -88,6 +89,7 @@ export const BookEventType = {
   STARTED_READING: 'started_reading',
   FINISHED_READING: 'finished_reading',
   NOTE_SET: 'note_set',
+  PROGRESS_SET: 'progress_set',
 } as const
 
 export type BookEventType = typeof BookEventType[keyof typeof BookEventType]
@@ -97,4 +99,9 @@ export interface BookEvent {
   event_type: BookEventType
   occurred_at: string
   note?: string | null
+  page?: number | null
+}
+
+export interface BookProgressUpdate {
+  page: number
 }
