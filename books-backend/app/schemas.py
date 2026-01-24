@@ -99,6 +99,7 @@ class UserBookResponse(UserBookBase):
     book_id: int
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
+    current_page: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -139,6 +140,7 @@ class ExportBookEntry(BaseModel):
     notes: Optional[str] = None
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
+    current_page: Optional[int] = None
 
 
 class UserBooksExportResponse(BaseModel):
@@ -156,5 +158,10 @@ class BookEventResponse(BaseModel):
     event_type: BookEventCode
     occurred_at: datetime
     note: Optional[str] = None
+    page: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class BookProgressUpdate(BaseModel):
+    page: int = Field(..., ge=0)

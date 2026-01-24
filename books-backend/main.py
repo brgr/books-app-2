@@ -34,13 +34,14 @@ from app.book_events import (
     project_user_book_state,
     record_finished_reading,
     record_note_event,
+    record_progress_event,
     record_started_reading,
 )
 from app.config import settings
 from app.database import get_db
 from app.google_books import search_google_books
 from app.image_utils import download_cover_image
-from app.models import User, Book, UserBook, BookEvent, BookEventCode
+from app.models import User, Book, UserBook, BookEvent, BookEventCode, ReadingStatus
 from app.schemas import (
     AccessTokenResponse,
     RefreshRequest,
@@ -55,6 +56,7 @@ from app.schemas import (
     GoogleBookResult,
     UserBooksExportResponse,
     BookEventResponse,
+    BookProgressUpdate,
 )
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
@@ -206,6 +208,7 @@ def export_user_books(
                 "notes": user_book.notes,
                 "started_at": user_book.started_at,
                 "finished_at": user_book.finished_at,
+                "current_page": user_book.current_page,
             }
         )
 
@@ -469,8 +472,6 @@ def set_reading_status(
             status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
         )
 
-    from app.models import ReadingStatus
-
     user_id = cast(int, current_user.id)
 
     try:
@@ -583,7 +584,7 @@ def get_book_events(
     # Get all events for this user_book, ordered by occurred_at desc
     events = (
         db.query(BookEvent)
-        .options(joinedload(BookEvent.note_entry))
+        .options(joinedload(BookEvent.note_entry), joinedload(BookEvent.progress_entry))
         .filter(BookEvent.user_book_id == user_book.id)
         .order_by(BookEvent.occurred_at.desc(), BookEvent.id.desc())
         .all()
@@ -595,6 +596,50 @@ def get_book_events(
             event_type=event.event_type.code,
             occurred_at=event.occurred_at,
             note=event.note_entry.note if event.note_entry else None,
+            page=event.progress_entry.page if event.progress_entry else None,
         )
         for event in events
     ]
+
+
+@app.post("/books/{book_id}/progress", response_model=UserBookResponse)
+def add_progress_event(
+    book_id: int,
+    progress: BookProgressUpdate,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """Record a progress event for the current user."""
+    book = db.query(Book).filter(Book.id == book_id).first()
+    if not book:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
+        )
+
+    user_book = (
+        db.query(UserBook)
+        .filter(UserBook.user_id == current_user.id, UserBook.book_id == book_id)
+        .first()
+    )
+    if not user_book:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot record progress before starting reading",
+        )
+
+    project_user_book_state(db, user_book)
+    if user_book.status != ReadingStatus.STARTED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot record progress before starting reading",
+        )
+
+    page = progress.page
+    if book.page_count is not None and page > book.page_count:
+        page = book.page_count
+
+    record_progress_event(db, user_book_id=user_book.id, page=page)
+    user_book.current_page = page
+    db.commit()
+    db.refresh(user_book)
+    return user_book

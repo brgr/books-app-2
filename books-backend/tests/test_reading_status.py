@@ -214,3 +214,37 @@ def test_note_events_are_recorded(client, auth_headers, created_book):
     event_types = [event["event_type"] for event in events_response.json()]
 
     assert "note_set" in event_types
+
+
+def test_progress_requires_start(client, auth_headers, created_book):
+    book_id = created_book["id"]
+
+    response = client.post(
+        f"/books/{book_id}/progress", json={"page": 10}, headers=auth_headers
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "Cannot record progress before starting" in response.json()["detail"]
+
+
+def test_progress_clamps_to_page_count(client, auth_headers, created_book):
+    book_id = created_book["id"]
+
+    response = client.put(
+        f"/books/{book_id}/status", json={"status": "started"}, headers=auth_headers
+    )
+    assert response.status_code == status.HTTP_200_OK
+
+    response = client.post(
+        f"/books/{book_id}/progress", json={"page": 9999}, headers=auth_headers
+    )
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data["current_page"] == created_book["page_count"]
+
+    events_response = client.get(f"/books/{book_id}/events", headers=auth_headers)
+    assert events_response.status_code == status.HTTP_200_OK
+    progress_events = [
+        event for event in events_response.json() if event["event_type"] == "progress_set"
+    ]
+    assert progress_events
+    assert progress_events[0]["page"] == created_book["page_count"]

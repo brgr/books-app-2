@@ -15,6 +15,8 @@ function formatEventType(event: BookEvent): string {
       return 'Finished reading'
     case BookEventType.NOTE_SET:
       return event.note ? 'Note updated' : 'Note cleared'
+    case BookEventType.PROGRESS_SET:
+      return 'Progress updated'
     default:
       return event.event_type
   }
@@ -56,6 +58,9 @@ function formatTime(dateStr: string): string {
           <div class="event-date">{{ formatDate(event.occurred_at) }} at {{ formatTime(event.occurred_at) }}</div>
           <div v-if="event.event_type === BookEventType.NOTE_SET && event.note" class="event-note">
             {{ event.note }}
+          </div>
+          <div v-if="event.event_type === BookEventType.PROGRESS_SET && event.page !== null && event.page !== undefined" class="event-note">
+            Page {{ event.page }}
           </div>
         </div>
       </div>

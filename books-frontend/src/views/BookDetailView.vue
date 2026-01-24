@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {computed, ref, onMounted} from 'vue'
 import {useRouter, useRoute} from 'vue-router'
-import {getBook, setReadingStatus, deleteBook, getBookEvents} from '../api/books'
+import {getBook, setReadingStatus, deleteBook, getBookEvents, addBookProgress} from '../api/books'
 import {getMediaUrl} from '../api/client'
 import BookFormModal from '../components/BookFormModal.vue'
 import BookSearchModal from '../components/BookSearchModal.vue'
@@ -20,6 +20,8 @@ const error = ref('')
 const updatingStatus = ref(false)
 const notesDraft = ref('')
 const notesSaving = ref(false)
+const progressDraft = ref<string | number>('')
+const progressSaving = ref(false)
 const showEditModal = ref(false)
 const showSearchModal = ref(false)
 const showFormModal = ref(false)
@@ -42,6 +44,7 @@ async function loadBook() {
   try {
     book.value = await getBook(bookId)
     notesDraft.value = book.value.user_status?.notes ?? ''
+    progressDraft.value = book.value.user_status?.current_page?.toString() ?? ''
     await loadEvents(bookId)
   } catch (err: any) {
     console.error('Failed to load book:', err)
@@ -66,6 +69,7 @@ const canStartReading = computed(() => {
 })
 
 const canFinishReading = computed(() => book.value?.user_status?.status === ReadingStatus.STARTED)
+const canUpdateProgress = computed(() => book.value?.user_status?.status === ReadingStatus.STARTED)
 
 function normalizeNotes(value: string): string | null {
   return value === '' ? null : value
@@ -126,6 +130,40 @@ async function handleSaveNotes() {
     alert('Failed to save notes')
   } finally {
     notesSaving.value = false
+  }
+}
+
+async function handleSaveProgress() {
+  if (!book.value) return
+  if (!canUpdateProgress.value) return
+
+  const rawProgress = progressDraft.value
+  const trimmed =
+      typeof rawProgress === 'string'
+        ? rawProgress.trim()
+        : String(rawProgress ?? '').trim()
+  if (!trimmed) {
+    alert('Please enter a page number.')
+    return
+  }
+
+  const page = Number.parseInt(trimmed, 10)
+  if (Number.isNaN(page) || page < 0) {
+    alert('Please enter a valid page number.')
+    return
+  }
+
+  progressSaving.value = true
+  try {
+    const updatedStatus = await addBookProgress(book.value.id, {page})
+    book.value.user_status = updatedStatus
+    progressDraft.value = updatedStatus.current_page?.toString() ?? ''
+    await loadEvents(book.value.id)
+  } catch (error) {
+    console.error('Failed to save progress:', error)
+    alert('Failed to save progress')
+  } finally {
+    progressSaving.value = false
   }
 }
 
@@ -267,6 +305,11 @@ function handleNewBookSaved() {
               <div v-if="book.user_status.finished_at" class="date-item">
                 <strong>Finished:</strong> {{ formatShortDate(book.user_status.finished_at) }}
               </div>
+              <div v-if="book.user_status.current_page !== null" class="date-item">
+                <strong>Current page:</strong>
+                {{ book.user_status.current_page }}
+                <span v-if="book.page_count">/ {{ book.page_count }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -296,6 +339,30 @@ function handleNewBookSaved() {
             </div>
           </div>
 
+          <div class="book-progress">
+            <h2>Progress</h2>
+            <div class="progress-row">
+              <input
+                  v-model="progressDraft"
+                  type="number"
+                  min="0"
+                  class="progress-input"
+                  :disabled="!canUpdateProgress || progressSaving"
+                  placeholder="Page"
+              />
+              <button
+                  class="btn-primary"
+                  @click="handleSaveProgress"
+                  :disabled="!canUpdateProgress || progressSaving"
+              >
+                {{ progressSaving ? 'Saving...' : 'Update Progress' }}
+              </button>
+            </div>
+            <p v-if="!canUpdateProgress" class="progress-hint">
+              Start reading to track progress.
+            </p>
+          </div>
+
           <div class="book-metadata">
             <h2>Book Details</h2>
             <div class="metadata-grid">
@@ -310,6 +377,11 @@ function handleNewBookSaved() {
               </div>
               <div class="metadata-item">
                 <strong>Added:</strong> {{ formatShortDate(book.created_at) }}
+              </div>
+              <div v-if="book.user_status && book.user_status.current_page !== null" class="metadata-item">
+                <strong>Current page:</strong>
+                {{ book.user_status.current_page }}
+                <span v-if="book.page_count">/ {{ book.page_count }}</span>
               </div>
             </div>
           </div>
@@ -501,6 +573,39 @@ function handleNewBookSaved() {
   margin-top: var(--spacing-sm);
   display: flex;
   justify-content: flex-end;
+}
+
+.book-progress {
+  margin-bottom: var(--spacing-xl);
+}
+
+.book-progress h2 {
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: 1.25rem;
+}
+
+.progress-row {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.progress-input {
+  width: 160px;
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.progress-hint {
+  margin-top: var(--spacing-xs);
+  color: var(--color-text-secondary);
+  font-size: 12px;
 }
 
 .book-metadata h2 {
