@@ -61,6 +61,17 @@ from app.schemas import (
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
 
+# Add long-lived cache headers for immutable cover uploads.
+@app.middleware("http")
+async def add_cover_cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    covers_prefix = f"{settings.uploads_url_prefix}/covers/"
+    if request.url.path.startswith(covers_prefix) and response.status_code == 200:
+        response.headers.setdefault(
+            "Cache-Control", "public, max-age=31536000, immutable"
+        )
+    return response
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,  # type: ignore[arg-type]
