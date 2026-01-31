@@ -39,7 +39,7 @@ from app.book_events import (
 )
 from app.config import settings
 from app.database import get_db
-from app.google_books import search_google_books
+from app.google_books import search_google_books, GoogleBooksRateLimitError
 from app.image_utils import download_cover_image
 from app.models import User, Book, UserBook, BookEvent, BookEventCode, ReadingStatus
 from app.schemas import (
@@ -254,7 +254,20 @@ async def search_books(
             detail="Search query cannot be empty",
         )
 
-    results = await search_google_books(q)
+    try:
+        results = await search_google_books(q)
+    except GoogleBooksRateLimitError as e:
+        headers = {}
+        if e.retry_after:
+            headers["Retry-After"] = e.retry_after
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=(
+                "Google Books rate limit exceeded. "
+                "Try again later or set GOOGLE_BOOKS_API_KEY."
+            ),
+            headers=headers,
+        )
     return results
 
 

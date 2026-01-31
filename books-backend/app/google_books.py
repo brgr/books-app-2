@@ -4,6 +4,12 @@ from typing import Optional
 from app.config import settings
 
 
+class GoogleBooksRateLimitError(Exception):
+    def __init__(self, retry_after: Optional[str] = None):
+        self.retry_after = retry_after
+        super().__init__("Google Books API rate limit exceeded")
+
+
 async def search_google_books(query: str, max_results: int = 10) -> list[dict]:
     """
     Search for books using the Google Books API.
@@ -32,6 +38,8 @@ async def search_google_books(query: str, max_results: int = 10) -> list[dict]:
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(base_url, params=params)
+            if response.status_code == 429:
+                raise GoogleBooksRateLimitError(response.headers.get("Retry-After"))
             response.raise_for_status()
             data = response.json()
 
@@ -44,12 +52,20 @@ async def search_google_books(query: str, max_results: int = 10) -> list[dict]:
 
         return books
 
+    except GoogleBooksRateLimitError:
+        raise
+    except httpx.HTTPStatusError as e:
+        # Log response details to surface errors like bad API keys or quota issues.
+        status = e.response.status_code
+        body = (e.response.text or "").strip()
+        print(f"Google Books API error: status={status} body={body}")
+        return []
     except httpx.HTTPError as e:
-        # Log the error but don't crash - return empty results
-        print(f"Google Books API error: {e}")
+        # Network or protocol error.
+        print(f"Google Books API error: {e!r}")
         return []
     except Exception as e:
-        print(f"Unexpected error searching Google Books: {e}")
+        print(f"Unexpected error searching Google Books: {e!r}")
         return []
 
 

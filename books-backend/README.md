@@ -40,3 +40,26 @@ Run the API locally with FastAPI's dev server (binds to all interfaces so you ca
 ```bash
 uv run fastapi dev main.py --host 0.0.0.0 --port 8000
 ```
+
+## Google Books API key setup
+
+The Books API expects each request to identify your application using an API key. For this app, an API key is enough.
+
+Create and enable a key:
+
+1. Create or select a Google Cloud project, then enable the Google Books API for that project in the API Library.
+2. Create an API key in the Cloud Console Credentials page.
+3. Restrict the key before using it in production (recommended).
+
+Console entry points (paste in your browser):
+
+```
+https://console.cloud.google.com/apis/library
+https://console.cloud.google.com/apis/credentials
+```
+
+Add the key to `.env`:
+
+```
+GOOGLE_BOOKS_API_KEY=your-key-here
+```
