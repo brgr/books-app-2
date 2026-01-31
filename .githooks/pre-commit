@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(git rev-parse --show-toplevel)
+
+echo "Running backend typecheck (ty)..."
+(
+  cd "$repo_root/books-backend"
+  uv run ty check
+)
+
+echo "Running backend lint (ruff)..."
+(
+  cd "$repo_root/books-backend"
+  uv run ruff check
+)
+
+echo "Running frontend typecheck..."
+(
+  cd "$repo_root/books-frontend"
+  npm run typecheck
+)
