@@ -12,8 +12,11 @@ async def test_download_cover_image_from_google_books():
     result = await download_cover_image(url)
 
     assert result is not None
-    assert result.startswith("/uploads/covers/")
-    assert result.endswith((".jpg", ".png", ".webp", ".gif"))
+    cover_url, thumbnail_url = result
+    assert cover_url.startswith("/uploads/covers/")
+    assert cover_url.endswith((".jpg", ".png", ".webp", ".gif"))
+    assert thumbnail_url is not None
+    assert thumbnail_url.startswith("/uploads/covers/thumbnails/")
 
 
 async def test_download_cover_image_invalid_url():

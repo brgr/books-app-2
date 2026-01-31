@@ -47,8 +47,8 @@ function getStatusLabel(status: ReadingStatus | null): string {
     <div class="book-content">
       <router-link :to="{ name: 'book-detail', params: { id: book.id } }" class="book-cover-link">
         <img
-          v-if="book.cover_image_url"
-          :src="getMediaUrl(book.cover_image_url)"
+          v-if="book.cover_thumbnail_url || book.cover_image_url"
+          :src="getMediaUrl(book.cover_thumbnail_url || book.cover_image_url)"
           :alt="book.title"
           class="book-cover book-cover-clickable"
         />
