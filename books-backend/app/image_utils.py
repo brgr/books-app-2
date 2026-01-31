@@ -54,7 +54,7 @@ def _create_thumbnail(content: bytes, cover_id: uuid.UUID) -> str | None:
         elif image.mode != "RGB":
             image = image.convert("RGB")
 
-        thumb = ImageOps.fit(image, THUMBNAIL_SIZE, method=Image.Resampling.LANCZOS)
+        thumb = ImageOps.contain(image, THUMBNAIL_SIZE, method=Image.Resampling.LANCZOS)
         thumb_filename = f"{cover_id}_thumb.jpg"
         thumb_path = thumbnails_dir / thumb_filename
         thumb.save(thumb_path, format="JPEG", quality=85, optimize=True, progressive=True)
