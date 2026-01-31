@@ -236,8 +236,8 @@ function toggleFilterDropdown() {
             class="grid-cover-link"
           >
             <img
-              v-if="book.cover_image_url"
-              :src="getMediaUrl(book.cover_image_url)"
+              v-if="book.cover_thumbnail_url || book.cover_image_url"
+              :src="getMediaUrl(book.cover_thumbnail_url || book.cover_image_url)"
               :alt="book.title"
               :title="book.title + ' by ' + book.author"
               class="grid-cover"

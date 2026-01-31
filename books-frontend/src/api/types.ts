@@ -35,6 +35,7 @@ export interface Book {
   published_date: string | null
   page_count: number | null
   cover_image_url: string | null
+  cover_thumbnail_url: string | null
   created_at: string
   updated_at: string
   user_status: UserBook | null

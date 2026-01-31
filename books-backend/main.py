@@ -1,5 +1,3 @@
-import shutil
-import uuid
 from datetime import datetime, UTC
 from typing import Annotated, cast
 
@@ -40,7 +38,7 @@ from app.book_events import (
 from app.config import settings
 from app.database import get_db
 from app.google_books import search_google_books, GoogleBooksRateLimitError
-from app.image_utils import download_cover_image
+from app.image_utils import download_cover_image, store_cover_image, CONTENT_TYPE_TO_EXT
 from app.models import User, Book, UserBook, BookEvent, BookEventCode, ReadingStatus
 from app.schemas import (
     AccessTokenResponse,
@@ -80,10 +78,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Create uploads directory if it doesn't exist
-COVERS_DIR = settings.uploads_dir_path / "covers"
-COVERS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Mount static files for uploaded images
 app.mount(
@@ -283,9 +277,11 @@ async def create_book(
     # Download cover image if it's an external URL
     cover_url = data.get("cover_image_url")
     if cover_url and cover_url.startswith("http"):
-        local_path = await download_cover_image(cover_url)
-        if local_path:
-            data["cover_image_url"] = local_path
+        download_result = await download_cover_image(cover_url)
+        if download_result:
+            cover_path, thumbnail_path = download_result
+            data["cover_image_url"] = cover_path
+            data["cover_thumbnail_url"] = thumbnail_path
 
     book = Book(**data)
     db.add(book)
@@ -382,10 +378,16 @@ async def update_book(
 
     # Download cover image if it's an external URL
     cover_url = update_data.get("cover_image_url")
-    if cover_url and cover_url.startswith("http"):
-        local_path = await download_cover_image(cover_url)
-        if local_path:
-            update_data["cover_image_url"] = local_path
+    if "cover_image_url" in update_data:
+        cover_url = update_data.get("cover_image_url")
+        if cover_url and cover_url.startswith("http"):
+            download_result = await download_cover_image(cover_url)
+            if download_result:
+                cover_path, thumbnail_path = download_result
+                update_data["cover_image_url"] = cover_path
+                update_data["cover_thumbnail_url"] = thumbnail_path
+        elif not cover_url:
+            update_data["cover_thumbnail_url"] = None
 
     for key, value in update_data.items():
         setattr(book, key, value)
@@ -445,25 +447,27 @@ async def upload_book_cover(
             detail=f"Invalid file type. Allowed types: {', '.join(allowed_types)}",
         )
 
-    # Generate unique filename
     filename = file.filename or ""
-    file_extension = filename.rsplit(".", 1)[-1] if "." in filename else "jpg"
-    unique_filename = f"{uuid.uuid4()}.{file_extension}"
-    file_path = COVERS_DIR / unique_filename
+    file_extension = filename.rsplit(".", 1)[-1] if "." in filename else None
+    content = await file.read()
+    if not content:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file is empty",
+        )
 
-    # Save file
     try:
-        with file_path.open("wb") as buffer:
-            # noinspection PyTypeChecker
-            shutil.copyfileobj(file.file, buffer)
+        extension = CONTENT_TYPE_TO_EXT.get(file.content_type or "", file_extension)
+        cover_url, thumbnail_url = store_cover_image(content, extension)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to save file: {str(e)}",
         )
 
-    # Update book with cover URL
-    book.cover_image_url = f"{settings.uploads_url_prefix}/covers/{unique_filename}"
+    # Update book with cover URLs
+    book.cover_image_url = cover_url
+    book.cover_thumbnail_url = thumbnail_url
     db.commit()
     db.refresh(book)
 

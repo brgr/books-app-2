@@ -59,6 +59,7 @@ class Book(Base):
     published_date = Column(DateTime, nullable=True)
     page_count = Column(Integer, nullable=True)
     cover_image_url = Column(String(500), nullable=True)
+    cover_thumbnail_url = Column(String(500), nullable=True)
 
     # Relationship to users who have this book
     user_books = relationship(

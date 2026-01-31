@@ -253,12 +253,12 @@ function handleNewBookSaved() {
       <div v-else-if="book" class="book-detail">
         <div class="book-header">
           <div class="book-cover-section">
-            <img
-                v-if="book.cover_image_url"
-                :src="getMediaUrl(book.cover_image_url)"
+              <img
+                v-if="book.cover_image_url || book.cover_thumbnail_url"
+                :src="getMediaUrl(book.cover_image_url || book.cover_thumbnail_url)"
                 :alt="book.title"
                 class="book-cover-large"
-            />
+              />
             <div v-else class="book-cover-large book-cover-placeholder">
               No Cover
             </div>
