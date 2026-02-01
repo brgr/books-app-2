@@ -303,7 +303,7 @@ function toggleFilterDropdown() {
   justify-content: space-between;
   border-radius: var(--border-radius);
   max-width: 100%;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .search-bar {
