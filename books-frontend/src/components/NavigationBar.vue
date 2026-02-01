@@ -8,12 +8,22 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
-const showLogout = ref(isAuthenticated())
+const showMenu = ref(isAuthenticated())
+const isMenuOpen = ref(false)
 
 async function handleLogout() {
-  showLogout.value = false
+  showMenu.value = false
+  isMenuOpen.value = false
   await logout()
   router.push('/login')
+}
+
+function toggleMenu() {
+  isMenuOpen.value = !isMenuOpen.value
+}
+
+function closeMenu() {
+  isMenuOpen.value = false
 }
 </script>
 
@@ -34,8 +44,16 @@ async function handleLogout() {
         <button @click="emit('addBook')" class="btn-primary btn-add">
           Add book
         </button>
-        <div v-if="showLogout" class="navbar-user">
-          <button @click="handleLogout" class="navbar-link-btn">Logout</button>
+        <div v-if="showMenu" class="navbar-user">
+          <button class="menu-toggle" type="button" @click="toggleMenu" :aria-expanded="isMenuOpen" aria-label="Open user menu">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+          <div v-if="isMenuOpen" class="menu-backdrop" @click="closeMenu"></div>
+          <div v-if="isMenuOpen" class="menu-panel" role="menu">
+            <button class="menu-item" type="button" role="menuitem" @click="handleLogout">Logout</button>
+          </div>
         </div>
       </div>
     </div>
@@ -45,7 +63,7 @@ async function handleLogout() {
 <style scoped>
 .navbar {
   background-color: var(--color-bg-card);
-  overflow-x: hidden;
+  overflow: visible;
   width: 100%;
 }
 
@@ -56,7 +74,7 @@ async function handleLogout() {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .navbar-left {
@@ -132,11 +150,78 @@ async function handleLogout() {
 .navbar-user {
   display: flex;
   align-items: center;
+  position: relative;
 }
 
 .btn-add {
   padding: var(--spacing-sm) var(--spacing-lg);
   font-weight: 600;
+}
+
+.menu-toggle {
+  background: none;
+  border: none;
+  width: 36px;
+  height: 36px;
+  padding: 6px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+  border-radius: var(--border-radius);
+  transition: background-color 0.15s ease;
+}
+
+.menu-toggle:hover {
+  background-color: var(--color-bg);
+}
+
+.menu-toggle span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background-color: var(--color-text);
+  border-radius: 999px;
+}
+
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  z-index: 10;
+}
+
+.menu-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  min-width: 160px;
+  z-index: 11;
+  padding: var(--spacing-xs);
+}
+
+.menu-item {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 500;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.menu-item:hover {
+  background-color: var(--color-bg);
 }
 
 @media (max-width: 768px) {
@@ -167,9 +252,14 @@ async function handleLogout() {
     white-space: nowrap;
   }
 
-  .navbar-link-btn {
-    padding: var(--spacing-xs);
-    font-size: 13px;
+  .menu-toggle {
+    width: 32px;
+    height: 32px;
+    padding: 5px;
+  }
+
+  .menu-toggle span {
+    width: 16px;
   }
 }
 </style>
