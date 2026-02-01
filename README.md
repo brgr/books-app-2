@@ -149,7 +149,7 @@ Once the backend is running, visit `http://localhost:8000/docs` for interactive 
 
 ### Git Hooks
 
-This repo includes a versioned pre-commit hook that runs backend type checking and linting plus frontend type checking.
+This repo includes a versioned pre-commit hook that runs backend type checking, linting, and tests plus frontend type checking.
 
 Enable it once per clone (copies the versioned hook into Git's hooks folder):
 
