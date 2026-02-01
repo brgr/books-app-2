@@ -80,6 +80,7 @@ app.add_middleware(
 )
 
 # Mount static files for uploaded images
+settings.uploads_dir_path.mkdir(parents=True, exist_ok=True)
 app.mount(
     settings.uploads_url_prefix,
     StaticFiles(directory=settings.uploads_dir_path),
