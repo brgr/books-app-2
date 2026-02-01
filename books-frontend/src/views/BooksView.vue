@@ -631,8 +631,8 @@ function toggleFilterDropdown() {
 
 @media (max-width: 480px) {
   .books-grid {
-    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-    gap: var(--spacing-md);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--spacing-sm);
   }
 }
 </style>
