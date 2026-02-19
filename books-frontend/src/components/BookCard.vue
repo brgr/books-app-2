@@ -145,10 +145,13 @@ function getStatusLabel(status: ReadingStatus | null): string {
 .book-cover,
 .book-cover-placeholder {
   width: 120px;
-  height: 180px;
-  object-fit: cover;
+  height: auto;
   border-radius: var(--border-radius);
   flex-shrink: 0;
+}
+
+.book-cover {
+  display: block;
 }
 
 .book-cover-clickable {
@@ -162,6 +165,7 @@ function getStatusLabel(status: ReadingStatus | null): string {
 }
 
 .book-cover-placeholder {
+  aspect-ratio: 2 / 3;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -270,7 +274,7 @@ function getStatusLabel(status: ReadingStatus | null): string {
   .book-cover,
   .book-cover-placeholder {
     width: 100%;
-    height: 240px;
+    height: auto;
   }
 
   .book-header {
