@@ -21,6 +21,8 @@ const prefilledBookData = ref<GoogleBookResult | null>(null)
 const filterStatus = ref<ReadingStatus | ''>('')
 const searchQuery = ref('')
 const showFilterDropdown = ref(false)
+const shelfFilter = ref<'to-read' | 'finished'>('to-read')
+const showShelfMenu = ref(false)
 
 // Load saved view mode from localStorage, default to 'list'
 const savedViewMode = localStorage.getItem('booksViewMode') as 'list' | 'grid' | null
@@ -35,6 +37,18 @@ const filteredBooks = computed(() => {
   if (!booksData.value) return []
 
   let books = booksData.value.items
+
+  if (shelfFilter.value === 'to-read') {
+    const toReadStatuses: ReadonlyArray<ReadingStatus> = [
+      ReadingStatus.WANT_TO_READ,
+      ReadingStatus.STARTED,
+    ]
+    books = books.filter(
+      book => !book.user_status || toReadStatuses.includes(book.user_status.status)
+    )
+  } else {
+    books = books.filter(book => book.user_status?.status === ReadingStatus.FINISHED)
+  }
 
   // Filter by status
   if (filterStatus.value) {
@@ -120,10 +134,28 @@ function getStatusLabel(status: ReadingStatus): string {
 function toggleFilterDropdown() {
   showFilterDropdown.value = !showFilterDropdown.value
 }
+
+const shelfLabel = computed(() => (shelfFilter.value === 'to-read' ? 'To Read' : 'Finished'))
+
+function toggleShelfMenu() {
+  showShelfMenu.value = !showShelfMenu.value
+}
+
+function setShelfFilter(next: 'to-read' | 'finished') {
+  shelfFilter.value = next
+  const allowedStatuses: ReadonlyArray<ReadingStatus> =
+    next === 'to-read'
+      ? [ReadingStatus.WANT_TO_READ, ReadingStatus.STARTED]
+      : [ReadingStatus.FINISHED]
+  if (filterStatus.value && !allowedStatuses.includes(filterStatus.value as ReadingStatus)) {
+    filterStatus.value = ''
+  }
+  showShelfMenu.value = false
+}
 </script>
 
 <template>
-  <div>
+  <div class="books-view">
     <NavigationBar @add-book="handleAddBook" />
 
     <div class="container">
@@ -289,10 +321,149 @@ function toggleFilterDropdown() {
       @close="handleFormModalClose"
       @saved="handleBookSaved"
     />
+
+    <div class="bottom-bar">
+      <div v-if="showShelfMenu" class="bottom-menu" role="menu">
+        <button
+          type="button"
+          role="menuitemradio"
+          :aria-checked="shelfFilter === 'to-read'"
+          :class="['bottom-menu-item', { active: shelfFilter === 'to-read' }]"
+          @click="setShelfFilter('to-read')"
+        >
+          To Read
+        </button>
+        <button
+          type="button"
+          role="menuitemradio"
+          :aria-checked="shelfFilter === 'finished'"
+          :class="['bottom-menu-item', { active: shelfFilter === 'finished' }]"
+          @click="setShelfFilter('finished')"
+        >
+          Finished
+        </button>
+      </div>
+
+      <button
+        type="button"
+        class="bottom-bar-button"
+        @click="toggleShelfMenu"
+        :aria-expanded="showShelfMenu"
+      >
+        <span class="bar-text">{{ shelfLabel }}</span>
+        <span class="bar-arrow" aria-hidden="true">
+          <svg viewBox="0 0 24 24" role="presentation" focusable="false">
+            <path d="M12 5l6.5 7.2a1.1 1.1 0 0 1-1.7 1.3L12 8.9l-4.8 4.6a1.1 1.1 0 0 1-1.6-1.5L12 5z"/>
+          </svg>
+        </span>
+      </button>
+    </div>
   </div>
 </template>
 
 <style scoped>
+.books-view {
+  min-height: 100svh;
+  padding-bottom: 112px;
+  box-sizing: border-box;
+}
+
+.bottom-bar {
+  position: fixed;
+  left: 50%;
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(92vw, 420px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.bottom-bar-button {
+  width: 100%;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 2px solid #1b2639;
+  border-radius: 999px;
+  box-shadow: 0 10px 26px rgba(27, 38, 57, 0.18);
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #1b2639;
+  gap: 10px;
+  padding: 0 22px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bottom-bar-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(27, 38, 57, 0.24);
+}
+
+.bottom-bar-button:focus-visible {
+  outline: 2px solid #1b2639;
+  outline-offset: 3px;
+}
+
+.bottom-menu {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(86vw, 360px);
+  background: #fff;
+  border: 2px solid #1b2639;
+  border-radius: 18px;
+  box-shadow: 0 12px 30px rgba(27, 38, 57, 0.2);
+  padding: 8px;
+  display: flex;
+  gap: 8px;
+}
+
+.bottom-menu-item {
+  flex: 1;
+  border: 1px solid #1b2639;
+  background: transparent;
+  color: #1b2639;
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 10px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.bottom-menu-item.active {
+  background: #1b2639;
+  color: #fff;
+}
+
+.bar-text {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.12em;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.bar-arrow {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.bar-arrow svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
 .search-header {
   display: flex;
   gap: var(--spacing-sm);
@@ -633,6 +804,12 @@ function toggleFilterDropdown() {
   .books-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: var(--spacing-sm);
+  }
+}
+
+@media (min-width: 600px) {
+  .books-view {
+    padding-bottom: 120px;
   }
 }
 </style>
