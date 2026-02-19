@@ -446,14 +446,14 @@ function handleNewBookSaved() {
 .book-cover-large {
   width: min(240px, 100%);
   max-width: 100%;
-  aspect-ratio: 2 / 3;
   height: auto;
-  object-fit: cover;
   border-radius: var(--border-radius);
   box-shadow: var(--shadow);
+  display: block;
 }
 
 .book-cover-placeholder {
+  aspect-ratio: 2 / 3;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -650,7 +650,6 @@ function handleNewBookSaved() {
   .book-cover-large {
     width: min(200px, 100%);
     height: auto;
-    aspect-ratio: 2 / 3;
   }
 
   .book-info h1 {

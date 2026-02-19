@@ -229,13 +229,17 @@ function handleKeyPress(event: KeyboardEvent) {
 .book-thumbnail,
 .book-thumbnail-placeholder {
   width: 80px;
-  height: 120px;
-  object-fit: cover;
+  height: auto;
   border-radius: var(--border-radius);
   flex-shrink: 0;
 }
 
+.book-thumbnail {
+  display: block;
+}
+
 .book-thumbnail-placeholder {
+  aspect-ratio: 2 / 3;
   display: flex;
   align-items: center;
   justify-content: center;

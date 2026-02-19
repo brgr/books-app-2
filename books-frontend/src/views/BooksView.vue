@@ -696,6 +696,7 @@ function setShelfFilter(next: 'to-read' | 'finished') {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: var(--spacing-md);
+  align-items: center;
   width: 100%;
   max-width: 100%;
   overflow-x: hidden;
@@ -704,6 +705,7 @@ function setShelfFilter(next: 'to-read' | 'finished') {
 .grid-item {
   display: flex;
   flex-direction: column;
+  justify-content: flex-end;
   min-width: 0;
   width: 100%;
   max-width: 100%;
@@ -718,12 +720,12 @@ function setShelfFilter(next: 'to-read' | 'finished') {
 .grid-cover {
   width: 100%;
   max-width: 100%;
-  aspect-ratio: 2/3;
-  object-fit: cover;
+  height: auto;
   border-radius: var(--border-radius);
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   box-shadow: var(--shadow);
+  display: block;
 }
 
 .grid-cover:hover {
