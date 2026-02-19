@@ -105,6 +105,20 @@ class UserBookResponse(UserBookBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+# Book list schemas
+class BookListResponse(BaseModel):
+    id: int
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BookListItemReorderRequest(BaseModel):
+    moved_book_id: int
+    before_book_id: Optional[int] = None
+    after_book_id: Optional[int] = None
+
+
 # Pagination
 class PaginatedBooks(BaseModel):
     items: list[BookResponse]

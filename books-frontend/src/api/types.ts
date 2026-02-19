@@ -26,6 +26,17 @@ export interface UserBook {
   updated_at: string
 }
 
+export interface BookList {
+  id: number
+  name: string
+}
+
+export interface BookListReorderRequest {
+  moved_book_id: number
+  before_book_id?: number | null
+  after_book_id?: number | null
+}
+
 export interface Book {
   id: number
   title: string

@@ -1,11 +1,39 @@
 import { apiClient } from './client'
-import type { Book, PaginatedBooks, BookCreate, BookUpdate, UserBookStatusUpdate, UserBook, GoogleBookResult, BookEvent, BookProgressUpdate } from './types'
+import type {
+  Book,
+  PaginatedBooks,
+  BookCreate,
+  BookUpdate,
+  UserBookStatusUpdate,
+  UserBook,
+  GoogleBookResult,
+  BookEvent,
+  BookProgressUpdate,
+  BookList,
+  BookListReorderRequest,
+} from './types'
 
 export async function getBooks(page = 1, pageSize = 20): Promise<PaginatedBooks> {
   const response = await apiClient.get<PaginatedBooks>('/books', {
     params: { page, page_size: pageSize },
   })
   return response.data
+}
+
+export async function getLists(): Promise<BookList[]> {
+  const response = await apiClient.get<BookList[]>('/lists')
+  return response.data
+}
+
+export async function getListBooks(listId: number, page = 1, pageSize = 20): Promise<PaginatedBooks> {
+  const response = await apiClient.get<PaginatedBooks>(`/lists/${listId}/books`, {
+    params: { page, page_size: pageSize },
+  })
+  return response.data
+}
+
+export async function reorderListItem(listId: number, payload: BookListReorderRequest): Promise<void> {
+  await apiClient.post(`/lists/${listId}/items/reorder`, payload)
 }
 
 export async function getBook(id: number): Promise<Book> {
