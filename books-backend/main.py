@@ -1,4 +1,5 @@
 from datetime import datetime, UTC
+from decimal import Decimal
 from typing import Annotated, cast
 
 from fastapi import (
@@ -14,6 +15,7 @@ from fastapi import (
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.auth import (
@@ -39,7 +41,16 @@ from app.config import settings
 from app.database import get_db
 from app.google_books import search_google_books, GoogleBooksRateLimitError
 from app.image_utils import download_cover_image, store_cover_image, CONTENT_TYPE_TO_EXT
-from app.models import User, Book, UserBook, BookEvent, BookEventCode, ReadingStatus
+from app.models import (
+    User,
+    Book,
+    UserBook,
+    BookEvent,
+    BookEventCode,
+    ReadingStatus,
+    BookList,
+    BookListItem,
+)
 from app.schemas import (
     AccessTokenResponse,
     RefreshRequest,
@@ -51,6 +62,8 @@ from app.schemas import (
     PaginatedBooks,
     UserBookStatusUpdate,
     UserBookResponse,
+    BookListResponse,
+    BookListItemReorderRequest,
     GoogleBookResult,
     UserBooksExportResponse,
     BookEventResponse,
@@ -58,6 +71,66 @@ from app.schemas import (
 )
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
+
+DEFAULT_LIST_NAMES = ("To Read", "Finished")
+SORT_ORDER_GAP = Decimal("1000")
+
+
+def _list_name_for_status(status: ReadingStatus) -> str | None:
+    if status in {ReadingStatus.WANT_TO_READ, ReadingStatus.STARTED, ReadingStatus.ABANDONED}:
+        return "To Read"
+    if status == ReadingStatus.FINISHED:
+        return "Finished"
+    return None
+
+
+def _get_or_create_default_lists(db: Session, user_id: int) -> dict[str, BookList]:
+    existing = (
+        db.query(BookList).filter(BookList.user_id == user_id).all()
+    )
+    lists_by_name = {book_list.name: book_list for book_list in existing}
+    for name in DEFAULT_LIST_NAMES:
+        if name not in lists_by_name:
+            book_list = BookList(user_id=user_id, name=name)
+            db.add(book_list)
+            db.flush()
+            lists_by_name[name] = book_list
+    return lists_by_name
+
+
+def _ensure_list_item(db: Session, list_id: int, user_book_id: int) -> BookListItem:
+    item = (
+        db.query(BookListItem)
+        .filter(
+            BookListItem.list_id == list_id,
+            BookListItem.user_book_id == user_book_id,
+        )
+        .first()
+    )
+    if item is not None:
+        return item
+
+    max_sort = (
+        db.query(func.max(BookListItem.sort_order))
+        .filter(BookListItem.list_id == list_id)
+        .scalar()
+    )
+    next_sort = (max_sort or Decimal("0")) + SORT_ORDER_GAP
+    item = BookListItem(list_id=list_id, user_book_id=user_book_id, sort_order=next_sort)
+    db.add(item)
+    db.flush()
+    return item
+
+
+def _rebalance_list_items(db: Session, list_id: int) -> None:
+    items = (
+        db.query(BookListItem)
+        .filter(BookListItem.list_id == list_id)
+        .order_by(BookListItem.sort_order.asc(), BookListItem.id.asc())
+        .all()
+    )
+    for index, item in enumerate(items, start=1):
+        item.sort_order = SORT_ORDER_GAP * Decimal(index)
 
 # Add long-lived cache headers for immutable cover uploads.
 @app.middleware("http")
@@ -230,6 +303,165 @@ async def root():
     return {"message": "Welcome to the Books API!"}
 
 
+# Book list endpoints
+
+
+@app.get("/lists", response_model=list[BookListResponse])
+def list_book_lists(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    lists_by_name = _get_or_create_default_lists(db, cast(int, current_user.id))
+    db.commit()
+    ordered = []
+    for name in DEFAULT_LIST_NAMES:
+        if name in lists_by_name:
+            ordered.append(lists_by_name[name])
+    # Include any non-default lists after the defaults
+    for book_list in sorted(
+        lists_by_name.values(), key=lambda entry: entry.id
+    ):
+        if book_list.name not in DEFAULT_LIST_NAMES:
+            ordered.append(book_list)
+    return ordered
+
+
+@app.get("/lists/{list_id}/books", response_model=PaginatedBooks)
+def list_books_in_list(
+    list_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    page: int = 1,
+    page_size: int = 20,
+):
+    if page < 1:
+        page = 1
+    if page_size < 1 or page_size > 100:
+        page_size = 20
+
+    book_list = (
+        db.query(BookList)
+        .filter(BookList.id == list_id, BookList.user_id == current_user.id)
+        .first()
+    )
+    if not book_list:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="List not found")
+
+    total = (
+        db.query(BookListItem)
+        .join(UserBook, BookListItem.user_book_id == UserBook.id)
+        .filter(BookListItem.list_id == list_id, UserBook.user_id == current_user.id)
+        .count()
+    )
+
+    rows = (
+        db.query(Book, UserBook)
+        .join(UserBook, UserBook.book_id == Book.id)
+        .join(BookListItem, BookListItem.user_book_id == UserBook.id)
+        .filter(BookListItem.list_id == list_id, UserBook.user_id == current_user.id)
+        .order_by(BookListItem.sort_order.asc(), BookListItem.id.asc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+    books = []
+    for book, user_book in rows:
+        project_user_book_state(db, user_book)
+        book.user_status = user_book
+        books.append(book)
+
+    pages = (total + page_size - 1) // page_size
+
+    return {
+        "items": books,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "pages": pages,
+    }
+
+
+@app.post("/lists/{list_id}/items/reorder", status_code=status.HTTP_204_NO_CONTENT)
+def reorder_list_item(
+    list_id: int,
+    payload: BookListItemReorderRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    book_list = (
+        db.query(BookList)
+        .filter(BookList.id == list_id, BookList.user_id == current_user.id)
+        .first()
+    )
+    if not book_list:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="List not found")
+
+    moved_user_book = (
+        db.query(UserBook)
+        .filter(
+            UserBook.user_id == current_user.id,
+            UserBook.book_id == payload.moved_book_id,
+        )
+        .first()
+    )
+    if not moved_user_book:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Book not in your library"
+        )
+
+    moved_item = _ensure_list_item(db, list_id=list_id, user_book_id=moved_user_book.id)
+
+    def _resolve_item(book_id: int | None) -> BookListItem | None:
+        if book_id is None:
+            return None
+        user_book = (
+            db.query(UserBook)
+            .filter(UserBook.user_id == current_user.id, UserBook.book_id == book_id)
+            .first()
+        )
+        if not user_book:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Referenced book is not in your library",
+            )
+        item = (
+            db.query(BookListItem)
+            .filter(
+                BookListItem.list_id == list_id,
+                BookListItem.user_book_id == user_book.id,
+            )
+            .first()
+        )
+        if not item:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Referenced book is not in this list",
+            )
+        return item
+
+    before_item = _resolve_item(payload.before_book_id)
+    after_item = _resolve_item(payload.after_book_id)
+
+    if before_item and after_item and before_item.sort_order >= after_item.sort_order:
+        _rebalance_list_items(db, list_id)
+        db.flush()
+        before_item = _resolve_item(payload.before_book_id)
+        after_item = _resolve_item(payload.after_book_id)
+
+    if before_item and after_item:
+        moved_item.sort_order = (before_item.sort_order + after_item.sort_order) / Decimal("2")
+    elif before_item:
+        moved_item.sort_order = before_item.sort_order + SORT_ORDER_GAP
+    elif after_item:
+        moved_item.sort_order = after_item.sort_order - SORT_ORDER_GAP
+    else:
+        moved_item.sort_order = SORT_ORDER_GAP
+
+    db.commit()
+    return None
+
+
 # Books CRUD endpoints
 
 
@@ -288,6 +520,21 @@ async def create_book(
     db.add(book)
     db.commit()
     db.refresh(book)
+
+    # Creating a book implies adding it to the user's library (To Read by default).
+    user_id = cast(int, current_user.id)
+    user_book = ensure_added_event(db, user_id=user_id, book_id=cast(int, book.id))
+    project_user_book_state(db, user_book)
+    lists_by_name = _get_or_create_default_lists(db, user_id)
+    target_list_name = _list_name_for_status(cast(ReadingStatus, user_book.status))
+    if target_list_name and target_list_name in lists_by_name:
+        _ensure_list_item(
+            db,
+            list_id=cast(int, lists_by_name[target_list_name].id),
+            user_book_id=cast(int, user_book.id),
+        )
+    db.commit()
+
     return book
 
 
@@ -557,6 +804,25 @@ def set_reading_status(
             user_book.notes = normalized_notes
 
     project_user_book_state(db, user_book)
+
+    lists_by_name = _get_or_create_default_lists(db, user_id)
+    target_list_name = _list_name_for_status(cast(ReadingStatus, user_book.status))
+    target_list_id = (
+        lists_by_name[target_list_name].id if target_list_name in lists_by_name else None
+    )
+    if target_list_id is not None:
+        _ensure_list_item(db, list_id=cast(int, target_list_id), user_book_id=user_book_id)
+
+    for list_name, book_list in lists_by_name.items():
+        if book_list.id != target_list_id:
+            (
+                db.query(BookListItem)
+                .filter(
+                    BookListItem.list_id == book_list.id,
+                    BookListItem.user_book_id == user_book_id,
+                )
+                .delete()
+            )
     db.commit()
     db.refresh(user_book)
     return user_book

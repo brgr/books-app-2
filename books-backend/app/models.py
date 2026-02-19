@@ -7,6 +7,7 @@ from sqlalchemy import (
     ForeignKey,
     Enum,
     UniqueConstraint,
+    Numeric,
 )
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
@@ -42,6 +43,9 @@ class User(Base):
     # Relationship to user's books
     user_books = relationship(
         "UserBook", back_populates="user", cascade="all, delete-orphan"
+    )
+    lists = relationship(
+        "BookList", back_populates="user", cascade="all, delete-orphan"
     )
 
     def __repr__(self):
@@ -89,6 +93,9 @@ class UserBook(Base):
     book = relationship("Book", back_populates="user_books")
     events = relationship(
         "BookEvent", back_populates="user_book", cascade="all, delete-orphan"
+    )
+    list_items = relationship(
+        "BookListItem", back_populates="user_book", cascade="all, delete-orphan"
     )
 
     def __repr__(self):
@@ -165,3 +172,45 @@ class BookEventProgress(Base):
 
     def __repr__(self):
         return f"<BookEventProgress(event_id='{self.event_id}', page={self.page})>"
+
+
+class BookList(Base):
+    __tablename__ = "book_lists"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(100), nullable=False)
+
+    user = relationship("User", back_populates="lists")
+    items = relationship(
+        "BookListItem", back_populates="list", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (UniqueConstraint("user_id", "name", name="uq_book_lists_user_name"),)
+
+    def __repr__(self):
+        return f"<BookList(user_id={self.user_id}, name='{self.name}')>"
+
+
+class BookListItem(Base):
+    __tablename__ = "book_list_items"
+
+    id = Column(Integer, primary_key=True)
+    list_id = Column(Integer, ForeignKey("book_lists.id", ondelete="CASCADE"), nullable=False)
+    user_book_id = Column(
+        Integer, ForeignKey("user_books.id", ondelete="CASCADE"), nullable=False
+    )
+    sort_order = Column(Numeric(20, 10), nullable=False)
+
+    list = relationship("BookList", back_populates="items")
+    user_book = relationship("UserBook", back_populates="list_items")
+
+    __table_args__ = (
+        UniqueConstraint("list_id", "user_book_id", name="uq_book_list_items_list_user_book"),
+    )
+
+    def __repr__(self):
+        return (
+            f"<BookListItem(list_id={self.list_id}, user_book_id={self.user_book_id}, "
+            f"sort_order={self.sort_order})>"
+        )

@@ -1,18 +1,21 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
-import { getBooks } from '../api/books'
+import draggable from 'vuedraggable'
+import { useRouter } from 'vue-router'
+import { getListBooks, getLists, reorderListItem } from '../api/books'
 import { getMediaUrl } from '../api/client'
 import BookCard from '../components/BookCard.vue'
 import BookFormModal from '../components/BookFormModal.vue'
 import BookSearchModal from '../components/BookSearchModal.vue'
 import NavigationBar from '../components/NavigationBar.vue'
-import { ReadingStatus, type PaginatedBooks, type GoogleBookResult } from '../api/types'
+import { ReadingStatus, type PaginatedBooks, type GoogleBookResult, type Book, type BookList } from '../api/types'
 
 const booksData = ref<PaginatedBooks | null>(null)
 const loading = ref(false)
 const error = ref('')
 const currentPage = ref(1)
 const pageSize = ref(20)
+const router = useRouter()
 
 const showSearchModal = ref(false)
 const showFormModal = ref(false)
@@ -23,6 +26,8 @@ const searchQuery = ref('')
 const showFilterDropdown = ref(false)
 const shelfFilter = ref<'to-read' | 'finished'>('to-read')
 const showShelfMenu = ref(false)
+const lists = ref<BookList[]>([])
+const activeListId = ref<number | null>(null)
 
 // Load saved view mode from localStorage, default to 'list'
 const savedViewMode = localStorage.getItem('booksViewMode') as 'list' | 'grid' | null
@@ -37,18 +42,6 @@ const filteredBooks = computed(() => {
   if (!booksData.value) return []
 
   let books = booksData.value.items
-
-  if (shelfFilter.value === 'to-read') {
-    const toReadStatuses: ReadonlyArray<ReadingStatus> = [
-      ReadingStatus.WANT_TO_READ,
-      ReadingStatus.STARTED,
-    ]
-    books = books.filter(
-      book => !book.user_status || toReadStatuses.includes(book.user_status.status)
-    )
-  } else {
-    books = books.filter(book => book.user_status?.status === ReadingStatus.FINISHED)
-  }
 
   // Filter by status
   if (filterStatus.value) {
@@ -67,16 +60,48 @@ const filteredBooks = computed(() => {
   return books
 })
 
+const gridBooks = ref<Book[]>([])
+const isDragging = ref(false)
+const lastDragTime = ref(0)
+watch(
+  filteredBooks,
+  (next) => {
+    gridBooks.value = [...next]
+  },
+  { immediate: true }
+)
+
 onMounted(() => {
   loadBooks()
 })
+
+function getShelfListName(): string {
+  return shelfFilter.value === 'to-read' ? 'To Read' : 'Finished'
+}
+
+function setActiveListForShelf() {
+  const targetName = getShelfListName()
+  const match = lists.value.find(list => list.name === targetName) || null
+  activeListId.value = match ? match.id : null
+}
+
+async function loadLists() {
+  lists.value = await getLists()
+  setActiveListForShelf()
+}
 
 async function loadBooks() {
   loading.value = true
   error.value = ''
 
   try {
-    booksData.value = await getBooks(currentPage.value, pageSize.value)
+    if (!lists.value.length || !activeListId.value) {
+      await loadLists()
+    }
+    if (!activeListId.value) {
+      throw new Error('No list available for this shelf')
+    }
+    booksData.value = await getListBooks(activeListId.value, currentPage.value, pageSize.value)
   } catch (err: any) {
     console.error('Failed to load books:', err)
     error.value = err.response?.data?.detail || 'Failed to load books. Please try again.'
@@ -143,14 +168,60 @@ function toggleShelfMenu() {
 
 function setShelfFilter(next: 'to-read' | 'finished') {
   shelfFilter.value = next
-  const allowedStatuses: ReadonlyArray<ReadingStatus> =
-    next === 'to-read'
-      ? [ReadingStatus.WANT_TO_READ, ReadingStatus.STARTED]
-      : [ReadingStatus.FINISHED]
-  if (filterStatus.value && !allowedStatuses.includes(filterStatus.value as ReadingStatus)) {
+  if (filterStatus.value) {
     filterStatus.value = ''
   }
   showShelfMenu.value = false
+  currentPage.value = 1
+  setActiveListForShelf()
+  loadBooks()
+}
+
+function handleDragStart() {
+  isDragging.value = true
+}
+
+async function handleDragEnd(event: { newIndex?: number; oldIndex?: number } | null) {
+  isDragging.value = false
+  lastDragTime.value = Date.now()
+
+  if (!event || event.newIndex === undefined || event.oldIndex === undefined) {
+    return
+  }
+  if (event.newIndex === event.oldIndex) {
+    return
+  }
+  if (!activeListId.value) {
+    return
+  }
+  if (searchQuery.value.trim() || filterStatus.value) {
+    return
+  }
+
+  const movedBook = gridBooks.value[event.newIndex]
+  if (!movedBook) return
+  const beforeBook = event.newIndex > 0 ? gridBooks.value[event.newIndex - 1] : null
+  const afterBook =
+    event.newIndex < gridBooks.value.length - 1 ? gridBooks.value[event.newIndex + 1] : null
+
+  try {
+    await reorderListItem(activeListId.value, {
+      moved_book_id: movedBook.id,
+      before_book_id: beforeBook?.id ?? null,
+      after_book_id: afterBook?.id ?? null,
+    })
+    if (booksData.value) {
+      booksData.value.items = [...gridBooks.value]
+    }
+  } catch (err: any) {
+    console.error('Failed to reorder books:', err)
+  }
+}
+
+function handleCoverClick(bookId: number) {
+  if (isDragging.value) return
+  if (Date.now() - lastDragTime.value < 200) return
+  router.push({ name: 'book-detail', params: { id: bookId } })
 }
 </script>
 
@@ -256,36 +327,53 @@ function setShelfFilter(next: 'to-read' | 'finished') {
         <p v-else>No books yet. Add your first book to get started!</p>
       </div>
 
-      <div v-else :class="['books-container', viewMode === 'grid' ? 'books-grid' : 'books-list']">
+      <draggable
+        v-if="viewMode === 'grid'"
+        class="books-container books-grid"
+        :list="gridBooks"
+        item-key="id"
+        :animation="150"
+        :delay="120"
+        :delay-on-touch-only="true"
+        :disabled="Boolean(searchQuery.trim()) || Boolean(filterStatus)"
+        ghost-class="grid-ghost"
+        drag-class="grid-drag"
+        chosen-class="grid-chosen"
+        @start="handleDragStart"
+        @end="handleDragEnd"
+      >
+        <template #item="{ element: book }">
+          <div class="grid-item">
+            <button
+              type="button"
+              class="grid-cover-link"
+              @click="handleCoverClick(book.id)"
+            >
+              <img
+                v-if="book.cover_thumbnail_url || book.cover_image_url"
+                :src="getMediaUrl(book.cover_thumbnail_url || book.cover_image_url)"
+                :alt="book.title"
+                :title="book.title + ' by ' + book.author"
+                class="grid-cover"
+              />
+              <div
+                v-else
+                class="grid-cover-placeholder"
+                :title="book.title + ' by ' + book.author"
+              >
+                <div class="grid-no-cover-text">{{ book.title }}</div>
+              </div>
+            </button>
+          </div>
+        </template>
+      </draggable>
+
+      <div v-else class="books-container books-list">
         <div
           v-for="book in filteredBooks"
           :key="book.id"
-          :class="viewMode === 'grid' ? 'grid-item' : ''"
         >
-          <router-link
-            v-if="viewMode === 'grid'"
-            :to="{ name: 'book-detail', params: { id: book.id } }"
-            class="grid-cover-link"
-          >
-            <img
-              v-if="book.cover_thumbnail_url || book.cover_image_url"
-              :src="getMediaUrl(book.cover_thumbnail_url || book.cover_image_url)"
-              :alt="book.title"
-              :title="book.title + ' by ' + book.author"
-              class="grid-cover"
-            />
-            <div
-              v-else
-              class="grid-cover-placeholder"
-              :title="book.title + ' by ' + book.author"
-            >
-              <div class="grid-no-cover-text">{{ book.title }}</div>
-            </div>
-          </router-link>
-          <BookCard
-            v-else
-            :book="book"
-          />
+          <BookCard :book="book" />
         </div>
       </div>
 
@@ -702,6 +790,15 @@ function setShelfFilter(next: 'to-read' | 'finished') {
   overflow-x: hidden;
 }
 
+.grid-ghost {
+  opacity: 0;
+}
+
+.grid-drag,
+.grid-chosen {
+  opacity: 1 !important;
+}
+
 .grid-item {
   display: flex;
   flex-direction: column;
@@ -713,8 +810,14 @@ function setShelfFilter(next: 'to-read' | 'finished') {
 }
 
 .grid-cover-link {
+  padding: 0;
+  border: none;
+  background: transparent;
   text-decoration: none;
   display: block;
+  cursor: grab;
+  width: 100%;
+  text-align: left;
 }
 
 .grid-cover {
@@ -731,6 +834,16 @@ function setShelfFilter(next: 'to-read' | 'finished') {
 .grid-cover:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.books-grid .sortable-ghost .grid-cover,
+.books-grid .sortable-ghost .grid-cover-placeholder,
+.books-grid .sortable-chosen .grid-cover,
+.books-grid .sortable-chosen .grid-cover-placeholder,
+.books-grid .sortable-drag .grid-cover,
+.books-grid .sortable-drag .grid-cover-placeholder {
+  transform: none;
+  box-shadow: var(--shadow);
 }
 
 .grid-cover-placeholder {
