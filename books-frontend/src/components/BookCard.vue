@@ -137,6 +137,7 @@ function getStatusLabel(status: ReadingStatus | null): string {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  touch-action: manipulation;
 }
 
 .book-title-link {
@@ -154,6 +155,7 @@ function getStatusLabel(status: ReadingStatus | null): string {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  touch-action: manipulation;
 }
 
 .book-cover {
