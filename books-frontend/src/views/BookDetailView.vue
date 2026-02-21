@@ -429,12 +429,14 @@ function handleNewBookSaved() {
 }
 
 .book-header {
-  display: flex;
-  gap: var(--spacing-xl);
+  display: grid;
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  column-gap: var(--spacing-xl);
   padding: var(--spacing-xl);
   background-color: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
-  flex-wrap: wrap;
+  align-items: flex-start;
+  width: 100%;
   max-width: 100%;
 }
 
@@ -473,7 +475,8 @@ function handleNewBookSaved() {
 }
 
 .book-info {
-  flex: 1;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   width: 100%;
 }
@@ -649,10 +652,12 @@ function handleNewBookSaved() {
   }
 
   .book-header {
+    display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
     padding: var(--spacing-lg);
+    flex-wrap: wrap;
   }
 
   .book-cover-section {
@@ -668,6 +673,10 @@ function handleNewBookSaved() {
 
   .book-info h1 {
     font-size: 1.5rem;
+  }
+
+  .book-info {
+    width: 100%;
   }
 
   .book-actions {
