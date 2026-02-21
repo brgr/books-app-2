@@ -134,6 +134,9 @@ function getStatusLabel(status: ReadingStatus | null): string {
 .book-cover-link {
   text-decoration: none;
   display: block;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .book-title-link {
@@ -148,6 +151,9 @@ function getStatusLabel(status: ReadingStatus | null): string {
   height: auto;
   border-radius: var(--border-radius);
   flex-shrink: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .book-cover {
