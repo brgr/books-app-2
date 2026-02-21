@@ -241,6 +241,23 @@ function handleCoverClick(bookId: number) {
   if (Date.now() - lastDragTime.value < 200) return
   router.push({ name: 'book-detail', params: { id: bookId } })
 }
+
+function showProgressBadge(book: Book): boolean {
+  return (
+    book.user_status?.status === ReadingStatus.STARTED &&
+    Boolean(book.page_count) &&
+    book.user_status?.current_page !== null &&
+    book.user_status?.current_page !== undefined
+  )
+}
+
+function getProgressPercent(book: Book): number {
+  const pageCount = book.page_count ?? 0
+  const currentPage = book.user_status?.current_page ?? 0
+  if (pageCount <= 0) return 0
+  const percent = Math.round((currentPage / pageCount) * 100)
+  return Math.min(100, Math.max(0, percent))
+}
 </script>
 
 <template>
@@ -370,6 +387,12 @@ function handleCoverClick(bookId: number) {
                     class="grid-cover-link"
                     @click="handleCoverClick(book.id)"
                   >
+                    <span
+                      v-if="showProgressBadge(book)"
+                      class="grid-progress-badge"
+                    >
+                      {{ getProgressPercent(book) }}%
+                    </span>
                     <img
                       v-if="book.cover_thumbnail_url || book.cover_image_url"
                       :src="getMediaUrl(book.cover_thumbnail_url || book.cover_image_url)"
@@ -987,6 +1010,7 @@ function handleCoverClick(bookId: number) {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   touch-action: manipulation;
+  position: relative;
 }
 
 .grid-cover {
@@ -1051,6 +1075,28 @@ function handleCoverClick(bookId: number) {
   font-weight: 500;
   word-break: break-word;
   line-height: 1.4;
+}
+
+.grid-progress-badge {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 2;
+  background: rgba(20, 24, 31, 0.85);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 7px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.grid-cover-link:hover .grid-progress-badge {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
 }
 
 .pagination-info {
