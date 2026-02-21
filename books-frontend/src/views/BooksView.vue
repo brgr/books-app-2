@@ -60,13 +60,26 @@ const filteredBooks = computed(() => {
   return books
 })
 
+const currentlyReadingBooks = computed(() =>
+  filteredBooks.value.filter(book => book.user_status?.status === ReadingStatus.STARTED)
+)
+const toReadBooks = computed(() =>
+  filteredBooks.value.filter(book => book.user_status?.status !== ReadingStatus.STARTED)
+)
+
 const gridBooks = ref<Book[]>([])
+const gridCurrentlyReading = ref<Book[]>([])
+const gridToRead = ref<Book[]>([])
 const isDragging = ref(false)
 const lastDragTime = ref(0)
 watch(
   filteredBooks,
   (next) => {
     gridBooks.value = [...next]
+    gridCurrentlyReading.value = next.filter(
+      book => book.user_status?.status === ReadingStatus.STARTED
+    )
+    gridToRead.value = next.filter(book => book.user_status?.status !== ReadingStatus.STARTED)
   },
   { immediate: true }
 )
@@ -181,7 +194,10 @@ function handleDragStart() {
   isDragging.value = true
 }
 
-async function handleDragEnd(event: { newIndex?: number; oldIndex?: number } | null) {
+async function handleDragEndForList(
+  list: Book[],
+  event: { newIndex?: number; oldIndex?: number } | null
+) {
   isDragging.value = false
   lastDragTime.value = Date.now()
 
@@ -198,11 +214,10 @@ async function handleDragEnd(event: { newIndex?: number; oldIndex?: number } | n
     return
   }
 
-  const movedBook = gridBooks.value[event.newIndex]
+  const movedBook = list[event.newIndex]
   if (!movedBook) return
-  const beforeBook = event.newIndex > 0 ? gridBooks.value[event.newIndex - 1] : null
-  const afterBook =
-    event.newIndex < gridBooks.value.length - 1 ? gridBooks.value[event.newIndex + 1] : null
+  const beforeBook = event.newIndex > 0 ? list[event.newIndex - 1] : null
+  const afterBook = event.newIndex < list.length - 1 ? list[event.newIndex + 1] : null
 
   try {
     await reorderListItem(activeListId.value, {
@@ -211,7 +226,10 @@ async function handleDragEnd(event: { newIndex?: number; oldIndex?: number } | n
       after_book_id: afterBook?.id ?? null,
     })
     if (booksData.value) {
-      booksData.value.items = [...gridBooks.value]
+      booksData.value.items =
+        shelfFilter.value === 'to-read'
+          ? [...gridCurrentlyReading.value, ...gridToRead.value]
+          : [...gridBooks.value]
     }
   } catch (err: any) {
     console.error('Failed to reorder books:', err)
@@ -327,49 +345,160 @@ function handleCoverClick(bookId: number) {
         <p v-else>No books yet. Add your first book to get started!</p>
       </div>
 
-      <draggable
-        v-if="viewMode === 'grid'"
-        class="books-container books-grid"
-        :list="gridBooks"
-        item-key="id"
-        :animation="150"
-        :delay="120"
-        :delay-on-touch-only="true"
-        :disabled="Boolean(searchQuery.trim()) || Boolean(filterStatus)"
-        ghost-class="grid-ghost"
-        drag-class="grid-drag"
-        chosen-class="grid-chosen"
-        @start="handleDragStart"
-        @end="handleDragEnd"
-      >
-        <template #item="{ element: book }">
-          <div class="grid-item">
-            <button
-              type="button"
-              class="grid-cover-link"
-              @click="handleCoverClick(book.id)"
+      <template v-if="viewMode === 'grid'">
+        <template v-if="shelfFilter === 'to-read'">
+          <section v-if="gridCurrentlyReading.length" class="shelf-section">
+            <h2 class="shelf-section-title">Currently Reading</h2>
+            <draggable
+              class="books-container books-grid sectioned"
+              :list="gridCurrentlyReading"
+              item-key="id"
+              :animation="150"
+              :delay="120"
+              :delay-on-touch-only="true"
+              :disabled="Boolean(searchQuery.trim()) || Boolean(filterStatus)"
+              ghost-class="grid-ghost"
+              drag-class="grid-drag"
+              chosen-class="grid-chosen"
+              @start="handleDragStart"
+              @end="handleDragEndForList(gridCurrentlyReading, $event)"
             >
-              <img
-                v-if="book.cover_thumbnail_url || book.cover_image_url"
-                :src="getMediaUrl(book.cover_thumbnail_url || book.cover_image_url)"
-                :alt="book.title"
-                :title="book.title + ' by ' + book.author"
-                class="grid-cover"
-              />
-              <div
-                v-else
-                class="grid-cover-placeholder"
-                :title="book.title + ' by ' + book.author"
-              >
-                <div class="grid-no-cover-text">{{ book.title }}</div>
-              </div>
-            </button>
-          </div>
+              <template #item="{ element: book }">
+                <div class="grid-item">
+                  <button
+                    type="button"
+                    class="grid-cover-link"
+                    @click="handleCoverClick(book.id)"
+                  >
+                    <img
+                      v-if="book.cover_thumbnail_url || book.cover_image_url"
+                      :src="getMediaUrl(book.cover_thumbnail_url || book.cover_image_url)"
+                      :alt="book.title"
+                      :title="book.title + ' by ' + book.author"
+                      class="grid-cover"
+                    />
+                    <div
+                      v-else
+                      class="grid-cover-placeholder"
+                      :title="book.title + ' by ' + book.author"
+                    >
+                      <div class="grid-no-cover-text">{{ book.title }}</div>
+                    </div>
+                  </button>
+                </div>
+              </template>
+            </draggable>
+          </section>
+
+          <section v-if="gridToRead.length" class="shelf-section">
+            <h2 class="shelf-section-title">To Read</h2>
+            <draggable
+              class="books-container books-grid sectioned"
+              :list="gridToRead"
+              item-key="id"
+              :animation="150"
+              :delay="120"
+              :delay-on-touch-only="true"
+              :disabled="Boolean(searchQuery.trim()) || Boolean(filterStatus)"
+              ghost-class="grid-ghost"
+              drag-class="grid-drag"
+              chosen-class="grid-chosen"
+              @start="handleDragStart"
+              @end="handleDragEndForList(gridToRead, $event)"
+            >
+              <template #item="{ element: book }">
+                <div class="grid-item">
+                  <button
+                    type="button"
+                    class="grid-cover-link"
+                    @click="handleCoverClick(book.id)"
+                  >
+                    <img
+                      v-if="book.cover_thumbnail_url || book.cover_image_url"
+                      :src="getMediaUrl(book.cover_thumbnail_url || book.cover_image_url)"
+                      :alt="book.title"
+                      :title="book.title + ' by ' + book.author"
+                      class="grid-cover"
+                    />
+                    <div
+                      v-else
+                      class="grid-cover-placeholder"
+                      :title="book.title + ' by ' + book.author"
+                    >
+                      <div class="grid-no-cover-text">{{ book.title }}</div>
+                    </div>
+                  </button>
+                </div>
+              </template>
+            </draggable>
+          </section>
         </template>
-      </draggable>
+
+        <draggable
+          v-else
+          class="books-container books-grid"
+          :list="gridBooks"
+          item-key="id"
+          :animation="150"
+          :delay="120"
+          :delay-on-touch-only="true"
+          :disabled="Boolean(searchQuery.trim()) || Boolean(filterStatus)"
+          ghost-class="grid-ghost"
+          drag-class="grid-drag"
+          chosen-class="grid-chosen"
+          @start="handleDragStart"
+          @end="handleDragEndForList(gridBooks, $event)"
+        >
+          <template #item="{ element: book }">
+            <div class="grid-item">
+              <button
+                type="button"
+                class="grid-cover-link"
+                @click="handleCoverClick(book.id)"
+              >
+                <img
+                  v-if="book.cover_thumbnail_url || book.cover_image_url"
+                  :src="getMediaUrl(book.cover_thumbnail_url || book.cover_image_url)"
+                  :alt="book.title"
+                  :title="book.title + ' by ' + book.author"
+                  class="grid-cover"
+                />
+                <div
+                  v-else
+                  class="grid-cover-placeholder"
+                  :title="book.title + ' by ' + book.author"
+                >
+                  <div class="grid-no-cover-text">{{ book.title }}</div>
+                </div>
+              </button>
+            </div>
+          </template>
+        </draggable>
+      </template>
 
       <div v-else class="books-container books-list">
+        <template v-if="shelfFilter === 'to-read'">
+          <section v-if="currentlyReadingBooks.length" class="shelf-section">
+            <h2 class="shelf-section-title">Currently Reading</h2>
+            <div
+              v-for="book in currentlyReadingBooks"
+              :key="book.id"
+            >
+              <BookCard :book="book" />
+            </div>
+          </section>
+          <section v-if="toReadBooks.length" class="shelf-section">
+            <h2 class="shelf-section-title">To Read</h2>
+            <div
+              v-for="book in toReadBooks"
+              :key="book.id"
+            >
+              <BookCard :book="book" />
+            </div>
+          </section>
+        </template>
         <div
+          v-else
           v-for="book in filteredBooks"
           :key="book.id"
         >
@@ -784,6 +913,27 @@ function handleCoverClick(bookId: number) {
 .books-container {
   margin-top: var(--spacing-lg);
   overflow-x: hidden;
+}
+
+.books-container.sectioned {
+  margin-top: 0;
+}
+
+.shelf-section {
+  margin-top: var(--spacing-lg);
+}
+
+.shelf-section:first-child {
+  margin-top: 0;
+}
+
+.shelf-section-title {
+  margin: 0 0 var(--spacing-sm);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .books-list {
