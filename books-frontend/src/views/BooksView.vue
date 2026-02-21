@@ -787,6 +787,7 @@ function handleCoverClick(bookId: number) {
   align-items: center;
   width: 100%;
   max-width: 100%;
+  padding-top: 6px;
   overflow-x: hidden;
 }
 
@@ -806,7 +807,7 @@ function handleCoverClick(bookId: number) {
   min-width: 0;
   width: 100%;
   max-width: 100%;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .grid-cover-link {
