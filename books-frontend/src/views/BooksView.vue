@@ -912,7 +912,8 @@ function handleCoverClick(bookId: number) {
 
 .books-container {
   margin-top: var(--spacing-lg);
-  overflow-x: hidden;
+  overflow-x: clip;
+  overflow-y: visible;
 }
 
 .books-container.sectioned {
@@ -949,7 +950,9 @@ function handleCoverClick(bookId: number) {
   width: 100%;
   max-width: 100%;
   padding-top: 6px;
-  overflow-x: hidden;
+  padding-bottom: var(--spacing-sm);
+  overflow-x: clip;
+  overflow-y: visible;
 }
 
 .grid-ghost {
