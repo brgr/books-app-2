@@ -489,6 +489,7 @@ function handleCoverClick(bookId: number) {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  touch-action: manipulation;
 }
 
 .bottom-bar-button:hover {
@@ -530,6 +531,7 @@ function handleCoverClick(bookId: number) {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  touch-action: manipulation;
 }
 
 .bottom-menu-item.active {
@@ -831,6 +833,7 @@ function handleCoverClick(bookId: number) {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  touch-action: manipulation;
 }
 
 .grid-cover {
@@ -845,6 +848,7 @@ function handleCoverClick(bookId: number) {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  touch-action: manipulation;
 }
 
 .grid-cover:hover {
@@ -879,6 +883,7 @@ function handleCoverClick(bookId: number) {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  touch-action: manipulation;
 }
 
 .grid-cover-placeholder:hover {

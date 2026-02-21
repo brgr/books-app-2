@@ -453,6 +453,7 @@ function handleNewBookSaved() {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  touch-action: manipulation;
 }
 
 .book-cover-placeholder {
@@ -468,6 +469,7 @@ function handleNewBookSaved() {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  touch-action: manipulation;
 }
 
 .book-info {
