@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, ref, onMounted} from 'vue'
+import {computed, ref, onMounted, onBeforeUnmount, watch, nextTick} from 'vue'
 import {useRouter, useRoute} from 'vue-router'
 import {getBook, setReadingStatus, deleteBook, getBookEvents, addBookProgress} from '../api/books'
 import {getMediaUrl} from '../api/client'
@@ -26,10 +26,94 @@ const showEditModal = ref(false)
 const showSearchModal = ref(false)
 const showFormModal = ref(false)
 const prefilledBookData = ref<GoogleBookResult | null>(null)
+const descriptionRef = ref<HTMLElement | null>(null)
+const descriptionExpanded = ref(false)
+const showDescriptionToggle = ref(false)
+const descriptionMaxHeight = ref<string>('')
 
 onMounted(() => {
   loadBook()
+  window.addEventListener('resize', updateDescriptionToggle)
 })
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateDescriptionToggle)
+})
+
+watch(
+  () => book.value?.description,
+  async () => {
+    descriptionExpanded.value = false
+    await nextTick()
+    updateDescriptionToggle()
+  },
+)
+
+function getClampHeight(el: HTMLElement) {
+  const computedStyles = window.getComputedStyle(el)
+  const lineHeight = parseFloat(computedStyles.lineHeight)
+  if (Number.isFinite(lineHeight)) {
+    return Math.round(lineHeight * 3)
+  }
+  const fontSize = parseFloat(computedStyles.fontSize) || 16
+  return Math.round(fontSize * 1.6 * 3)
+}
+
+function measureExpandedHeight(el: HTMLElement) {
+  const previousStyles = {
+    overflow: el.style.overflow,
+    maxHeight: el.style.maxHeight,
+  }
+
+  el.style.overflow = 'visible'
+  el.style.maxHeight = 'none'
+
+  const height = el.scrollHeight
+
+  el.style.overflow = previousStyles.overflow
+  el.style.maxHeight = previousStyles.maxHeight
+
+  return height
+}
+
+function updateDescriptionToggle() {
+  const el = descriptionRef.value
+  if (!el) {
+    showDescriptionToggle.value = false
+    return
+  }
+
+  const clampHeight = getClampHeight(el)
+  showDescriptionToggle.value = el.scrollHeight > clampHeight + 1
+
+  if (!descriptionExpanded.value) {
+    descriptionMaxHeight.value = `${clampHeight}px`
+  } else {
+    descriptionMaxHeight.value = `${measureExpandedHeight(el)}px`
+  }
+}
+
+function toggleDescription() {
+  const el = descriptionRef.value
+  if (!el) return
+
+  const clampHeight = getClampHeight(el)
+
+  if (!descriptionExpanded.value) {
+    const expandedHeight = measureExpandedHeight(el)
+    descriptionMaxHeight.value = `${clampHeight}px`
+    void el.offsetHeight
+    descriptionMaxHeight.value = `${expandedHeight}px`
+    descriptionExpanded.value = true
+    return
+  }
+
+  const currentHeight = measureExpandedHeight(el)
+  descriptionMaxHeight.value = `${currentHeight}px`
+  void el.offsetHeight
+  descriptionMaxHeight.value = `${clampHeight}px`
+  descriptionExpanded.value = false
+}
 
 async function loadBook() {
   const bookId = parseInt(route.params.id as string)
@@ -51,6 +135,8 @@ async function loadBook() {
     error.value = err.response?.data?.detail || 'Failed to load book. Please try again.'
   } finally {
     loading.value = false
+    await nextTick()
+    updateDescriptionToggle()
   }
 }
 
@@ -317,7 +403,24 @@ function handleNewBookSaved() {
         <div class="book-body">
           <div v-if="book.description" class="book-description">
             <h2>Description</h2>
-            <p>{{ book.description }}</p>
+            <p
+              ref="descriptionRef"
+              class="description-text"
+              :class="{
+                clamped: showDescriptionToggle && !descriptionExpanded,
+              }"
+              :style="{maxHeight: descriptionMaxHeight}"
+            >
+              {{ book.description }}
+            </p>
+            <button
+              v-if="showDescriptionToggle"
+              type="button"
+              class="description-toggle"
+              @click="toggleDescription"
+            >
+              {{ descriptionExpanded ? 'Read less' : 'Read more...' }}
+            </button>
           </div>
 
           <div class="book-notes">
@@ -420,7 +523,7 @@ function handleNewBookSaved() {
 }
 
 .book-detail {
-  background-color: var(--color-bg-card);
+  background-color: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
   box-shadow: var(--shadow);
@@ -538,10 +641,12 @@ function handleNewBookSaved() {
 .book-body {
   padding: var(--spacing-xl);
   overflow-x: hidden;
+  background-color: var(--color-bg);
 }
 
 .book-description {
   margin-bottom: var(--spacing-xl);
+  position: relative;
 }
 
 .book-description h2 {
@@ -549,12 +654,50 @@ function handleNewBookSaved() {
   font-size: 1.25rem;
 }
 
-.book-description p {
+.book-description .description-text {
   line-height: 1.6;
   color: var(--color-text);
   white-space: pre-wrap;
   word-break: break-word;
   overflow-wrap: anywhere;
+  overflow: hidden;
+  position: relative;
+  max-height: none;
+  transition: max-height 240ms ease;
+  will-change: max-height;
+}
+
+.book-description .description-text.clamped {
+  opacity: 1;
+}
+
+.book-description .description-text.clamped::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1.8rem;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0),
+    var(--color-bg)
+  );
+}
+
+.description-toggle {
+  margin-top: var(--spacing-xs);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-primary);
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.description-toggle:hover {
+  text-decoration: underline;
 }
 
 .book-notes {
