@@ -655,6 +655,12 @@ function handleNewBookSaved() {
     padding: var(--spacing-lg);
   }
 
+  .book-cover-section {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+
   .book-cover-large {
     width: min(200px, 100%);
     height: auto;
