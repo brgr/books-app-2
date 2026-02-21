@@ -450,6 +450,9 @@ function handleNewBookSaved() {
   border-radius: var(--border-radius);
   box-shadow: var(--shadow);
   display: block;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .book-cover-placeholder {
@@ -462,6 +465,9 @@ function handleNewBookSaved() {
   color: var(--color-text-secondary);
   font-size: 14px;
   text-align: center;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .book-info {

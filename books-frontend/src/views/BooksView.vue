@@ -486,6 +486,9 @@ function handleCoverClick(bookId: number) {
   padding: 0 22px;
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .bottom-bar-button:hover {
@@ -524,6 +527,9 @@ function handleCoverClick(bookId: number) {
   border-radius: 999px;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .bottom-menu-item.active {
@@ -537,6 +543,9 @@ function handleCoverClick(bookId: number) {
   gap: 0.12em;
   letter-spacing: 0.03em;
   text-transform: uppercase;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .bar-arrow {
@@ -819,6 +828,9 @@ function handleCoverClick(bookId: number) {
   cursor: grab;
   width: 100%;
   text-align: left;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .grid-cover {
@@ -830,6 +842,9 @@ function handleCoverClick(bookId: number) {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   box-shadow: var(--shadow);
   display: block;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .grid-cover:hover {
@@ -861,6 +876,9 @@ function handleCoverClick(bookId: number) {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   box-shadow: var(--shadow);
   padding: var(--spacing-md);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .grid-cover-placeholder:hover {
