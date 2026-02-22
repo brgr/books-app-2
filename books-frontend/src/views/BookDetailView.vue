@@ -809,6 +809,7 @@ function handleNewBookSaved() {
     display: flex;
     justify-content: center;
     width: 100%;
+    margin-bottom: var(--spacing-lg);
   }
 
   .book-cover-large {
