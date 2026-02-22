@@ -524,7 +524,6 @@ function handleNewBookSaved() {
 
 .book-detail {
   background-color: var(--color-bg);
-  border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
   box-shadow: var(--shadow);
   overflow: hidden;
@@ -537,7 +536,6 @@ function handleNewBookSaved() {
   column-gap: var(--spacing-xl);
   padding: var(--spacing-xl);
   background-color: var(--color-bg);
-  border-bottom: 1px solid var(--color-border);
   align-items: flex-start;
   width: 100%;
   max-width: 100%;
