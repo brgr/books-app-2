@@ -22,6 +22,7 @@ const notesDraft = ref('')
 const notesSaving = ref(false)
 const progressDraft = ref<string | number>('')
 const progressSaving = ref(false)
+const progressEditing = ref(false)
 const showEditModal = ref(false)
 const showSearchModal = ref(false)
 const showFormModal = ref(false)
@@ -129,6 +130,7 @@ async function loadBook() {
     book.value = await getBook(bookId)
     notesDraft.value = book.value.user_status?.notes ?? ''
     progressDraft.value = book.value.user_status?.current_page?.toString() ?? ''
+    progressEditing.value = false
     await loadEvents(bookId)
   } catch (err: any) {
     console.error('Failed to load book:', err)
@@ -160,6 +162,18 @@ const canUpdateProgress = computed(() => book.value?.user_status?.status === Rea
 function normalizeNotes(value: string): string | null {
   return value === '' ? null : value
 }
+
+const progressSummary = computed(() => {
+  if (!book.value) return ''
+  const currentPage = book.value.user_status?.current_page
+  if (currentPage === null || currentPage === undefined) {
+    return 'No progress yet'
+  }
+  if (book.value.page_count) {
+    return `Page ${currentPage} of ${book.value.page_count}`
+  }
+  return `Page ${currentPage}`
+})
 
 const notesDirty = computed(() => {
   if (!book.value) return false
@@ -219,9 +233,9 @@ async function handleSaveNotes() {
   }
 }
 
-async function handleSaveProgress() {
-  if (!book.value) return
-  if (!canUpdateProgress.value) return
+async function handleSaveProgress(): Promise<boolean> {
+  if (!book.value) return false
+  if (!canUpdateProgress.value) return false
 
   const rawProgress = progressDraft.value
   const trimmed =
@@ -230,13 +244,13 @@ async function handleSaveProgress() {
         : String(rawProgress ?? '').trim()
   if (!trimmed) {
     alert('Please enter a page number.')
-    return
+    return false
   }
 
   const page = Number.parseInt(trimmed, 10)
   if (Number.isNaN(page) || page < 0) {
     alert('Please enter a valid page number.')
-    return
+    return false
   }
 
   progressSaving.value = true
@@ -245,12 +259,32 @@ async function handleSaveProgress() {
     book.value.user_status = updatedStatus
     progressDraft.value = updatedStatus.current_page?.toString() ?? ''
     await loadEvents(book.value.id)
+    return true
   } catch (error) {
     console.error('Failed to save progress:', error)
     alert('Failed to save progress')
+    return false
   } finally {
     progressSaving.value = false
   }
+}
+
+async function handleProgressAction() {
+  if (!progressEditing.value) {
+    progressDraft.value = book.value?.user_status?.current_page?.toString() ?? ''
+    progressEditing.value = true
+    return
+  }
+  if (!canUpdateProgress.value || progressSaving.value) return
+  const saved = await handleSaveProgress()
+  if (saved) {
+    progressEditing.value = false
+  }
+}
+
+function handleCancelProgress() {
+  progressDraft.value = book.value?.user_status?.current_page?.toString() ?? ''
+  progressEditing.value = false
 }
 
 function handleEdit() {
@@ -375,6 +409,49 @@ function handleNewBookSaved() {
               </div>
             </div>
 
+            <div class="progress-inline">
+              <span class="progress-label">Progress</span>
+              <div v-if="progressEditing" class="progress-row">
+                <input
+                  v-model="progressDraft"
+                  type="number"
+                  min="0"
+                  class="progress-input"
+                  :disabled="!canUpdateProgress || progressSaving"
+                  placeholder="Page"
+                />
+                <span v-if="book.page_count" class="progress-total">of {{ book.page_count }}</span>
+                <button
+                  class="progress-button"
+                  @click="handleProgressAction"
+                  :disabled="!canUpdateProgress || progressSaving"
+                >
+                  {{ progressSaving ? 'Saving...' : 'Save' }}
+                </button>
+                <button
+                  class="progress-button progress-cancel"
+                  type="button"
+                  @click="handleCancelProgress"
+                  :disabled="progressSaving"
+                >
+                  Cancel
+                </button>
+              </div>
+              <div v-else class="progress-row">
+                <span class="progress-text">{{ progressSummary }}</span>
+                <button
+                  class="progress-button"
+                  @click="handleProgressAction"
+                  :disabled="!canUpdateProgress || progressSaving"
+                >
+                  Update
+                </button>
+              </div>
+              <p v-if="!canUpdateProgress" class="progress-hint">
+                Start reading to track progress.
+              </p>
+            </div>
+
             <div v-if="book.user_status" class="book-dates">
               <div v-if="book.user_status.started_at" class="date-item">
                 <strong>Started:</strong> {{ formatShortDate(book.user_status.started_at) }}
@@ -431,30 +508,6 @@ function handleNewBookSaved() {
                 {{ notesSaving ? 'Saving...' : 'Save Notes' }}
               </button>
             </div>
-          </div>
-
-          <div class="book-progress">
-            <h2>Progress</h2>
-            <div class="progress-row">
-              <input
-                  v-model="progressDraft"
-                  type="number"
-                  min="0"
-                  class="progress-input"
-                  :disabled="!canUpdateProgress || progressSaving"
-                  placeholder="Page"
-              />
-              <button
-                  class="btn-primary"
-                  @click="handleSaveProgress"
-                  :disabled="!canUpdateProgress || progressSaving"
-              >
-                {{ progressSaving ? 'Saving...' : 'Update Progress' }}
-              </button>
-            </div>
-            <p v-if="!canUpdateProgress" class="progress-hint">
-              Start reading to track progress.
-            </p>
           </div>
 
           <div class="book-metadata">
@@ -619,6 +672,19 @@ function handleNewBookSaved() {
   border: none;
 }
 
+.progress-inline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-lg);
+}
+
+.progress-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
 .status-actions {
   display: flex;
   gap: var(--spacing-sm);
@@ -731,15 +797,6 @@ function handleNewBookSaved() {
   justify-content: flex-end;
 }
 
-.book-progress {
-  margin-bottom: var(--spacing-xl);
-}
-
-.book-progress h2 {
-  margin: 0 0 var(--spacing-md) 0;
-  font-size: 1.25rem;
-}
-
 .progress-row {
   display: flex;
   gap: var(--spacing-sm);
@@ -748,14 +805,46 @@ function handleNewBookSaved() {
 }
 
 .progress-input {
-  width: 160px;
-  padding: var(--spacing-sm);
+  width: 110px;
+  padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: var(--border-radius);
   border: 1px solid var(--color-border);
   background: var(--color-bg);
   color: var(--color-text);
   font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.progress-total {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+
+.progress-text {
+  color: var(--color-text);
   font-size: 0.95rem;
+}
+
+.progress-button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-primary);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.progress-button:disabled {
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+.progress-cancel {
+  color: var(--color-danger);
+}
+
+.progress-cancel:disabled {
+  color: var(--color-text-secondary);
 }
 
 .progress-hint {
@@ -823,6 +912,14 @@ function handleNewBookSaved() {
 
   .book-info {
     width: 100%;
+  }
+
+  .progress-inline {
+    align-items: center;
+  }
+
+  .progress-row {
+    justify-content: center;
   }
 
   .book-actions {
