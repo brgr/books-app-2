@@ -354,15 +354,6 @@ function handleNewBookSaved() {
             <h1>{{ book.title }}</h1>
             <p class="book-author">by {{ book.author }}</p>
 
-            <div class="book-actions">
-              <button @click="handleEdit" class="btn-primary">
-                Edit Book
-              </button>
-              <button @click="handleDelete" class="btn-danger">
-                Delete Book
-              </button>
-            </div>
-
             <div class="book-status-section">
               <div class="status-actions">
                 <button
@@ -490,6 +481,15 @@ function handleNewBookSaved() {
           </div>
 
           <EventTimeline :events="events" />
+
+          <div class="book-actions">
+            <button @click="handleEdit" class="btn-primary">
+              Edit Book
+            </button>
+            <button @click="handleDelete" class="btn-danger">
+              Delete Book
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -601,13 +601,17 @@ function handleNewBookSaved() {
 .book-actions {
   display: flex;
   gap: var(--spacing-md);
+  margin-top: var(--spacing-xl);
   margin-bottom: var(--spacing-xl);
   flex-wrap: wrap;
+  justify-content: flex-start;
 }
 
 .book-actions button {
-  flex: 1 1 180px;
-  min-width: 0;
+  flex: 0 0 auto;
+  min-width: 140px;
+  max-width: 220px;
+  width: auto;
 }
 
 .book-status-section {
