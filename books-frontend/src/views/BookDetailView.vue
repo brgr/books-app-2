@@ -287,6 +287,11 @@ function handleCancelProgress() {
   progressEditing.value = false
 }
 
+function handleProgressFocus(event: FocusEvent) {
+  const target = event.target as HTMLInputElement | null
+  target?.select()
+}
+
 function handleEdit() {
   showEditModal.value = true
 }
@@ -416,9 +421,12 @@ function handleNewBookSaved() {
                   v-model="progressDraft"
                   type="number"
                   min="0"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
                   class="progress-input"
                   :disabled="!canUpdateProgress || progressSaving"
                   placeholder="Page"
+                  @focus="handleProgressFocus"
                 />
                 <span v-if="book.page_count" class="progress-total">of {{ book.page_count }}</span>
                 <button
@@ -805,7 +813,7 @@ function handleNewBookSaved() {
 }
 
 .progress-input {
-  width: 110px;
+  width: 54px;
   padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: var(--border-radius);
   border: 1px solid var(--color-border);
@@ -813,6 +821,14 @@ function handleNewBookSaved() {
   color: var(--color-text);
   font-family: inherit;
   font-size: 0.9rem;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.progress-input::-webkit-outer-spin-button,
+.progress-input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
 }
 
 .progress-total {
