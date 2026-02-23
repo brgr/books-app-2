@@ -364,10 +364,6 @@ function handleBookSaved() {
   loadBook()
 }
 
-function goBack() {
-  router.push({name: 'books'})
-}
-
 function handleAddBook() {
   showSearchModal.value = true
 }
@@ -493,10 +489,12 @@ watch(
     <NavigationBar @add-book="handleAddBook"/>
 
     <div class="container">
-      <div class="back-button">
-        <button @click="goBack">
-          &larr; Back to Books
-        </button>
+      <div class="breadcrumb">
+        <router-link to="/" class="breadcrumb-link">Books</router-link>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">
+          {{ book ? book.title : 'Book details' }}
+        </span>
       </div>
 
       <div v-if="loading" class="loading">
@@ -784,8 +782,35 @@ watch(
   background-color: rgba(255, 255, 255, 0.08);
 }
 
-.back-button {
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
   margin-bottom: var(--spacing-lg);
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+.breadcrumb-link {
+  color: var(--color-text);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.breadcrumb-link:hover {
+  color: var(--color-primary);
+}
+
+.breadcrumb-separator {
+  color: var(--color-text-secondary);
+}
+
+.breadcrumb-current {
+  color: var(--color-text-secondary);
+  max-width: min(520px, 70vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .book-detail {
