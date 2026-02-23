@@ -26,6 +26,7 @@ const progressEditing = ref(false)
 const showEditModal = ref(false)
 const showSearchModal = ref(false)
 const showFormModal = ref(false)
+const showStatusSheet = ref(false)
 const prefilledBookData = ref<GoogleBookResult | null>(null)
 const descriptionRef = ref<HTMLElement | null>(null)
 const descriptionExpanded = ref(false)
@@ -197,6 +198,25 @@ const progressSummary = computed(() => {
   return `Page ${currentPage}`
 })
 
+const readingStatusLabel = computed(() => {
+  const status = book.value?.user_status?.status ?? ReadingStatus.WANT_TO_READ
+  if (status === ReadingStatus.STARTED) return 'Reading'
+  if (status === ReadingStatus.FINISHED) return 'Finished'
+  return 'Want to read'
+})
+
+const readingStatusSubtitle = computed(() => {
+  if (!book.value) return ''
+  if (readingStatusLabel.value === 'Reading') return progressSummary.value
+  if (readingStatusLabel.value === 'Finished') {
+    if (book.value.user_status?.finished_at) {
+      return `Finished ${formatShortDate(book.value.user_status.finished_at)}`
+    }
+    return 'Finished'
+  }
+  return 'Not started yet'
+})
+
 const notesDirty = computed(() => {
   if (!book.value) return false
   const currentNotes = book.value.user_status?.notes ?? null
@@ -210,6 +230,7 @@ async function handleStartReading() {
   try {
     await setReadingStatus(book.value.id, {status: ReadingStatus.STARTED})
     await loadBook()
+    showStatusSheet.value = false
   } catch (error) {
     console.error('Failed to start reading:', error)
     alert('Failed to start reading')
@@ -225,6 +246,7 @@ async function handleFinishReading() {
   try {
     await setReadingStatus(book.value.id, {status: ReadingStatus.FINISHED})
     await loadBook()
+    showStatusSheet.value = false
   } catch (error) {
     console.error('Failed to finish reading:', error)
     alert('Failed to finish reading')
@@ -504,24 +526,10 @@ watch(
             <p class="book-author">by {{ book.author }}</p>
 
             <div class="book-status-section">
-              <div class="status-actions">
-                <button
-                    v-if="canStartReading"
-                    class="btn-secondary"
-                    @click="handleStartReading"
-                    :disabled="updatingStatus"
-                >
-                  Start Reading
-                </button>
-                <button
-                    v-if="canFinishReading"
-                    class="btn-primary"
-                    @click="handleFinishReading"
-                    :disabled="updatingStatus"
-                >
-                  Finish Reading
-                </button>
-              </div>
+              <button class="status-pill" type="button" @click="showStatusSheet = true">
+                <span class="status-pill-label">{{ readingStatusLabel }}</span>
+                <span class="status-pill-subtitle">{{ readingStatusSubtitle }}</span>
+              </button>
             </div>
 
             <div class="progress-inline">
@@ -685,6 +693,43 @@ watch(
         @close="handleFormModalClose"
         @saved="handleNewBookSaved"
     />
+
+    <div v-if="showStatusSheet" class="sheet-overlay" @click.self="showStatusSheet = false">
+      <div class="sheet">
+        <div class="sheet-header">
+          <div>
+            <h3>Reading status</h3>
+            <p>{{ readingStatusLabel }}</p>
+          </div>
+          <button class="sheet-close" type="button" @click="showStatusSheet = false">
+            Close
+          </button>
+        </div>
+        <div class="sheet-body">
+          <p class="sheet-status-detail">{{ readingStatusSubtitle }}</p>
+          <div class="sheet-actions">
+            <button
+              v-if="canStartReading"
+              class="btn-secondary"
+              type="button"
+              @click="handleStartReading"
+              :disabled="updatingStatus"
+            >
+              Start Reading
+            </button>
+            <button
+              v-if="canFinishReading"
+              class="btn-primary"
+              type="button"
+              @click="handleFinishReading"
+              :disabled="updatingStatus"
+            >
+              Finish Reading
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -838,6 +883,9 @@ watch(
   padding: 0;
   background-color: transparent;
   border: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
 }
 
 .progress-inline {
@@ -853,10 +901,35 @@ watch(
   color: var(--color-text);
 }
 
-.status-actions {
-  display: flex;
-  gap: var(--spacing-sm);
-  flex-wrap: wrap;
+.status-pill {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(12, 8, 16, 0.45);
+  color: var(--color-text);
+  border-radius: 999px;
+  padding: 10px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  width: fit-content;
+  box-shadow: 0 10px 20px rgba(7, 5, 8, 0.2);
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.status-pill:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(16, 10, 22, 0.6);
+}
+
+.status-pill-label {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.status-pill-subtitle {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
 }
 
 .book-dates {
@@ -1053,6 +1126,72 @@ watch(
   color: var(--color-text);
 }
 
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 6, 8, 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 50;
+  backdrop-filter: blur(6px);
+}
+
+.sheet {
+  width: min(480px, 96vw);
+  background: #1a141f;
+  border-radius: 20px 20px 0 0;
+  padding: var(--spacing-lg);
+  box-shadow: 0 -20px 40px rgba(6, 6, 8, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.sheet-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.sheet-header p {
+  margin: 4px 0 0 0;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+
+.sheet-close {
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text);
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.sheet-status-detail {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+}
+
+.sheet-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
 @media (max-width: 768px) {
   .book-detail-page {
     border-radius: 0;
@@ -1101,6 +1240,10 @@ watch(
 
   .progress-row {
     justify-content: center;
+  }
+
+  .status-pill {
+    margin: 0 auto;
   }
 
   .book-actions {
