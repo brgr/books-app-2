@@ -1020,6 +1020,21 @@ watch(
   );
 }
 
+@supports (mask-image: linear-gradient(#000, transparent)) {
+  .book-description .description-text.clamped {
+    mask-image: linear-gradient(180deg, #000 0%, #000 70%, transparent 100%);
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 70%, transparent 100%);
+    mask-size: 100% 100%;
+    -webkit-mask-size: 100% 100%;
+    mask-repeat: no-repeat;
+    -webkit-mask-repeat: no-repeat;
+  }
+
+  .book-description .description-text.clamped::after {
+    content: none;
+  }
+}
+
 .description-toggle {
   margin-top: var(--spacing-xs);
   padding: 0;
