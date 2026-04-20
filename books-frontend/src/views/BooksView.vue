@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import draggable from 'vuedraggable'
 import { useRouter } from 'vue-router'
 import { getListBooks, getLists, reorderListItem } from '../api/books'
@@ -9,10 +9,10 @@ import BookFormModal from '../components/BookFormModal.vue'
 import BookSearchModal from '../components/BookSearchModal.vue'
 import NavigationBar from '../components/NavigationBar.vue'
 import { ReadingStatus, type PaginatedBooks, type GoogleBookResult, type Book, type BookList } from '../api/types'
+import { useCachedQuery } from '../composables/useCachedQuery'
+import { cacheKeys } from '../cache/keys'
+import { cacheInvalidateByPrefix } from '../cache/store'
 
-const booksData = ref<PaginatedBooks | null>(null)
-const loading = ref(false)
-const error = ref('')
 const currentPage = ref(1)
 const pageSize = ref(20)
 const router = useRouter()
@@ -26,8 +26,41 @@ const searchQuery = ref('')
 const showFilterDropdown = ref(false)
 const shelfFilter = ref<'to-read' | 'finished'>('to-read')
 const showShelfMenu = ref(false)
-const lists = ref<BookList[]>([])
 const activeListId = ref<number | null>(null)
+
+const { data: listsData } = useCachedQuery<BookList[]>(
+  cacheKeys.lists(),
+  () => getLists()
+)
+
+const lists = computed(() => listsData.value ?? [])
+
+watch(lists, (newLists) => {
+  if (newLists.length && !activeListId.value) {
+    setActiveListForShelf()
+  }
+}, { immediate: true })
+
+const {
+  data: booksData,
+  error: booksError,
+  refresh: refreshBooks,
+} = useCachedQuery<PaginatedBooks>(
+  computed(() =>
+    activeListId.value
+      ? cacheKeys.listBooks(activeListId.value, currentPage.value, pageSize.value)
+      : ''
+  ),
+  () => getListBooks(activeListId.value!, currentPage.value, pageSize.value),
+  { enabled: computed(() => activeListId.value !== null) }
+)
+
+const error = computed(() => {
+  const e = booksError.value
+  if (!e) return ''
+  if (e instanceof Error) return e.message
+  return 'Failed to load books. Please try again.'
+})
 
 // Load saved view mode from localStorage, default to 'list'
 const savedViewMode = localStorage.getItem('booksViewMode') as 'list' | 'grid' | null
@@ -112,10 +145,6 @@ watch(
   { immediate: true }
 )
 
-onMounted(() => {
-  loadBooks()
-})
-
 function getShelfListName(): string {
   return shelfFilter.value === 'to-read' ? 'To Read' : 'Finished'
 }
@@ -126,29 +155,8 @@ function setActiveListForShelf() {
   activeListId.value = match ? match.id : null
 }
 
-async function loadLists() {
-  lists.value = await getLists()
-  setActiveListForShelf()
-}
-
 async function loadBooks() {
-  loading.value = true
-  error.value = ''
-
-  try {
-    if (!lists.value.length || !activeListId.value) {
-      await loadLists()
-    }
-    if (!activeListId.value) {
-      throw new Error('No list available for this shelf')
-    }
-    booksData.value = await getListBooks(activeListId.value, currentPage.value, pageSize.value)
-  } catch (err: any) {
-    console.error('Failed to load books:', err)
-    error.value = err.response?.data?.detail || 'Failed to load books. Please try again.'
-  } finally {
-    loading.value = false
-  }
+  await refreshBooks()
 }
 
 function handleAddBook() {
@@ -177,8 +185,9 @@ function handleFormModalClose() {
   prefilledBookData.value = null
 }
 
-function handleBookSaved() {
-  loadBooks()
+async function handleBookSaved() {
+  await cacheInvalidateByPrefix('lists:')
+  await refreshBooks()
 }
 
 async function goToPage(page: number) {
@@ -469,11 +478,7 @@ watch(
         </div>
       </div>
 
-      <div v-if="loading" class="loading">
-        Loading books...
-      </div>
-
-      <div v-else-if="filteredBooks.length === 0" class="empty-state">
+      <div v-if="booksData && filteredBooks.length === 0" class="empty-state">
         <p v-if="searchQuery || filterStatus">No books match your filters.</p>
         <p v-else>No books yet. Add your first book to get started!</p>
       </div>

@@ -9,14 +9,43 @@ import NavigationBar from '../components/NavigationBar.vue'
 import EventTimeline from '../components/EventTimeline.vue'
 import {ReadingStatus, type Book, type GoogleBookResult, type BookEvent} from '../api/types'
 import {formatShortDate} from '../utils/date'
+import {useCachedQuery} from '../composables/useCachedQuery'
+import {cacheKeys} from '../cache/keys'
+import {cacheDel, cacheInvalidateByPrefix} from '../cache/store'
 
 const router = useRouter()
 const route = useRoute()
 
-const book = ref<Book | null>(null)
-const events = ref<BookEvent[]>([])
-const loading = ref(false)
-const error = ref('')
+const bookId = computed(() => {
+  const id = parseInt(route.params.id as string)
+  return isNaN(id) ? 0 : id
+})
+
+const {
+  data: book,
+  error: bookError,
+  refresh: refreshBook,
+} = useCachedQuery<Book>(
+  computed(() => bookId.value ? cacheKeys.book(bookId.value) : ''),
+  () => getBook(bookId.value),
+  { enabled: computed(() => bookId.value > 0) }
+)
+
+const {
+  data: events,
+  refresh: refreshEvents,
+} = useCachedQuery<BookEvent[]>(
+  computed(() => bookId.value ? cacheKeys.bookEvents(bookId.value) : ''),
+  () => getBookEvents(bookId.value),
+  { enabled: computed(() => bookId.value > 0) }
+)
+
+const error = computed(() => {
+  const e = bookError.value
+  if (!e) return ''
+  if (e instanceof Error) return e.message
+  return 'Failed to load book. Please try again.'
+})
 const updatingStatus = ref(false)
 const notesDraft = ref('')
 const notesSaving = ref(false)
@@ -55,8 +84,15 @@ const pageStyle = computed(() => {
   }
 })
 
+watch(book, (newBook) => {
+  if (newBook) {
+    notesDraft.value = newBook.user_status?.notes ?? ''
+    progressDraft.value = newBook.user_status?.current_page?.toString() ?? ''
+    progressEditing.value = false
+  }
+})
+
 onMounted(() => {
-  loadBook()
   window.addEventListener('resize', updateDescriptionToggle)
 })
 
@@ -140,38 +176,10 @@ function toggleDescription() {
 }
 
 async function loadBook() {
-  const bookId = parseInt(route.params.id as string)
-  if (isNaN(bookId)) {
-    error.value = 'Invalid book ID'
-    return
-  }
-
-  loading.value = true
-  error.value = ''
-
-  try {
-    book.value = await getBook(bookId)
-    notesDraft.value = book.value.user_status?.notes ?? ''
-    progressDraft.value = book.value.user_status?.current_page?.toString() ?? ''
-    progressEditing.value = false
-    await loadEvents(bookId)
-  } catch (err: any) {
-    console.error('Failed to load book:', err)
-    error.value = err.response?.data?.detail || 'Failed to load book. Please try again.'
-  } finally {
-    loading.value = false
-    await nextTick()
-    updateDescriptionToggle()
-  }
-}
-
-async function loadEvents(bookId: number) {
-  try {
-    events.value = await getBookEvents(bookId)
-  } catch (err) {
-    console.error('Failed to load events:', err)
-    // Don't show error to user for events, they're not critical
-  }
+  await cacheDel(cacheKeys.book(bookId.value))
+  await cacheDel(cacheKeys.bookEvents(bookId.value))
+  await refreshBook()
+  await refreshEvents()
 }
 
 const canStartReading = computed(() => {
@@ -229,10 +237,11 @@ async function handleStartReading() {
 
   try {
     await setReadingStatus(book.value.id, {status: ReadingStatus.STARTED})
+    await cacheInvalidateByPrefix('lists:')
     await loadBook()
     showStatusSheet.value = false
-  } catch (error) {
-    console.error('Failed to start reading:', error)
+  } catch (err) {
+    console.error('Failed to start reading:', err)
     alert('Failed to start reading')
   } finally {
     updatingStatus.value = false
@@ -245,10 +254,11 @@ async function handleFinishReading() {
 
   try {
     await setReadingStatus(book.value.id, {status: ReadingStatus.FINISHED})
+    await cacheInvalidateByPrefix('lists:')
     await loadBook()
     showStatusSheet.value = false
-  } catch (error) {
-    console.error('Failed to finish reading:', error)
+  } catch (err) {
+    console.error('Failed to finish reading:', err)
     alert('Failed to finish reading')
   } finally {
     updatingStatus.value = false
@@ -268,7 +278,8 @@ async function handleSaveNotes() {
     })
     book.value.user_status = updatedStatus
     notesDraft.value = updatedStatus.notes ?? ''
-    await loadEvents(book.value.id)
+    await cacheDel(cacheKeys.bookEvents(book.value.id))
+    await refreshEvents()
   } catch (error) {
     console.error('Failed to save notes:', error)
     alert('Failed to save notes')
@@ -302,7 +313,8 @@ async function handleSaveProgress(): Promise<boolean> {
     const updatedStatus = await addBookProgress(book.value.id, {page})
     book.value.user_status = updatedStatus
     progressDraft.value = updatedStatus.current_page?.toString() ?? ''
-    await loadEvents(book.value.id)
+    await cacheDel(cacheKeys.bookEvents(book.value.id))
+    await refreshEvents()
     return true
   } catch (error) {
     console.error('Failed to save progress:', error)
@@ -349,6 +361,8 @@ async function handleDelete() {
 
   try {
     await deleteBook(book.value.id)
+    await cacheInvalidateByPrefix(`books:${book.value.id}`)
+    await cacheInvalidateByPrefix('lists:')
     router.push({name: 'books'})
   } catch (err: any) {
     console.error('Failed to delete book:', err)
@@ -360,8 +374,9 @@ function handleModalClose() {
   showEditModal.value = false
 }
 
-function handleBookSaved() {
-  loadBook()
+async function handleBookSaved() {
+  await cacheInvalidateByPrefix('lists:')
+  await loadBook()
 }
 
 function handleAddBook() {
@@ -497,11 +512,11 @@ watch(
         </span>
       </div>
 
-      <div v-if="loading" class="loading">
+      <div v-if="!book && !error" class="loading">
         Loading book...
       </div>
 
-      <div v-else-if="error" class="error">
+      <div v-else-if="error && !book" class="error">
         {{ error }}
       </div>
 
@@ -657,7 +672,7 @@ watch(
             </div>
           </div>
 
-          <EventTimeline :events="events" />
+          <EventTimeline :events="events ?? []" />
 
           <div class="book-actions">
             <button @click="handleEdit" class="btn-primary">
