@@ -173,6 +173,9 @@ def test_remove_nonexistent_reading_status(client, auth_headers, created_book):
     """Test removing a reading status that doesn't exist."""
     book_id = created_book["id"]
 
+    # Creating a book auto-assigns a status; remove it first so we can test the 404 path.
+    client.delete(f"/books/{book_id}/status", headers=auth_headers)
+
     response = client.delete(f"/books/{book_id}/status", headers=auth_headers)
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -181,6 +184,7 @@ def test_reading_status_requires_auth(client, created_book):
     """Test that reading status endpoints require authentication."""
     book_id = created_book["id"]
 
+    client.cookies.clear()
     response = client.put(f"/books/{book_id}/status", json={"status": "started"})
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 

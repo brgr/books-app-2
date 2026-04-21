@@ -71,6 +71,7 @@ def test_refresh_token_not_valid_for_access(client, test_user):
     login_response = client.post("/token", data=test_user)
     refresh_token = login_response.json()["refresh_token"]
 
+    client.cookies.clear()
     response = client.get("/users/me", headers={"Authorization": f"Bearer {refresh_token}"})
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
