@@ -52,6 +52,7 @@ function closeMenu() {
           </button>
           <div v-if="isMenuOpen" class="menu-backdrop" @click="closeMenu"></div>
           <div v-if="isMenuOpen" class="menu-panel" role="menu">
+            <router-link class="menu-item" role="menuitem" to="/settings" @click="closeMenu">Settings</router-link>
             <button class="menu-item" type="button" role="menuitem" @click="handleLogout">Logout</button>
           </div>
         </div>
@@ -65,6 +66,8 @@ function closeMenu() {
   background-color: var(--color-bg-card);
   overflow: visible;
   width: 100%;
+  position: relative;
+  z-index: 200;
 }
 
 .navbar-content {
@@ -207,6 +210,7 @@ function closeMenu() {
 }
 
 .menu-item {
+  display: block;
   width: 100%;
   text-align: left;
   background: none;
@@ -217,6 +221,7 @@ function closeMenu() {
   padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--border-radius);
   cursor: pointer;
+  text-decoration: none;
   transition: background-color 0.15s ease;
 }
 
