@@ -55,6 +55,10 @@ export async function deleteBook(id: number): Promise<void> {
   await apiClient.delete(`/books/${id}`)
 }
 
+export async function deleteAllBooks(): Promise<void> {
+  await apiClient.delete('/books')
+}
+
 export async function setReadingStatus(bookId: number, data: UserBookStatusUpdate): Promise<UserBook> {
   const response = await apiClient.put<UserBook>(`/books/${bookId}/status`, data)
   return response.data

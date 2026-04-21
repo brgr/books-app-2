@@ -134,6 +134,40 @@ def test_delete_nonexistent_book(client, auth_headers):
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
+def test_delete_all_books(client, auth_headers, sample_book_data):
+    """Test deleting all books."""
+    # Create a few books
+    for i in range(3):
+        book_data = sample_book_data.copy()
+        book_data["title"] = f"Test Book {i}"
+        book_data["isbn"] = f"123456789{i}"
+        client.post("/books", json=book_data, headers=auth_headers)
+
+    # Verify books exist
+    response = client.get("/books", headers=auth_headers)
+    assert response.json()["total"] == 3
+
+    # Delete all
+    response = client.delete("/books", headers=auth_headers)
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    # Verify all gone
+    response = client.get("/books", headers=auth_headers)
+    assert response.json()["total"] == 0
+
+
+def test_delete_all_books_when_empty(client, auth_headers):
+    """Test deleting all books when there are none."""
+    response = client.delete("/books", headers=auth_headers)
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+
+
+def test_delete_all_books_requires_auth(client):
+    """Test that deleting all books requires authentication."""
+    response = client.delete("/books")
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
 def test_book_validation(client, auth_headers):
     """Test book data validation."""
     # Missing required field

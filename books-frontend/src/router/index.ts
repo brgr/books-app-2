@@ -4,6 +4,7 @@ import { setupAuthInterceptor } from '../api/client'
 import LoginView from '../views/LoginView.vue'
 import BooksView from '../views/BooksView.vue'
 import BookDetailView from '../views/BookDetailView.vue'
+import SettingsView from '../views/SettingsView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -24,6 +25,12 @@ const router = createRouter({
       path: '/books/:id',
       name: 'book-detail',
       component: BookDetailView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: SettingsView,
       meta: { requiresAuth: true },
     },
   ],

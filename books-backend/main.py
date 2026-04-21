@@ -654,6 +654,17 @@ async def update_book(
     return book
 
 
+@app.delete("/books", status_code=status.HTTP_204_NO_CONTENT)
+def delete_all_books(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """Delete all books."""
+    db.query(Book).delete()
+    db.commit()
+    return None
+
+
 @app.delete("/books/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_book(
     book_id: int,

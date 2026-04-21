@@ -754,6 +754,7 @@ watch(
 .books-view :deep(.navbar) {
   background-color: transparent;
   box-shadow: none;
+  z-index: 200;
 }
 
 .books-view :deep(.navbar-link:hover),
