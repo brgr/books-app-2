@@ -84,3 +84,12 @@ export async function addBookProgress(bookId: number, data: BookProgressUpdate):
   const response = await apiClient.post<UserBook>(`/books/${bookId}/progress`, data)
   return response.data
 }
+
+export async function importReadingList(file: File): Promise<{ imported: number }> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await apiClient.post<{ imported: number }>('/import/reading-list', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return response.data
+}

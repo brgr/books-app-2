@@ -156,6 +156,36 @@ def test_delete_all_books(client, auth_headers, sample_book_data):
     assert response.json()["total"] == 0
 
 
+def test_delete_all_books_cascades_to_user_books_and_events(
+    client, auth_headers, sample_book_data, db_session
+):
+    """Deleting all books must also remove user_books and their events.
+
+    Regression: a bulk delete that leaves orphaned user_books lets SQLite reuse
+    the freed book IDs for fresh books, silently re-linking old reading state
+    to unrelated imported books.
+    """
+    from app.models import UserBook, BookEvent
+
+    resp = client.post("/books", json=sample_book_data, headers=auth_headers)
+    assert resp.status_code == status.HTTP_201_CREATED
+    book_id = resp.json()["id"]
+
+    resp = client.put(
+        f"/books/{book_id}/status", json={"status": "started"}, headers=auth_headers
+    )
+    assert resp.status_code == status.HTTP_200_OK
+
+    assert db_session.query(UserBook).count() > 0
+    assert db_session.query(BookEvent).count() > 0
+
+    resp = client.delete("/books", headers=auth_headers)
+    assert resp.status_code == status.HTTP_204_NO_CONTENT
+
+    assert db_session.query(UserBook).count() == 0
+    assert db_session.query(BookEvent).count() == 0
+
+
 def test_delete_all_books_when_empty(client, auth_headers):
     """Test deleting all books when there are none."""
     response = client.delete("/books", headers=auth_headers)
