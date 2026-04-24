@@ -83,6 +83,7 @@ export interface BookUpdate {
 export interface UserBookStatusUpdate {
   status: ReadingStatus
   notes?: string
+  occurred_at?: string
 }
 
 export interface GoogleBookResult {

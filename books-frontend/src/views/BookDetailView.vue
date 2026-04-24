@@ -56,6 +56,26 @@ const showEditModal = ref(false)
 const showSearchModal = ref(false)
 const showFormModal = ref(false)
 const showStatusSheet = ref(false)
+const statusDateDraft = ref('')
+
+function todayIsoDate(): string {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+watch(showStatusSheet, (open) => {
+  if (open) statusDateDraft.value = todayIsoDate()
+})
+
+function resolveOccurredAt(): string | undefined {
+  const picked = statusDateDraft.value
+  if (!picked || picked === todayIsoDate()) return undefined
+  const localNoon = new Date(`${picked}T12:00:00`)
+  return localNoon.toISOString()
+}
 const prefilledBookData = ref<GoogleBookResult | null>(null)
 const descriptionRef = ref<HTMLElement | null>(null)
 const descriptionExpanded = ref(false)
@@ -214,7 +234,10 @@ async function handleStartReading() {
   updatingStatus.value = true
 
   try {
-    await setReadingStatus(book.value.id, {status: ReadingStatus.STARTED})
+    await setReadingStatus(book.value.id, {
+      status: ReadingStatus.STARTED,
+      occurred_at: resolveOccurredAt(),
+    })
     await cacheInvalidateByPrefix('lists:')
     await loadBook()
     showStatusSheet.value = false
@@ -231,7 +254,10 @@ async function handleFinishReading() {
   updatingStatus.value = true
 
   try {
-    await setReadingStatus(book.value.id, {status: ReadingStatus.FINISHED})
+    await setReadingStatus(book.value.id, {
+      status: ReadingStatus.FINISHED,
+      occurred_at: resolveOccurredAt(),
+    })
     await cacheInvalidateByPrefix('lists:')
     await loadBook()
     showStatusSheet.value = false
@@ -611,6 +637,14 @@ function handleNewBookSaved() {
         </div>
         <div class="sheet-body">
           <p class="sheet-status-detail">{{ readingStatusSubtitle }}</p>
+          <label v-if="canStartReading || canFinishReading" class="sheet-date-field">
+            <span>Date</span>
+            <input
+              type="date"
+              v-model="statusDateDraft"
+              :max="todayIsoDate()"
+            />
+          </label>
           <div class="sheet-actions">
             <button
               v-if="canStartReading"
@@ -1091,6 +1125,23 @@ function handleNewBookSaved() {
   display: flex;
   gap: var(--spacing-sm);
   flex-wrap: wrap;
+}
+
+.sheet-date-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+.sheet-date-field input {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 1rem;
 }
 
 @media (max-width: 768px) {
