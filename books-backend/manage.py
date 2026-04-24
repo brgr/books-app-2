@@ -58,7 +58,10 @@ def handle_create_superuser(args: argparse.Namespace) -> int:
 def handle_seed_reading_list(args: argparse.Namespace) -> int:
     """Import a Reading List ZIP for an existing user."""
 
-    from main import ImportReadingListError, import_reading_list_from_bytes
+    from app.reading_list_import import (
+        ImportReadingListError,
+        import_reading_list_from_bytes,
+    )
 
     zip_path = Path(args.zip)
     if not zip_path.is_file():
