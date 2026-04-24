@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import draggable from 'vuedraggable'
 import { useRouter } from 'vue-router'
 import { getListBooks, getLists, reorderListItem } from '../api/books'
@@ -14,8 +14,10 @@ import { cacheKeys } from '../cache/keys'
 import { cacheInvalidateByPrefix } from '../cache/store'
 
 const currentPage = ref(1)
-const pageSize = ref(20)
+const pageSize = ref(30)
 const router = useRouter()
+const accumulatedBooks = ref<Book[]>([])
+const isLoadingMore = ref(false)
 
 const showSearchModal = ref(false)
 const showFormModal = ref(false)
@@ -71,10 +73,32 @@ watch(viewMode, (newMode) => {
   localStorage.setItem('booksViewMode', newMode)
 })
 
-const filteredBooks = computed(() => {
-  if (!booksData.value) return []
+watch(booksData, (next) => {
+  if (!next) return
+  if (next.page === 1) {
+    accumulatedBooks.value = [...next.items]
+  } else {
+    const seen = new Set(accumulatedBooks.value.map(b => b.id))
+    const additions = next.items.filter(b => !seen.has(b.id))
+    accumulatedBooks.value = [...accumulatedBooks.value, ...additions]
+  }
+  isLoadingMore.value = false
+  nextTick(() => {
+    if (sentinelObserver && sentinelEl.value) {
+      sentinelObserver.unobserve(sentinelEl.value)
+      sentinelObserver.observe(sentinelEl.value)
+    }
+  })
+})
 
-  let books = booksData.value.items
+const hasMore = computed(() =>
+  Boolean(booksData.value) && currentPage.value < (booksData.value?.pages ?? 1)
+)
+
+const filteredBooks = computed(() => {
+  if (!booksData.value && accumulatedBooks.value.length === 0) return []
+
+  let books = accumulatedBooks.value
 
   // Filter by status
   if (filterStatus.value) {
@@ -131,6 +155,44 @@ async function loadBooks() {
   await refreshBooks()
 }
 
+function resetPagination() {
+  currentPage.value = 1
+  accumulatedBooks.value = []
+}
+
+async function loadMore() {
+  if (isLoadingMore.value || !hasMore.value) return
+  isLoadingMore.value = true
+  currentPage.value += 1
+}
+
+let sentinelObserver: IntersectionObserver | null = null
+const sentinelEl = ref<HTMLElement | null>(null)
+
+function setupObserver() {
+  if (sentinelObserver || !sentinelEl.value) return
+  sentinelObserver = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) loadMore()
+    }
+  }, { rootMargin: '400px 0px' })
+  sentinelObserver.observe(sentinelEl.value)
+}
+
+watch(sentinelEl, () => {
+  if (sentinelObserver) {
+    sentinelObserver.disconnect()
+    sentinelObserver = null
+  }
+  nextTick(() => setupObserver())
+})
+
+onMounted(() => nextTick(() => setupObserver()))
+onBeforeUnmount(() => {
+  sentinelObserver?.disconnect()
+  sentinelObserver = null
+})
+
 function handleAddBook() {
   prefilledBookData.value = null
   showSearchModal.value = true
@@ -159,13 +221,8 @@ function handleFormModalClose() {
 
 async function handleBookSaved() {
   await cacheInvalidateByPrefix('lists:')
+  resetPagination()
   await refreshBooks()
-}
-
-async function goToPage(page: number) {
-  currentPage.value = page
-  await loadBooks()
-  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 function getStatusLabel(status: ReadingStatus): string {
@@ -194,7 +251,7 @@ function setShelfFilter(next: 'to-read' | 'finished') {
     filterStatus.value = ''
   }
   showShelfMenu.value = false
-  currentPage.value = 1
+  resetPagination()
   setActiveListForShelf()
   loadBooks()
 }
@@ -234,12 +291,10 @@ async function handleDragEndForList(
       before_book_id: beforeBook?.id ?? null,
       after_book_id: afterBook?.id ?? null,
     })
-    if (booksData.value) {
-      booksData.value.items =
-        shelfFilter.value === 'to-read'
-          ? [...gridCurrentlyReading.value, ...gridToRead.value]
-          : [...gridBooks.value]
-    }
+    accumulatedBooks.value =
+      shelfFilter.value === 'to-read'
+        ? [...gridCurrentlyReading.value, ...gridToRead.value]
+        : [...gridBooks.value]
   } catch (err: any) {
     console.error('Failed to reorder books:', err)
   }
@@ -535,22 +590,12 @@ function getProgressPercent(book: Book): number {
         </div>
       </div>
 
-      <div v-if="booksData && booksData.pages > 1" class="pagination">
-        <button
-          @click="goToPage(currentPage - 1)"
-          :disabled="currentPage === 1"
-        >
-          Previous
-        </button>
-        <span class="pagination-info">
-          Page {{ currentPage }} of {{ booksData.pages }}
-        </span>
-        <button
-          @click="goToPage(currentPage + 1)"
-          :disabled="currentPage === booksData.pages"
-        >
-          Next
-        </button>
+      <div
+        v-if="hasMore || isLoadingMore"
+        ref="sentinelEl"
+        class="infinite-sentinel"
+      >
+        <span v-if="isLoadingMore" class="infinite-loading">Loading more…</span>
       </div>
     </div>
 
@@ -1109,7 +1154,15 @@ function getProgressPercent(book: Book): number {
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
 }
 
-.pagination-info {
+.infinite-sentinel {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--spacing-lg) 0;
+  min-height: 48px;
+}
+
+.infinite-loading {
   color: var(--color-text-secondary);
   font-size: 14px;
 }
