@@ -739,9 +739,8 @@ watch(
   position: absolute;
   inset: -10% -5%;
   background:
-    radial-gradient(45% 45% at 20% 20%, rgb(var(--cover-accent-1, 255 178 120) / 0.095), transparent 75%),
-    radial-gradient(35% 35% at 70% 25%, rgb(var(--cover-accent-2, 255 126 196) / 0.075), transparent 80%);
-  filter: blur(26px);
+    radial-gradient(45% 45% at 20% 20%, rgb(var(--cover-accent-1, 255 178 120) / 0.043), transparent 75%),
+    radial-gradient(35% 35% at 70% 25%, rgb(var(--cover-accent-2, 255 126 196) / 0.034), transparent 80%);
   opacity: 0.45;
   pointer-events: none;
 }
@@ -1172,7 +1171,7 @@ watch(
   height: auto;
   border-radius: var(--border-radius);
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease;
   box-shadow: var(--shadow);
   display: block;
   user-select: none;
@@ -1207,7 +1206,7 @@ watch(
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease;
   box-shadow: var(--shadow);
   padding: var(--spacing-md);
   user-select: none;

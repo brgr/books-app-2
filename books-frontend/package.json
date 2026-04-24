@@ -32,6 +32,7 @@
     "typescript": "~5.9.3",
     "vite": "^7.1.7",
     "vite-plugin-pwa": "^1.0.3",
+    "vite-plugin-qrcode": "^0.4.1",
     "vitest": "^4.1.4",
     "vue-tsc": "^3.1.0"
   }
