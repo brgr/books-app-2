@@ -62,28 +62,6 @@ const descriptionExpanded = ref(false)
 const showDescriptionToggle = ref(false)
 const descriptionMaxHeight = ref<string>('')
 
-const defaultPalette = {
-  accent1: '255 200 140',
-  accent2: '188 120 255',
-  accent3: '120 160 255',
-}
-
-const coverPalette = ref({...defaultPalette})
-
-const coverUrl = computed(() => {
-  if (!book.value) return ''
-  const rawUrl = book.value.cover_image_url || book.value.cover_thumbnail_url
-  return rawUrl ? getMediaUrl(rawUrl) : ''
-})
-
-const pageStyle = computed(() => {
-  return {
-    '--cover-accent-1': coverPalette.value.accent1,
-    '--cover-accent-2': coverPalette.value.accent2,
-    '--cover-accent-3': coverPalette.value.accent3,
-  }
-})
-
 watch(book, (newBook) => {
   if (newBook) {
     notesDraft.value = newBook.user_status?.notes ?? ''
@@ -410,97 +388,10 @@ function handleNewBookSaved() {
   router.push({name: 'books'})
 }
 
-function mixColorChannel(channel: number, mix: number) {
-  return Math.round(channel * (1 - mix) + 255 * mix)
-}
-
-function mixWithBlack(channel: number, mix: number) {
-  return Math.round(channel * (1 - mix))
-}
-
-async function updateCoverPalette(url: string) {
-  try {
-    const image = new Image()
-    image.crossOrigin = 'anonymous'
-    image.src = url
-    await new Promise<void>((resolve, reject) => {
-      image.onload = () => resolve()
-      image.onerror = () => reject(new Error('Failed to load cover image'))
-    })
-
-    const canvas = document.createElement('canvas')
-    const size = 24
-    canvas.width = size
-    canvas.height = size
-    const context = canvas.getContext('2d')
-    if (!context) {
-      coverPalette.value = {...defaultPalette}
-      return
-    }
-
-    context.drawImage(image, 0, 0, size, size)
-    const {data} = context.getImageData(0, 0, size, size)
-    let totalR = 0
-    let totalG = 0
-    let totalB = 0
-    let count = 0
-
-    for (let i = 0; i < data.length; i += 4) {
-      const alpha = data[i + 3] ?? 0
-      if (alpha < 16) continue
-      totalR += data[i] ?? 0
-      totalG += data[i + 1] ?? 0
-      totalB += data[i + 2] ?? 0
-      count += 1
-    }
-
-    if (!count) {
-      coverPalette.value = {...defaultPalette}
-      return
-    }
-
-    const avgR = Math.round(totalR / count)
-    const avgG = Math.round(totalG / count)
-    const avgB = Math.round(totalB / count)
-
-    const lighter = {
-      r: mixColorChannel(avgR, 0.28),
-      g: mixColorChannel(avgG, 0.28),
-      b: mixColorChannel(avgB, 0.28),
-    }
-
-    const darker = {
-      r: mixWithBlack(avgR, 0.35),
-      g: mixWithBlack(avgG, 0.35),
-      b: mixWithBlack(avgB, 0.35),
-    }
-
-    coverPalette.value = {
-      accent1: `${avgR} ${avgG} ${avgB}`,
-      accent2: `${lighter.r} ${lighter.g} ${lighter.b}`,
-      accent3: `${darker.r} ${darker.g} ${darker.b}`,
-    }
-  } catch (error) {
-    console.warn('Cover palette fallback:', error)
-    coverPalette.value = {...defaultPalette}
-  }
-}
-
-watch(
-  () => coverUrl.value,
-  async (url) => {
-    if (!url) {
-      coverPalette.value = {...defaultPalette}
-      return
-    }
-    await updateCoverPalette(url)
-  },
-  {immediate: true},
-)
 </script>
 
 <template>
-  <div class="book-detail-page" :style="pageStyle">
+  <div class="book-detail-page">
     <NavigationBar @add-book="handleAddBook"/>
 
     <div class="container">
@@ -748,53 +639,8 @@ watch(
 
 <style scoped>
 .book-detail-page {
-  position: relative;
   min-height: 100vh;
-  border-radius: 28px;
-  overflow: hidden;
-  background:
-    radial-gradient(120% 120% at 20% 15%, rgb(var(--cover-accent-1, 255 200 140) / 0.14), transparent 45%),
-    radial-gradient(80% 80% at 85% 18%, rgb(var(--cover-accent-2, 188 120 255) / 0.18), transparent 50%),
-    radial-gradient(100% 100% at 35% 85%, rgb(var(--cover-accent-3, 120 160 255) / 0.1), transparent 55%),
-    linear-gradient(160deg, #161015 0%, #221821 45%, #1d1624 100%);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
-    0 20px 60px rgba(7, 5, 8, 0.6);
-}
-
-.book-detail-page::before {
-  content: '';
-  position: absolute;
-  inset: -20%;
-  background:
-    radial-gradient(40% 40% at 30% 30%, rgb(var(--cover-accent-1, 255 178 120) / 0.2), transparent 70%),
-    radial-gradient(30% 30% at 70% 40%, rgb(var(--cover-accent-2, 255 126 196) / 0.16), transparent 75%);
-  filter: blur(24px);
-  opacity: 0.85;
-  pointer-events: none;
-}
-
-.book-detail-page::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(10, 8, 12, 0.2), rgba(10, 8, 12, 0.72));
-  pointer-events: none;
-}
-
-.book-detail-page > * {
-  position: relative;
-  z-index: 1;
-}
-
-.book-detail-page :deep(.navbar) {
-  background-color: transparent;
-  box-shadow: none;
-}
-
-.book-detail-page :deep(.navbar-link:hover),
-.book-detail-page :deep(.navbar-link-btn:hover) {
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: var(--color-bg);
 }
 
 .breadcrumb {

@@ -100,34 +100,6 @@ const toReadBooks = computed(() =>
   filteredBooks.value.filter(book => book.user_status?.status !== ReadingStatus.STARTED)
 )
 
-const defaultPalette = {
-  accent1: '255 200 140',
-  accent2: '188 120 255',
-  accent3: '120 160 255',
-}
-
-const coverPalette = ref({ ...defaultPalette })
-
-const heroCoverUrl = computed(() => {
-  const list =
-    shelfFilter.value === 'to-read'
-      ? currentlyReadingBooks.value.length
-        ? currentlyReadingBooks.value
-        : toReadBooks.value
-      : filteredBooks.value
-
-  const heroBook = list.find(book => book.cover_image_url || book.cover_thumbnail_url)
-  if (!heroBook) return ''
-  const rawUrl = heroBook.cover_image_url || heroBook.cover_thumbnail_url
-  return rawUrl ? getMediaUrl(rawUrl) : ''
-})
-
-const pageStyle = computed(() => ({
-  '--cover-accent-1': coverPalette.value.accent1,
-  '--cover-accent-2': coverPalette.value.accent2,
-  '--cover-accent-3': coverPalette.value.accent3,
-}))
-
 const gridBooks = ref<Book[]>([])
 const gridCurrentlyReading = ref<Book[]>([])
 const gridToRead = ref<Book[]>([])
@@ -296,97 +268,10 @@ function getProgressPercent(book: Book): number {
   return Math.min(100, Math.max(0, percent))
 }
 
-function mixColorChannel(channel: number, mix: number) {
-  return Math.round(channel * (1 - mix) + 255 * mix)
-}
-
-function mixWithBlack(channel: number, mix: number) {
-  return Math.round(channel * (1 - mix))
-}
-
-async function updateCoverPalette(url: string) {
-  try {
-    const image = new Image()
-    image.crossOrigin = 'anonymous'
-    image.src = url
-    await new Promise<void>((resolve, reject) => {
-      image.onload = () => resolve()
-      image.onerror = () => reject(new Error('Failed to load cover image'))
-    })
-
-    const canvas = document.createElement('canvas')
-    const size = 24
-    canvas.width = size
-    canvas.height = size
-    const context = canvas.getContext('2d')
-    if (!context) {
-      coverPalette.value = { ...defaultPalette }
-      return
-    }
-
-    context.drawImage(image, 0, 0, size, size)
-    const { data } = context.getImageData(0, 0, size, size)
-    let totalR = 0
-    let totalG = 0
-    let totalB = 0
-    let count = 0
-
-    for (let i = 0; i < data.length; i += 4) {
-      const alpha = data[i + 3] ?? 0
-      if (alpha < 16) continue
-      totalR += data[i] ?? 0
-      totalG += data[i + 1] ?? 0
-      totalB += data[i + 2] ?? 0
-      count += 1
-    }
-
-    if (!count) {
-      coverPalette.value = { ...defaultPalette }
-      return
-    }
-
-    const avgR = Math.round(totalR / count)
-    const avgG = Math.round(totalG / count)
-    const avgB = Math.round(totalB / count)
-
-    const lighter = {
-      r: mixColorChannel(avgR, 0.28),
-      g: mixColorChannel(avgG, 0.28),
-      b: mixColorChannel(avgB, 0.28),
-    }
-
-    const darker = {
-      r: mixWithBlack(avgR, 0.35),
-      g: mixWithBlack(avgG, 0.35),
-      b: mixWithBlack(avgB, 0.35),
-    }
-
-    coverPalette.value = {
-      accent1: `${avgR} ${avgG} ${avgB}`,
-      accent2: `${lighter.r} ${lighter.g} ${lighter.b}`,
-      accent3: `${darker.r} ${darker.g} ${darker.b}`,
-    }
-  } catch (error) {
-    console.warn('Cover palette fallback:', error)
-    coverPalette.value = { ...defaultPalette }
-  }
-}
-
-watch(
-  () => heroCoverUrl.value,
-  async (url) => {
-    if (!url) {
-      coverPalette.value = { ...defaultPalette }
-      return
-    }
-    await updateCoverPalette(url)
-  },
-  { immediate: true },
-)
 </script>
 
 <template>
-  <div class="books-view" :style="pageStyle">
+  <div class="books-view">
     <NavigationBar @add-book="handleAddBook" />
 
     <div class="container">
@@ -724,41 +609,14 @@ watch(
 
 <style scoped>
 .books-view {
-  position: relative;
   min-height: 100svh;
   padding-bottom: 112px;
   box-sizing: border-box;
-  background:
-    radial-gradient(120% 120% at 15% 0%, rgb(var(--cover-accent-1, 255 200 140) / 0.065), transparent 50%),
-    radial-gradient(95% 95% at 90% 5%, rgb(var(--cover-accent-2, 188 120 255) / 0.065), transparent 60%),
-    radial-gradient(100% 100% at 25% 80%, rgb(var(--cover-accent-3, 120 160 255) / 0.05), transparent 65%);
-}
-
-.books-view::before {
-  content: '';
-  position: absolute;
-  inset: -10% -5%;
-  background:
-    radial-gradient(45% 45% at 20% 20%, rgb(var(--cover-accent-1, 255 178 120) / 0.043), transparent 75%),
-    radial-gradient(35% 35% at 70% 25%, rgb(var(--cover-accent-2, 255 126 196) / 0.034), transparent 80%);
-  opacity: 0.45;
-  pointer-events: none;
-}
-
-.books-view > * {
-  position: relative;
-  z-index: 1;
+  background-color: var(--color-bg);
 }
 
 .books-view :deep(.navbar) {
-  background-color: transparent;
-  box-shadow: none;
   z-index: 200;
-}
-
-.books-view :deep(.navbar-link:hover),
-.books-view :deep(.navbar-link-btn:hover) {
-  background-color: rgba(255, 255, 255, 0.08);
 }
 
 .bottom-bar {
