@@ -92,6 +92,7 @@ class UserBookStatusUpdate(BaseModel):
 
     status: ReadingStatus
     notes: Optional[str] = None
+    occurred_at: Optional[datetime] = None
 
 
 class UserBookResponse(UserBookBase):

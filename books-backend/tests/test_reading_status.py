@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, UTC
+
 import pytest
 from fastapi import status
 
@@ -230,6 +232,66 @@ def test_progress_requires_start(client, auth_headers, created_book):
     assert "Cannot record progress before starting" in response.json()["detail"]
 
 
+def test_set_started_with_custom_occurred_at(client, auth_headers, created_book):
+    """Start reading can be backdated via occurred_at."""
+    book_id = created_book["id"]
+    backdated = datetime(2026, 1, 15, 12, 0, 0, tzinfo=UTC)
+
+    response = client.put(
+        f"/books/{book_id}/status",
+        json={"status": "started", "occurred_at": backdated.isoformat()},
+        headers=auth_headers,
+    )
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data["status"] == "started"
+    returned = datetime.fromisoformat(data["started_at"].replace("Z", "+00:00"))
+    if returned.tzinfo is None:
+        returned = returned.replace(tzinfo=UTC)
+    assert returned == backdated
+
+
+def test_set_finished_with_custom_occurred_at(client, auth_headers, created_book):
+    """Finish reading can be backdated via occurred_at."""
+    book_id = created_book["id"]
+    started_at = datetime(2026, 1, 10, 12, 0, 0, tzinfo=UTC)
+    finished_at = datetime(2026, 2, 1, 12, 0, 0, tzinfo=UTC)
+
+    response = client.put(
+        f"/books/{book_id}/status",
+        json={"status": "started", "occurred_at": started_at.isoformat()},
+        headers=auth_headers,
+    )
+    assert response.status_code == status.HTTP_200_OK
+
+    response = client.put(
+        f"/books/{book_id}/status",
+        json={"status": "finished", "occurred_at": finished_at.isoformat()},
+        headers=auth_headers,
+    )
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data["status"] == "finished"
+    returned = datetime.fromisoformat(data["finished_at"].replace("Z", "+00:00"))
+    if returned.tzinfo is None:
+        returned = returned.replace(tzinfo=UTC)
+    assert returned == finished_at
+
+
+def test_occurred_at_cannot_be_in_the_future(client, auth_headers, created_book):
+    """Backdating must not accept future timestamps."""
+    book_id = created_book["id"]
+    future = datetime.now(UTC) + timedelta(days=2)
+
+    response = client.put(
+        f"/books/{book_id}/status",
+        json={"status": "started", "occurred_at": future.isoformat()},
+        headers=auth_headers,
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "future" in response.json()["detail"].lower()
+
+
 def test_progress_clamps_to_page_count(client, auth_headers, created_book):
     book_id = created_book["id"]
 
@@ -248,7 +310,9 @@ def test_progress_clamps_to_page_count(client, auth_headers, created_book):
     events_response = client.get(f"/books/{book_id}/events", headers=auth_headers)
     assert events_response.status_code == status.HTTP_200_OK
     progress_events = [
-        event for event in events_response.json() if event["event_type"] == "progress_set"
+        event
+        for event in events_response.json()
+        if event["event_type"] == "progress_set"
     ]
     assert progress_events
     assert progress_events[0]["page"] == created_book["page_count"]

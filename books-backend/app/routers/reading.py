@@ -1,3 +1,4 @@
+from datetime import datetime, UTC
 from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -65,6 +66,16 @@ def set_reading_status(
 
     user_book_id = cast(int, user_book.id)
 
+    occurred_at = status_data.occurred_at
+    if occurred_at is not None:
+        if occurred_at.tzinfo is None:
+            occurred_at = occurred_at.replace(tzinfo=UTC)
+        if occurred_at > datetime.now(UTC):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="occurred_at cannot be in the future",
+            )
+
     try:
         if (
             status_data.status == ReadingStatus.WANT_TO_READ
@@ -79,12 +90,16 @@ def set_reading_status(
             status_data.status == ReadingStatus.STARTED
             and user_book.status != ReadingStatus.STARTED
         ):
-            record_started_reading(db, user_book_id=user_book_id)
+            record_started_reading(
+                db, user_book_id=user_book_id, occurred_at=occurred_at
+            )
         elif (
             status_data.status == ReadingStatus.FINISHED
             and user_book.status != ReadingStatus.FINISHED
         ):
-            record_finished_reading(db, user_book_id=user_book_id)
+            record_finished_reading(
+                db, user_book_id=user_book_id, occurred_at=occurred_at
+            )
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -111,10 +126,14 @@ def set_reading_status(
     lists_by_name = get_or_create_default_lists(db, user_id)
     target_list_name = list_name_for_status(cast(ReadingStatus, user_book.status))
     target_list_id = (
-        lists_by_name[target_list_name].id if target_list_name in lists_by_name else None
+        lists_by_name[target_list_name].id
+        if target_list_name in lists_by_name
+        else None
     )
     if target_list_id is not None:
-        ensure_list_item(db, list_id=cast(int, target_list_id), user_book_id=user_book_id)
+        ensure_list_item(
+            db, list_id=cast(int, target_list_id), user_book_id=user_book_id
+        )
 
     for list_name, book_list in lists_by_name.items():
         if book_list.id != target_list_id:
