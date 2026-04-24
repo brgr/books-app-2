@@ -998,29 +998,22 @@ def _parse_date(val: str) -> datetime | None:
         return None
 
 
-@app.post("/import/reading-list")
-def import_reading_list(
-    file: Annotated[UploadFile, File(...)],
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)],
-):
-    content = file.file.read()
+class ImportReadingListError(ValueError):
+    """Raised when the import payload is structurally invalid."""
 
+
+def import_reading_list_from_bytes(
+    db: Session, user_id: int, content: bytes
+) -> dict[str, int]:
     try:
         zf = zipfile.ZipFile(io.BytesIO(content))
-    except zipfile.BadZipFile:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Uploaded file is not a valid ZIP",
-        )
+    except zipfile.BadZipFile as exc:
+        raise ImportReadingListError("Uploaded file is not a valid ZIP") from exc
 
     try:
         csv_data = zf.read("data.csv").decode("utf-8")
-    except KeyError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="ZIP does not contain data.csv",
-        )
+    except KeyError as exc:
+        raise ImportReadingListError("ZIP does not contain data.csv") from exc
 
     image_names = {n.split("/")[-1] for n in zf.namelist() if n.startswith("images/") and "/" in n and n != "images/"}
 
@@ -1032,7 +1025,6 @@ def import_reading_list(
         reader,
         key=lambda r: 0 if _derive_status(r) == ReadingStatus.STARTED else 1,
     )
-    user_id = cast(int, current_user.id)
     default_lists = _get_or_create_default_lists(db, user_id)
     imported = 0
     skipped = 0
@@ -1155,3 +1147,19 @@ def import_reading_list(
 
     db.commit()
     return {"imported": imported, "skipped": skipped}
+
+
+@app.post("/import/reading-list")
+def import_reading_list(
+    file: Annotated[UploadFile, File(...)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    try:
+        return import_reading_list_from_bytes(
+            db, cast(int, current_user.id), file.file.read()
+        )
+    except ImportReadingListError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc
