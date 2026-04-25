@@ -1,18 +1,30 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { createBook, updateBook } from '../api/books'
-import type { Book, BookCreate, BookUpdate, GoogleBookResult } from '../api/types'
-import CoverPickerModal from './CoverPickerModal.vue'
+import { ref, computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getBook, updateBook } from '../api/books'
+import type { Book, BookUpdate } from '../api/types'
+import NavigationBar from '../components/NavigationBar.vue'
+import CoverPickerModal from '../components/CoverPickerModal.vue'
+import { useCachedQuery } from '../composables/useCachedQuery'
+import { cacheKeys } from '../cache/keys'
+import { cacheDel, cacheInvalidateByPrefix } from '../cache/store'
 
-const props = defineProps<{
-  book?: Book | null
-  prefilledData?: GoogleBookResult | null
-}>()
+const route = useRoute()
+const router = useRouter()
 
-const emit = defineEmits<{
-  close: []
-  saved: []
-}>()
+const bookId = computed(() => {
+  const id = parseInt(route.params.id as string)
+  return isNaN(id) ? 0 : id
+})
+
+const {
+  data: book,
+  error: bookError,
+} = useCachedQuery<Book>(
+  computed(() => bookId.value ? cacheKeys.book(bookId.value) : ''),
+  () => getBook(bookId.value),
+  { enabled: computed(() => bookId.value > 0) }
+)
 
 const formData = ref({
   title: '',
@@ -28,62 +40,39 @@ const loading = ref(false)
 const error = ref('')
 const showCoverPicker = ref(false)
 
+const loadError = computed(() => {
+  const e = bookError.value
+  if (!e) return ''
+  if (e instanceof Error) return e.message
+  return 'Failed to load book.'
+})
+
+watch(book, (b) => {
+  if (b) {
+    formData.value = {
+      title: b.title,
+      author: b.author,
+      isbn: b.isbn || '',
+      description: b.description || '',
+      published_date: (b.published_date ? b.published_date.split('T')[0] : '') || '',
+      page_count: b.page_count ? b.page_count.toString() : '',
+      cover_image_url: b.cover_image_url || '',
+    }
+  }
+}, { immediate: true })
+
 function handleCoverSelected(imageUrl: string) {
   formData.value.cover_image_url = imageUrl
   showCoverPicker.value = false
 }
 
-// Initialize form with book data if editing or with prefilled data from search
-watch(() => props.book, (book) => {
-  if (book) {
-    formData.value = {
-      title: book.title,
-      author: book.author,
-      isbn: book.isbn || '',
-      description: book.description || '',
-      published_date: (book.published_date ? book.published_date.split('T')[0] : '') || '',
-      page_count: book.page_count ? book.page_count.toString() : '',
-      cover_image_url: book.cover_image_url || '',
-    }
-  } else {
-    resetForm()
-  }
-}, { immediate: true })
-
-// Watch for prefilled data from Google Books search
-watch(() => props.prefilledData, (data) => {
-  if (data && !props.book) {
-    formData.value = {
-      title: data.title || '',
-      author: data.author || '',
-      isbn: data.isbn || '',
-      description: data.description || '',
-      published_date: (data.published_date ? data.published_date.split('T')[0] : '') || '',
-      page_count: data.page_count ? data.page_count.toString() : '',
-      cover_image_url: data.thumbnail || '',
-    }
-  }
-}, { immediate: true })
-
-function resetForm() {
-  formData.value = {
-    title: '',
-    author: '',
-    isbn: '',
-    description: '',
-    published_date: '',
-    page_count: '',
-    cover_image_url: '',
-  }
-  error.value = ''
-}
-
 async function handleSubmit() {
+  if (!book.value) return
   error.value = ''
   loading.value = true
 
   try {
-    const bookData: BookCreate | BookUpdate = {
+    const bookData: BookUpdate = {
       title: formData.value.title,
       author: formData.value.author,
       isbn: formData.value.isbn || undefined,
@@ -93,16 +82,10 @@ async function handleSubmit() {
       cover_image_url: formData.value.cover_image_url || undefined,
     }
 
-    if (props.book) {
-      // Update existing book
-      await updateBook(props.book.id, bookData as BookUpdate)
-    } else {
-      // Create new book
-      await createBook(bookData as BookCreate)
-    }
-
-    emit('saved')
-    emit('close')
+    await updateBook(book.value.id, bookData)
+    await cacheDel(cacheKeys.book(book.value.id))
+    await cacheInvalidateByPrefix('lists:')
+    router.push({ name: 'book-detail', params: { id: book.value.id } })
   } catch (err: any) {
     console.error('Failed to save book:', err)
     error.value = err.response?.data?.detail || 'Failed to save book. Please try again.'
@@ -111,24 +94,47 @@ async function handleSubmit() {
   }
 }
 
-function handleClose() {
-  if (!loading.value) {
-    emit('close')
+function handleCancel() {
+  if (loading.value) return
+  if (book.value) {
+    router.push({ name: 'book-detail', params: { id: book.value.id } })
+  } else {
+    router.push({ name: 'books' })
   }
 }
 </script>
 
 <template>
-  <div class="modal-overlay" @click.self="handleClose">
-    <div class="modal">
-      <div class="modal-header">
-        <h3>{{ book ? 'Edit Book' : 'Add New Book' }}</h3>
-        <button @click="handleClose" :disabled="loading" class="btn-small">
-          Close
-        </button>
+  <div class="book-edit-page">
+    <NavigationBar />
+
+    <div class="container">
+      <div class="breadcrumb">
+        <router-link to="/" class="breadcrumb-link">Books</router-link>
+        <span class="breadcrumb-separator">/</span>
+        <router-link
+          v-if="book"
+          :to="{ name: 'book-detail', params: { id: book.id } }"
+          class="breadcrumb-link"
+        >
+          {{ book.title }}
+        </router-link>
+        <span v-else class="breadcrumb-current">Book</span>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">Edit</span>
       </div>
 
-      <div class="modal-body">
+      <div v-if="loadError && !book" class="error">
+        {{ loadError }}
+      </div>
+
+      <div v-else-if="!book" class="loading">
+        Loading book...
+      </div>
+
+      <div v-else class="edit-content">
+        <h1>Edit Book</h1>
+
         <div v-if="error" class="error">
           {{ error }}
         </div>
@@ -239,31 +245,77 @@ function handleClose() {
               </div>
             </div>
           </div>
+
+          <div class="form-actions">
+            <button type="button" @click="handleCancel" :disabled="loading">
+              Cancel
+            </button>
+            <button type="submit" class="btn-primary" :disabled="loading">
+              {{ loading ? 'Saving...' : 'Save Book' }}
+            </button>
+          </div>
         </form>
       </div>
-
-      <CoverPickerModal
-        v-if="showCoverPicker"
-        :initial-title="formData.title"
-        :initial-author="formData.author"
-        :initial-isbn="formData.isbn"
-        @select="handleCoverSelected"
-        @close="showCoverPicker = false"
-      />
-
-      <div class="modal-footer">
-        <button @click="handleClose" :disabled="loading">
-          Cancel
-        </button>
-        <button @click="handleSubmit" class="btn-primary" :disabled="loading">
-          {{ loading ? 'Saving...' : 'Save Book' }}
-        </button>
-      </div>
     </div>
+
+    <CoverPickerModal
+      v-if="showCoverPicker"
+      :initial-title="formData.title"
+      :initial-author="formData.author"
+      :initial-isbn="formData.isbn"
+      @select="handleCoverSelected"
+      @close="showCoverPicker = false"
+    />
   </div>
 </template>
 
 <style scoped>
+.book-edit-page {
+  min-height: 100vh;
+  background-color: var(--color-bg);
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-lg);
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  flex-wrap: wrap;
+}
+
+.breadcrumb-link {
+  color: var(--color-text);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.breadcrumb-link:hover {
+  color: var(--color-primary);
+}
+
+.breadcrumb-separator {
+  color: var(--color-text-secondary);
+}
+
+.breadcrumb-current {
+  color: var(--color-text-secondary);
+  max-width: min(420px, 60vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.edit-content {
+  max-width: 720px;
+}
+
+.edit-content h1 {
+  margin: 0 0 var(--spacing-lg) 0;
+  font-size: 1.75rem;
+}
+
 .cover-row {
   display: flex;
   gap: var(--spacing-md);
@@ -302,5 +354,12 @@ function handleClose() {
 .cover-buttons {
   display: flex;
   gap: var(--spacing-sm);
+}
+
+.form-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: flex-end;
+  margin-top: var(--spacing-xl);
 }
 </style>

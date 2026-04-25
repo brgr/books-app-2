@@ -6,7 +6,6 @@ import type { GoogleBookResult } from '../api/types'
 const emit = defineEmits<{
   close: []
   select: [book: GoogleBookResult]
-  manualEntry: []
 }>()
 
 const searchQuery = ref('')
@@ -37,10 +36,6 @@ async function handleSearch() {
 
 function handleSelectBook(book: GoogleBookResult) {
   emit('select', book)
-}
-
-function handleManualEntry() {
-  emit('manualEntry')
 }
 
 function handleClose() {
@@ -86,9 +81,6 @@ function handleKeyPress(event: KeyboardEvent) {
             </button>
           </div>
 
-          <button @click="handleManualEntry" class="btn-manual" :disabled="loading">
-            Or enter book details manually
-          </button>
         </div>
 
         <div v-if="error" class="error">
@@ -100,7 +92,7 @@ function handleKeyPress(event: KeyboardEvent) {
         </div>
 
         <div v-else-if="hasSearched && searchResults.length === 0" class="empty-state">
-          <p>No books found. Try a different search term or enter details manually.</p>
+          <p>No books found. Try a different search term.</p>
         </div>
 
         <div v-else-if="searchResults.length > 0" class="results-section">
@@ -170,23 +162,6 @@ function handleKeyPress(event: KeyboardEvent) {
 
 .search-input {
   flex: 1;
-}
-
-.btn-manual {
-  width: 100%;
-  padding: var(--spacing-sm);
-  background-color: transparent;
-  border: 1px dashed var(--color-border);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  border-radius: var(--border-radius);
-  font-size: 14px;
-}
-
-.btn-manual:hover:not(:disabled) {
-  background-color: var(--color-bg-card);
-  border-color: var(--color-primary);
-  color: var(--color-primary);
 }
 
 .results-section {
