@@ -7,6 +7,7 @@ import type {
   UserBookStatusUpdate,
   UserBook,
   GoogleBookResult,
+  CoverSearchResult,
   BookEvent,
   BookProgressUpdate,
   BookList,
@@ -71,6 +72,17 @@ export async function removeReadingStatus(bookId: number): Promise<void> {
 export async function searchGoogleBooks(query: string): Promise<GoogleBookResult[]> {
   const response = await apiClient.get<GoogleBookResult[]>('/books/search', {
     params: { q: query },
+  })
+  return response.data
+}
+
+export async function searchBookCovers(params: {
+  title?: string
+  author?: string
+  isbn?: string
+}): Promise<CoverSearchResult[]> {
+  const response = await apiClient.get<CoverSearchResult[]>('/books/search-covers', {
+    params,
   })
   return response.data
 }

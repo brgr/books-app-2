@@ -143,6 +143,17 @@ class GoogleBookResult(BaseModel):
     google_books_id: Optional[str] = None
 
 
+class CoverSearchResult(BaseModel):
+    """A candidate cover image returned by the cover picker."""
+
+    title: str
+    author: Optional[str] = None
+    isbn: Optional[str] = None
+    thumbnail: str
+    image_url: str
+    google_books_id: Optional[str] = None
+
+
 # Export schemas
 class ExportBookEntry(BaseModel):
     id: int
@@ -175,6 +186,10 @@ class BookEventResponse(BaseModel):
     occurred_at: datetime
     note: Optional[str] = None
     page: Optional[int] = None
+    old_cover_image_url: Optional[str] = None
+    new_cover_image_url: Optional[str] = None
+    old_cover_thumbnail_url: Optional[str] = None
+    new_cover_thumbnail_url: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
