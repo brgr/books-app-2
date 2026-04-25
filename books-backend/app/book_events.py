@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.models import (
     BookEvent,
     BookEventCode,
+    BookEventCover,
     BookEventNote,
     BookEventProgress,
     BookEventType,
@@ -219,6 +220,40 @@ def record_progress_event(
     session.add(event)
     session.flush()
     session.add(BookEventProgress(event_id=event.id, page=page))
+    session.flush()
+    return event
+
+
+def record_cover_changed(
+    session: Session,
+    user_book_id: int,
+    old_cover_image_url: Optional[str],
+    new_cover_image_url: Optional[str],
+    old_cover_thumbnail_url: Optional[str],
+    new_cover_thumbnail_url: Optional[str],
+    occurred_at: Optional[datetime] = None,
+) -> BookEvent:
+    """Append a cover-changed event to the user's reading timeline.
+
+    Caller must check the cover URL actually changed before calling.
+    """
+    event_type = _get_event_type(session, BookEventCode.COVER_CHANGED)
+    event = BookEvent(
+        user_book_id=user_book_id,
+        event_type_id=event_type.id,
+        occurred_at=occurred_at or datetime.now(UTC),
+    )
+    session.add(event)
+    session.flush()
+    session.add(
+        BookEventCover(
+            event_id=event.id,
+            old_cover_image_url=old_cover_image_url,
+            new_cover_image_url=new_cover_image_url,
+            old_cover_thumbnail_url=old_cover_thumbnail_url,
+            new_cover_thumbnail_url=new_cover_thumbnail_url,
+        )
+    )
     session.flush()
     return event
 

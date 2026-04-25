@@ -4,20 +4,29 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
-from app.book_events import ensure_added_event, project_user_book_state
+from app.book_events import (
+    ensure_added_event,
+    project_user_book_state,
+    record_cover_changed,
+)
 from app.book_lists import (
     ensure_list_item,
     get_or_create_default_lists,
     list_name_for_status,
 )
 from app.database import get_db
-from app.google_books import GoogleBooksRateLimitError, search_google_books
+from app.google_books import (
+    GoogleBooksRateLimitError,
+    search_cover_images,
+    search_google_books,
+)
 from app.image_utils import CONTENT_TYPE_TO_EXT, download_cover_image, store_cover_image
 from app.models import Book, ReadingStatus, User, UserBook
 from app.schemas import (
     BookCreate,
     BookResponse,
     BookUpdate,
+    CoverSearchResult,
     GoogleBookResult,
     PaginatedBooks,
 )
@@ -51,6 +60,32 @@ async def search_books(
             headers=headers,
         )
     return results
+
+
+@router.get("/books/search-covers", response_model=list[CoverSearchResult])
+async def search_covers(
+    current_user: Annotated[User, Depends(get_current_user)],
+    title: str | None = None,
+    author: str | None = None,
+    isbn: str | None = None,
+):
+    """Search Google Books for candidate cover images by title/author/isbn."""
+    if not any([title, author, isbn]):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide at least one of title, author, or isbn",
+        )
+    try:
+        return await search_cover_images(title=title, author=author, isbn=isbn)
+    except GoogleBooksRateLimitError as e:
+        headers = {}
+        if e.retry_after:
+            headers["Retry-After"] = e.retry_after
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Google Books rate limit exceeded.",
+            headers=headers,
+        )
 
 
 @router.post("/books", response_model=BookResponse, status_code=status.HTTP_201_CREATED)
@@ -169,6 +204,8 @@ async def update_book(
 
     update_data = book_data.model_dump(exclude_unset=True)
 
+    old_cover_image_url = cast(str | None, book.cover_image_url)
+    old_cover_thumbnail_url = cast(str | None, book.cover_thumbnail_url)
     cover_url = update_data.get("cover_image_url")
     if "cover_image_url" in update_data:
         cover_url = update_data.get("cover_image_url")
@@ -183,6 +220,22 @@ async def update_book(
 
     for key, value in update_data.items():
         setattr(book, key, value)
+
+    if (
+        "cover_image_url" in update_data
+        and book.cover_image_url != old_cover_image_url
+    ):
+        actor_user_book = ensure_added_event(
+            db, user_id=cast(int, current_user.id), book_id=cast(int, book.id)
+        )
+        record_cover_changed(
+            db,
+            user_book_id=cast(int, actor_user_book.id),
+            old_cover_image_url=old_cover_image_url,
+            new_cover_image_url=cast(str | None, book.cover_image_url),
+            old_cover_thumbnail_url=old_cover_thumbnail_url,
+            new_cover_thumbnail_url=cast(str | None, book.cover_thumbnail_url),
+        )
 
     db.commit()
     db.refresh(book)
@@ -271,8 +324,22 @@ async def upload_book_cover(
             detail=f"Failed to save file: {str(e)}",
         )
 
+    old_cover_image_url = cast(str | None, book.cover_image_url)
+    old_cover_thumbnail_url = cast(str | None, book.cover_thumbnail_url)
     book.cover_image_url = cover_url
     book.cover_thumbnail_url = thumbnail_url
+    if cover_url != old_cover_image_url:
+        actor_user_book = ensure_added_event(
+            db, user_id=cast(int, current_user.id), book_id=cast(int, book.id)
+        )
+        record_cover_changed(
+            db,
+            user_book_id=cast(int, actor_user_book.id),
+            old_cover_image_url=old_cover_image_url,
+            new_cover_image_url=cover_url,
+            old_cover_thumbnail_url=old_cover_thumbnail_url,
+            new_cover_thumbnail_url=thumbnail_url,
+        )
     db.commit()
     db.refresh(book)
 

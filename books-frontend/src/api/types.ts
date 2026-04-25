@@ -118,3 +118,12 @@ export interface BookEvent {
 export interface BookProgressUpdate {
   page: number
 }
+
+export interface CoverSearchResult {
+  title: string
+  author: string | null
+  isbn: string | null
+  thumbnail: string
+  image_url: string
+  google_books_id: string | null
+}

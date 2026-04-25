@@ -31,6 +31,7 @@ class BookEventCode(enum.Enum):
     FINISHED_READING = "finished_reading"
     NOTE_SET = "note_set"
     PROGRESS_SET = "progress_set"
+    COVER_CHANGED = "cover_changed"
 
 
 class User(Base):
@@ -136,6 +137,12 @@ class BookEvent(Base):
         uselist=False,
         cascade="all, delete-orphan",
     )
+    cover_entry = relationship(
+        "BookEventCover",
+        back_populates="event",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (UniqueConstraint("id", name="uq_book_events_id"),)
 
@@ -172,6 +179,23 @@ class BookEventProgress(Base):
 
     def __repr__(self):
         return f"<BookEventProgress(event_id='{self.event_id}', page={self.page})>"
+
+
+class BookEventCover(Base):
+    __tablename__ = "book_event_covers"
+
+    event_id = Column(
+        String(36), ForeignKey("book_events.id", ondelete="CASCADE"), primary_key=True
+    )
+    old_cover_image_url = Column(String(500), nullable=True)
+    new_cover_image_url = Column(String(500), nullable=True)
+    old_cover_thumbnail_url = Column(String(500), nullable=True)
+    new_cover_thumbnail_url = Column(String(500), nullable=True)
+
+    event = relationship("BookEvent", back_populates="cover_entry")
+
+    def __repr__(self):
+        return f"<BookEventCover(event_id='{self.event_id}')>"
 
 
 class BookList(Base):
