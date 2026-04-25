@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import {computed, ref, onMounted, onBeforeUnmount, watch, nextTick} from 'vue'
 import {useRouter, useRoute} from 'vue-router'
-import {getBook, setReadingStatus, deleteBook, getBookEvents, addBookProgress} from '../api/books'
+import {createBook, getBook, setReadingStatus, deleteBook, getBookEvents, addBookProgress} from '../api/books'
 import {getMediaUrl} from '../api/client'
-import BookFormModal from '../components/BookFormModal.vue'
 import BookSearchModal from '../components/BookSearchModal.vue'
 import NavigationBar from '../components/NavigationBar.vue'
 import EventTimeline from '../components/EventTimeline.vue'
@@ -52,9 +51,8 @@ const notesSaving = ref(false)
 const progressDraft = ref<string | number>('')
 const progressSaving = ref(false)
 const progressEditing = ref(false)
-const showEditModal = ref(false)
 const showSearchModal = ref(false)
-const showFormModal = ref(false)
+const addingBook = ref(false)
 const showStatusSheet = ref(false)
 const statusDateDraft = ref('')
 
@@ -76,7 +74,6 @@ function resolveOccurredAt(): string | undefined {
   const localNoon = new Date(`${picked}T12:00:00`)
   return localNoon.toISOString()
 }
-const prefilledBookData = ref<GoogleBookResult | null>(null)
 const descriptionRef = ref<HTMLElement | null>(null)
 const descriptionExpanded = ref(false)
 const showDescriptionToggle = ref(false)
@@ -353,7 +350,8 @@ function handleProgressFocus(event: FocusEvent) {
 }
 
 function handleEdit() {
-  showEditModal.value = true
+  if (!book.value) return
+  router.push({name: 'book-edit', params: {id: book.value.id}})
 }
 
 async function handleDelete() {
@@ -374,44 +372,37 @@ async function handleDelete() {
   }
 }
 
-function handleModalClose() {
-  showEditModal.value = false
-}
-
-async function handleBookSaved() {
-  await cacheInvalidateByPrefix('lists:')
-  await loadBook()
-}
-
 function handleAddBook() {
   showSearchModal.value = true
 }
 
 function handleSearchModalClose() {
+  if (addingBook.value) return
   showSearchModal.value = false
 }
 
-function handleBookSelected(selectedBook: GoogleBookResult) {
-  prefilledBookData.value = selectedBook
-  showSearchModal.value = false
-  showFormModal.value = true
-}
-
-function handleManualEntry() {
-  prefilledBookData.value = null
-  showSearchModal.value = false
-  showFormModal.value = true
-}
-
-function handleFormModalClose() {
-  showFormModal.value = false
-  prefilledBookData.value = null
-}
-
-function handleNewBookSaved() {
-  showFormModal.value = false
-  prefilledBookData.value = null
-  router.push({name: 'books'})
+async function handleBookSelected(selectedBook: GoogleBookResult) {
+  if (addingBook.value) return
+  addingBook.value = true
+  try {
+    await createBook({
+      title: selectedBook.title,
+      author: selectedBook.author,
+      isbn: selectedBook.isbn || undefined,
+      description: selectedBook.description || undefined,
+      published_date: selectedBook.published_date || undefined,
+      page_count: selectedBook.page_count ?? undefined,
+      cover_image_url: selectedBook.thumbnail || undefined,
+    })
+    await cacheInvalidateByPrefix('lists:')
+    showSearchModal.value = false
+    router.push({name: 'books'})
+  } catch (err: any) {
+    console.error('Failed to add book:', err)
+    alert(err.response?.data?.detail || 'Failed to add book. Please try again.')
+  } finally {
+    addingBook.value = false
+  }
 }
 
 </script>
@@ -603,25 +594,10 @@ function handleNewBookSaved() {
       </div>
     </div>
 
-    <BookFormModal
-        v-if="showEditModal && book"
-        :book="book"
-        @close="handleModalClose"
-        @saved="handleBookSaved"
-    />
-
     <BookSearchModal
         v-if="showSearchModal"
         @close="handleSearchModalClose"
         @select="handleBookSelected"
-        @manualEntry="handleManualEntry"
-    />
-
-    <BookFormModal
-        v-if="showFormModal"
-        :prefilled-data="prefilledBookData"
-        @close="handleFormModalClose"
-        @saved="handleNewBookSaved"
     />
 
     <div v-if="showStatusSheet" class="sheet-overlay" @click.self="showStatusSheet = false">
