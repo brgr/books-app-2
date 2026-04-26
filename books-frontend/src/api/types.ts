@@ -127,3 +127,21 @@ export interface CoverSearchResult {
   image_url: string
   google_books_id: string | null
 }
+
+export interface CoverUpgradeCandidate {
+  image_url: string
+  thumbnail_url: string
+  width: number
+  height: number
+  source: string
+  phash_distance: number
+  match_quality: 'exact' | 'likely'
+  size_ratio: number
+}
+
+export interface CoverUpgradeJob {
+  job_id: string
+  status: 'running' | 'done' | 'failed'
+  results: CoverUpgradeCandidate[]
+  error?: string | null
+}

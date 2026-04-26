@@ -8,6 +8,7 @@ import type {
   UserBook,
   GoogleBookResult,
   CoverSearchResult,
+  CoverUpgradeJob,
   BookEvent,
   BookProgressUpdate,
   BookList,
@@ -84,6 +85,18 @@ export async function searchBookCovers(params: {
   const response = await apiClient.get<CoverSearchResult[]>('/books/search-covers', {
     params,
   })
+  return response.data
+}
+
+export async function startCoverUpgradeSearch(bookId: number): Promise<CoverUpgradeJob> {
+  const response = await apiClient.post<CoverUpgradeJob>(`/books/${bookId}/cover-upgrade-search`)
+  return response.data
+}
+
+export async function getCoverUpgradeSearch(bookId: number, jobId: string): Promise<CoverUpgradeJob> {
+  const response = await apiClient.get<CoverUpgradeJob>(
+    `/books/${bookId}/cover-upgrade-search/${jobId}`,
+  )
   return response.data
 }
 
