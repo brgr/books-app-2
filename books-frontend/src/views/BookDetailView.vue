@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import {computed, ref, onMounted, onBeforeUnmount, watch, nextTick} from 'vue'
+import {computed, ref} from 'vue'
 import {useRouter, useRoute} from 'vue-router'
-import {marked} from 'marked'
 import {createBook, getBook, setReadingStatus, deleteBook, getBookEvents, addBookProgress} from '../api/books'
 import {getMediaUrl} from '../api/client'
+import BookNotes from '../components/BookNotes.vue'
+import BookProgress from '../components/BookProgress.vue'
 import BookSearchModal from '../components/BookSearchModal.vue'
+import BookStatusSheet from '../components/BookStatusSheet.vue'
 import NavigationBar from '../components/NavigationBar.vue'
 import EventTimeline from '../components/EventTimeline.vue'
 import {ReadingStatus, type Book, type GoogleBookResult, type BookEvent} from '../api/types'
 import {formatShortDate} from '../utils/date'
 import {useCachedQuery} from '../composables/useCachedQuery'
+import {useClampToggle} from '../composables/useClampToggle'
 import {cacheKeys} from '../cache/keys'
 import {cacheDel, cacheInvalidateByPrefix} from '../cache/store'
 
@@ -47,131 +50,18 @@ const error = computed(() => {
   return 'Failed to load book. Please try again.'
 })
 const updatingStatus = ref(false)
-const notesDraft = ref('')
 const notesSaving = ref(false)
-const notesEditing = ref(false)
-const progressDraft = ref<string | number>('')
 const progressSaving = ref(false)
-const progressEditing = ref(false)
 const showSearchModal = ref(false)
 const addingBook = ref(false)
 const showStatusSheet = ref(false)
-const statusDateDraft = ref('')
-
-function todayIsoDate(): string {
-  const now = new Date()
-  const y = now.getFullYear()
-  const m = String(now.getMonth() + 1).padStart(2, '0')
-  const d = String(now.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
-}
-
-watch(showStatusSheet, (open) => {
-  if (open) statusDateDraft.value = todayIsoDate()
-})
-
-function resolveOccurredAt(): string | undefined {
-  const picked = statusDateDraft.value
-  if (!picked || picked === todayIsoDate()) return undefined
-  const localNoon = new Date(`${picked}T12:00:00`)
-  return localNoon.toISOString()
-}
 const descriptionRef = ref<HTMLElement | null>(null)
-const descriptionExpanded = ref(false)
-const showDescriptionToggle = ref(false)
-const descriptionMaxHeight = ref<string>('')
-
-watch(book, (newBook) => {
-  if (newBook) {
-    notesDraft.value = newBook.user_status?.notes ?? ''
-    notesEditing.value = false
-    progressDraft.value = newBook.user_status?.current_page?.toString() ?? ''
-    progressEditing.value = false
-  }
-})
-
-onMounted(() => {
-  window.addEventListener('resize', updateDescriptionToggle)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', updateDescriptionToggle)
-})
-
-watch(
-  () => book.value?.description,
-  async () => {
-    descriptionExpanded.value = false
-    await nextTick()
-    updateDescriptionToggle()
-  },
-)
-
-function getClampHeight(el: HTMLElement) {
-  const computedStyles = window.getComputedStyle(el)
-  const lineHeight = parseFloat(computedStyles.lineHeight)
-  if (Number.isFinite(lineHeight)) {
-    return Math.round(lineHeight * 3)
-  }
-  const fontSize = parseFloat(computedStyles.fontSize) || 16
-  return Math.round(fontSize * 1.6 * 3)
-}
-
-function measureExpandedHeight(el: HTMLElement) {
-  const previousStyles = {
-    overflow: el.style.overflow,
-    maxHeight: el.style.maxHeight,
-  }
-
-  el.style.overflow = 'visible'
-  el.style.maxHeight = 'none'
-
-  const height = el.scrollHeight
-
-  el.style.overflow = previousStyles.overflow
-  el.style.maxHeight = previousStyles.maxHeight
-
-  return height
-}
-
-function updateDescriptionToggle() {
-  const el = descriptionRef.value
-  if (!el) {
-    showDescriptionToggle.value = false
-    return
-  }
-
-  const clampHeight = getClampHeight(el)
-  showDescriptionToggle.value = el.scrollHeight > clampHeight + 1
-
-  if (!descriptionExpanded.value) {
-    descriptionMaxHeight.value = `${clampHeight}px`
-  } else {
-    descriptionMaxHeight.value = `${measureExpandedHeight(el)}px`
-  }
-}
-
-function toggleDescription() {
-  const el = descriptionRef.value
-  if (!el) return
-
-  const clampHeight = getClampHeight(el)
-
-  if (!descriptionExpanded.value) {
-    const expandedHeight = measureExpandedHeight(el)
-    descriptionMaxHeight.value = `${clampHeight}px`
-    void el.offsetHeight
-    descriptionMaxHeight.value = `${expandedHeight}px`
-    descriptionExpanded.value = true
-    return
-  }
-
-  const currentHeight = measureExpandedHeight(el)
-  descriptionMaxHeight.value = `${currentHeight}px`
-  void el.offsetHeight
-  descriptionMaxHeight.value = `${clampHeight}px`
-  descriptionExpanded.value = false
-}
+const {
+  expanded: descriptionExpanded,
+  showToggle: showDescriptionToggle,
+  maxHeight: descriptionMaxHeight,
+  toggle: toggleDescription,
+} = useClampToggle(descriptionRef, {source: computed(() => book.value?.description)})
 
 async function loadBook() {
   await cacheDel(cacheKeys.book(bookId.value))
@@ -180,17 +70,8 @@ async function loadBook() {
   await refreshEvents()
 }
 
-const canStartReading = computed(() => {
-  const status = book.value?.user_status?.status || null
-  return status === null || status === ReadingStatus.WANT_TO_READ
-})
-
-const canFinishReading = computed(() => book.value?.user_status?.status === ReadingStatus.STARTED)
 const canUpdateProgress = computed(() => book.value?.user_status?.status === ReadingStatus.STARTED)
 
-function normalizeNotes(value: string): string | null {
-  return value === '' ? null : value
-}
 
 const progressSummary = computed(() => {
   if (!book.value) return ''
@@ -223,84 +104,36 @@ const readingStatusSubtitle = computed(() => {
   return 'Not started yet'
 })
 
-const notesDirty = computed(() => {
-  if (!book.value) return false
-  const currentNotes = book.value.user_status?.notes ?? null
-  return normalizeNotes(notesDraft.value) !== currentNotes
-})
-
-const currentNotes = computed(() => book.value?.user_status?.notes ?? '')
-
-const renderedNotes = computed(() => {
-  const raw = currentNotes.value.trim()
-  if (!raw) return ''
-  return marked.parse(raw, { async: false, breaks: true, gfm: true }) as string
-})
-
-function handleEditNotes() {
-  notesDraft.value = currentNotes.value
-  notesEditing.value = true
-}
-
-function handleCancelEditNotes() {
-  notesDraft.value = currentNotes.value
-  notesEditing.value = false
-}
-
-async function handleStartReading() {
+async function changeStatus(status: ReadingStatus, occurredAt?: string) {
   if (!book.value) return
   updatingStatus.value = true
-
   try {
-    await setReadingStatus(book.value.id, {
-      status: ReadingStatus.STARTED,
-      occurred_at: resolveOccurredAt(),
-    })
+    await setReadingStatus(book.value.id, {status, occurred_at: occurredAt})
     await cacheInvalidateByPrefix('lists:')
     await loadBook()
     showStatusSheet.value = false
   } catch (err) {
-    console.error('Failed to start reading:', err)
-    alert('Failed to start reading')
+    console.error('Failed to update reading status:', err)
+    alert('Failed to update reading status')
   } finally {
     updatingStatus.value = false
   }
 }
 
-async function handleFinishReading() {
-  if (!book.value) return
-  updatingStatus.value = true
-
-  try {
-    await setReadingStatus(book.value.id, {
-      status: ReadingStatus.FINISHED,
-      occurred_at: resolveOccurredAt(),
-    })
-    await cacheInvalidateByPrefix('lists:')
-    await loadBook()
-    showStatusSheet.value = false
-  } catch (err) {
-    console.error('Failed to finish reading:', err)
-    alert('Failed to finish reading')
-  } finally {
-    updatingStatus.value = false
-  }
+function handleStartReading(payload: {occurredAt?: string}) {
+  return changeStatus(ReadingStatus.STARTED, payload.occurredAt)
 }
 
-async function handleSaveNotes() {
-  if (!book.value) return
-  if (!notesDirty.value) return
+function handleFinishReading(payload: {occurredAt?: string}) {
+  return changeStatus(ReadingStatus.FINISHED, payload.occurredAt)
+}
 
+async function handleSaveNotes(notes: string) {
+  if (!book.value) return
   notesSaving.value = true
   try {
     const status = book.value.user_status?.status ?? ReadingStatus.WANT_TO_READ
-    const updatedStatus = await setReadingStatus(book.value.id, {
-      status,
-      notes: notesDraft.value,
-    })
-    book.value.user_status = updatedStatus
-    notesDraft.value = updatedStatus.notes ?? ''
-    notesEditing.value = false
+    book.value.user_status = await setReadingStatus(book.value.id, {status, notes})
     await cacheDel(cacheKeys.bookEvents(book.value.id))
     await refreshEvents()
   } catch (error) {
@@ -311,64 +144,19 @@ async function handleSaveNotes() {
   }
 }
 
-async function handleSaveProgress(): Promise<boolean> {
-  if (!book.value) return false
-  if (!canUpdateProgress.value) return false
-
-  const rawProgress = progressDraft.value
-  const trimmed =
-      typeof rawProgress === 'string'
-        ? rawProgress.trim()
-        : String(rawProgress ?? '').trim()
-  if (!trimmed) {
-    alert('Please enter a page number.')
-    return false
-  }
-
-  const page = Number.parseInt(trimmed, 10)
-  if (Number.isNaN(page) || page < 0) {
-    alert('Please enter a valid page number.')
-    return false
-  }
-
+async function handleSaveProgress(page: number) {
+  if (!book.value || !canUpdateProgress.value) return
   progressSaving.value = true
   try {
-    const updatedStatus = await addBookProgress(book.value.id, {page})
-    book.value.user_status = updatedStatus
-    progressDraft.value = updatedStatus.current_page?.toString() ?? ''
+    book.value.user_status = await addBookProgress(book.value.id, {page})
     await cacheDel(cacheKeys.bookEvents(book.value.id))
     await refreshEvents()
-    return true
   } catch (error) {
     console.error('Failed to save progress:', error)
     alert('Failed to save progress')
-    return false
   } finally {
     progressSaving.value = false
   }
-}
-
-async function handleProgressAction() {
-  if (!progressEditing.value) {
-    progressDraft.value = book.value?.user_status?.current_page?.toString() ?? ''
-    progressEditing.value = true
-    return
-  }
-  if (!canUpdateProgress.value || progressSaving.value) return
-  const saved = await handleSaveProgress()
-  if (saved) {
-    progressEditing.value = false
-  }
-}
-
-function handleCancelProgress() {
-  progressDraft.value = book.value?.user_status?.current_page?.toString() ?? ''
-  progressEditing.value = false
-}
-
-function handleProgressFocus(event: FocusEvent) {
-  const target = event.target as HTMLInputElement | null
-  target?.select()
 }
 
 function handleEdit() {
@@ -475,51 +263,13 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
               </button>
             </div>
 
-            <div class="progress-inline">
-              <span class="progress-label">Progress</span>
-              <div v-if="progressEditing" class="progress-row">
-                <input
-                  v-model="progressDraft"
-                  type="number"
-                  min="0"
-                  inputmode="numeric"
-                  pattern="[0-9]*"
-                  class="progress-input"
-                  :disabled="!canUpdateProgress || progressSaving"
-                  placeholder="Page"
-                  @focus="handleProgressFocus"
-                />
-                <span v-if="book.page_count" class="progress-total">of {{ book.page_count }}</span>
-                <button
-                  class="progress-button"
-                  @click="handleProgressAction"
-                  :disabled="!canUpdateProgress || progressSaving"
-                >
-                  {{ progressSaving ? 'Saving...' : 'Save' }}
-                </button>
-                <button
-                  class="progress-button progress-cancel"
-                  type="button"
-                  @click="handleCancelProgress"
-                  :disabled="progressSaving"
-                >
-                  Cancel
-                </button>
-              </div>
-              <div v-else class="progress-row">
-                <span class="progress-text">{{ progressSummary }}</span>
-                <button
-                  class="progress-button"
-                  @click="handleProgressAction"
-                  :disabled="!canUpdateProgress || progressSaving"
-                >
-                  Update
-                </button>
-              </div>
-              <p v-if="!canUpdateProgress" class="progress-hint">
-                Start reading to track progress.
-              </p>
-            </div>
+            <BookProgress
+              :current-page="book.user_status?.current_page ?? null"
+              :page-count="book.page_count ?? null"
+              :can-update="canUpdateProgress"
+              :saving="progressSaving"
+              @save="handleSaveProgress"
+            />
 
             <div v-if="book.user_status" class="book-dates">
               <div v-if="book.user_status.started_at" class="date-item">
@@ -560,43 +310,11 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
             </button>
           </div>
 
-          <div class="book-notes">
-            <h2>Notes</h2>
-            <template v-if="notesEditing">
-              <textarea
-                  v-model="notesDraft"
-                  class="notes-textarea"
-                  rows="6"
-                  placeholder="Add your notes about this book... (Markdown supported)"
-              ></textarea>
-              <div class="notes-actions">
-                <button
-                    type="button"
-                    class="btn-secondary"
-                    @click="handleCancelEditNotes"
-                    :disabled="notesSaving"
-                >
-                  Cancel
-                </button>
-                <button
-                    class="btn-primary"
-                    @click="handleSaveNotes"
-                    :disabled="notesSaving || !notesDirty"
-                >
-                  {{ notesSaving ? 'Saving...' : 'Save Notes' }}
-                </button>
-              </div>
-            </template>
-            <template v-else>
-              <div v-if="renderedNotes" class="notes-rendered" v-html="renderedNotes"></div>
-              <p v-else class="notes-empty">No notes yet.</p>
-              <div class="notes-actions">
-                <button type="button" class="btn-secondary" @click="handleEditNotes">
-                  Update
-                </button>
-              </div>
-            </template>
-          </div>
+          <BookNotes
+            :notes="book.user_status?.notes ?? ''"
+            :saving="notesSaving"
+            @save="handleSaveNotes"
+          />
 
           <div class="book-metadata">
             <h2>Book Details</h2>
@@ -641,50 +359,16 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
         @select="handleBookSelected"
     />
 
-    <div v-if="showStatusSheet" class="sheet-overlay" @click.self="showStatusSheet = false">
-      <div class="sheet">
-        <div class="sheet-header">
-          <div>
-            <h3>Reading status</h3>
-            <p>{{ readingStatusLabel }}</p>
-          </div>
-          <button class="sheet-close" type="button" @click="showStatusSheet = false">
-            Close
-          </button>
-        </div>
-        <div class="sheet-body">
-          <p class="sheet-status-detail">{{ readingStatusSubtitle }}</p>
-          <label v-if="canStartReading || canFinishReading" class="sheet-date-field">
-            <span>Date</span>
-            <input
-              type="date"
-              v-model="statusDateDraft"
-              :max="todayIsoDate()"
-            />
-          </label>
-          <div class="sheet-actions">
-            <button
-              v-if="canStartReading"
-              class="btn-secondary"
-              type="button"
-              @click="handleStartReading"
-              :disabled="updatingStatus"
-            >
-              Start Reading
-            </button>
-            <button
-              v-if="canFinishReading"
-              class="btn-primary"
-              type="button"
-              @click="handleFinishReading"
-              :disabled="updatingStatus"
-            >
-              Finish Reading
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <BookStatusSheet
+      v-if="showStatusSheet"
+      :status="book?.user_status?.status ?? null"
+      :status-label="readingStatusLabel"
+      :status-subtitle="readingStatusSubtitle"
+      :updating="updatingStatus"
+      @close="showStatusSheet = false"
+      @start="handleStartReading"
+      @finish="handleFinishReading"
+    />
   </div>
 </template>
 
@@ -825,19 +509,6 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
   gap: var(--spacing-md);
 }
 
-.progress-inline {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-  margin-bottom: var(--spacing-lg);
-}
-
-.progress-label {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
 .status-pill {
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: rgba(12, 8, 16, 0.45);
@@ -961,123 +632,6 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
   text-decoration: underline;
 }
 
-.book-notes {
-  margin-bottom: var(--spacing-xl);
-}
-
-.book-notes h2 {
-  margin: 0 0 var(--spacing-md) 0;
-  font-size: 1.25rem;
-}
-
-.notes-textarea {
-  width: 100%;
-  min-height: 120px;
-  resize: vertical;
-  padding: var(--spacing-sm);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--color-border);
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-family: inherit;
-  font-size: 0.95rem;
-  line-height: 1.5;
-}
-
-.notes-actions {
-  margin-top: var(--spacing-sm);
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--spacing-sm);
-}
-
-.notes-rendered {
-  padding: var(--spacing-sm);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--color-border);
-  background: var(--color-bg);
-  color: var(--color-text);
-  line-height: 1.5;
-}
-
-.notes-rendered :first-child {
-  margin-top: 0;
-}
-
-.notes-rendered :last-child {
-  margin-bottom: 0;
-}
-
-.notes-empty {
-  margin: 0;
-  color: var(--color-text-muted, #888);
-  font-style: italic;
-}
-
-.progress-row {
-  display: flex;
-  gap: var(--spacing-sm);
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.progress-input {
-  width: 54px;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--color-border);
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-family: inherit;
-  font-size: 0.9rem;
-  appearance: textfield;
-  -moz-appearance: textfield;
-}
-
-.progress-input::-webkit-outer-spin-button,
-.progress-input::-webkit-inner-spin-button {
-  margin: 0;
-  -webkit-appearance: none;
-}
-
-.progress-total {
-  color: var(--color-text-secondary);
-  font-size: 0.9rem;
-}
-
-.progress-text {
-  color: var(--color-text);
-  font-size: 0.95rem;
-}
-
-.progress-button {
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--color-primary);
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-
-.progress-button:disabled {
-  color: var(--color-text-secondary);
-  cursor: not-allowed;
-}
-
-.progress-cancel {
-  color: var(--color-danger);
-}
-
-.progress-cancel:disabled {
-  color: var(--color-text-secondary);
-}
-
-.progress-hint {
-  margin-top: var(--spacing-xs);
-  color: var(--color-text-secondary);
-  font-size: 12px;
-}
-
 .book-metadata h2 {
   margin: 0 0 var(--spacing-md) 0;
   font-size: 1.25rem;
@@ -1100,89 +654,6 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
 
 .metadata-item strong {
   color: var(--color-text);
-}
-
-.sheet-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(6, 6, 8, 0.55);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  z-index: 50;
-  backdrop-filter: blur(6px);
-}
-
-.sheet {
-  width: min(480px, 96vw);
-  background: #1a141f;
-  border-radius: 20px 20px 0 0;
-  padding: var(--spacing-lg);
-  box-shadow: 0 -20px 40px rgba(6, 6, 8, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.sheet-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-md);
-}
-
-.sheet-header h3 {
-  margin: 0;
-  font-size: 1.1rem;
-}
-
-.sheet-header p {
-  margin: 4px 0 0 0;
-  color: var(--color-text-secondary);
-  font-size: 0.9rem;
-}
-
-.sheet-close {
-  border: none;
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--color-text);
-  padding: 6px 12px;
-  border-radius: 999px;
-  cursor: pointer;
-}
-
-.sheet-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-}
-
-.sheet-status-detail {
-  margin: 0;
-  font-size: 0.95rem;
-  color: var(--color-text-secondary);
-}
-
-.sheet-actions {
-  display: flex;
-  gap: var(--spacing-sm);
-  flex-wrap: wrap;
-}
-
-.sheet-date-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-  font-size: 0.9rem;
-  color: var(--color-text-secondary);
-}
-
-.sheet-date-field input {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-size: 1rem;
 }
 
 @media (max-width: 768px) {
@@ -1225,14 +696,6 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
 
   .book-info {
     width: 100%;
-  }
-
-  .progress-inline {
-    align-items: center;
-  }
-
-  .progress-row {
-    justify-content: center;
   }
 
   .status-pill {
