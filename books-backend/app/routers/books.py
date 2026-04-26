@@ -20,6 +20,7 @@ from app.google_books import (
     search_cover_images,
     search_google_books,
 )
+from app.cover_upgrade import get_job, start_job
 from app.image_utils import CONTENT_TYPE_TO_EXT, download_cover_image, store_cover_image
 from app.models import Book, ReadingStatus, User, UserBook
 from app.schemas import (
@@ -27,6 +28,8 @@ from app.schemas import (
     BookResponse,
     BookUpdate,
     CoverSearchResult,
+    CoverUpgradeCandidateResponse,
+    CoverUpgradeJobResponse,
     GoogleBookResult,
     PaginatedBooks,
 )
@@ -86,6 +89,70 @@ async def search_covers(
             detail="Google Books rate limit exceeded.",
             headers=headers,
         )
+
+
+@router.post(
+    "/books/{book_id}/cover-upgrade-search",
+    response_model=CoverUpgradeJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def start_cover_upgrade_search(
+    book_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
+    """Kick off an async search for higher-resolution versions of this cover."""
+    book = db.query(Book).filter(Book.id == book_id).first()
+    if not book:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
+        )
+    user_book = (
+        db.query(UserBook)
+        .filter(UserBook.user_id == current_user.id, UserBook.book_id == book.id)
+        .first()
+    )
+    if not user_book:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
+        )
+    cover_path = cast(str | None, book.cover_image_url)
+    if not cover_path or cover_path.startswith("http"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Book has no local cover to upgrade",
+        )
+    job = start_job(
+        book_id=book_id,
+        user_id=cast(int, current_user.id),
+        title=cast(str | None, book.title),
+        author=cast(str | None, book.author),
+        isbn=cast(str | None, book.isbn),
+        current_cover_path=cover_path,
+    )
+    return CoverUpgradeJobResponse(job_id=job.id, status=job.status)
+
+
+@router.get(
+    "/books/{book_id}/cover-upgrade-search/{job_id}",
+    response_model=CoverUpgradeJobResponse,
+)
+async def get_cover_upgrade_search(
+    book_id: int,
+    job_id: str,
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    job = get_job(job_id)
+    if not job or job.book_id != book_id or job.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Job not found"
+        )
+    return CoverUpgradeJobResponse(
+        job_id=job.id,
+        status=job.status,
+        results=[CoverUpgradeCandidateResponse.model_validate(c) for c in job.results],
+        error=job.error,
+    )
 
 
 @router.post("/books", response_model=BookResponse, status_code=status.HTTP_201_CREATED)
@@ -221,10 +288,7 @@ async def update_book(
     for key, value in update_data.items():
         setattr(book, key, value)
 
-    if (
-        "cover_image_url" in update_data
-        and book.cover_image_url != old_cover_image_url
-    ):
+    if "cover_image_url" in update_data and book.cover_image_url != old_cover_image_url:
         actor_user_book = ensure_added_event(
             db, user_id=cast(int, current_user.id), book_id=cast(int, book.id)
         )

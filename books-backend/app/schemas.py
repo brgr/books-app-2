@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 from app.models import ReadingStatus, BookEventCode
 
 
@@ -152,6 +152,26 @@ class CoverSearchResult(BaseModel):
     thumbnail: str
     image_url: str
     google_books_id: Optional[str] = None
+
+
+class CoverUpgradeCandidateResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    image_url: str
+    thumbnail_url: str
+    width: int
+    height: int
+    source: str
+    phash_distance: int
+    match_quality: Literal["exact", "likely"]
+    size_ratio: float
+
+
+class CoverUpgradeJobResponse(BaseModel):
+    job_id: str
+    status: Literal["running", "done", "failed"]
+    results: list[CoverUpgradeCandidateResponse] = []
+    error: Optional[str] = None
 
 
 # Export schemas
