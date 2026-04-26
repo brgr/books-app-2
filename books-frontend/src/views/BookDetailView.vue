@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {computed, ref, onMounted, onBeforeUnmount, watch, nextTick} from 'vue'
 import {useRouter, useRoute} from 'vue-router'
+import {marked} from 'marked'
 import {createBook, getBook, setReadingStatus, deleteBook, getBookEvents, addBookProgress} from '../api/books'
 import {getMediaUrl} from '../api/client'
 import BookSearchModal from '../components/BookSearchModal.vue'
@@ -48,6 +49,7 @@ const error = computed(() => {
 const updatingStatus = ref(false)
 const notesDraft = ref('')
 const notesSaving = ref(false)
+const notesEditing = ref(false)
 const progressDraft = ref<string | number>('')
 const progressSaving = ref(false)
 const progressEditing = ref(false)
@@ -82,6 +84,7 @@ const descriptionMaxHeight = ref<string>('')
 watch(book, (newBook) => {
   if (newBook) {
     notesDraft.value = newBook.user_status?.notes ?? ''
+    notesEditing.value = false
     progressDraft.value = newBook.user_status?.current_page?.toString() ?? ''
     progressEditing.value = false
   }
@@ -226,6 +229,24 @@ const notesDirty = computed(() => {
   return normalizeNotes(notesDraft.value) !== currentNotes
 })
 
+const currentNotes = computed(() => book.value?.user_status?.notes ?? '')
+
+const renderedNotes = computed(() => {
+  const raw = currentNotes.value.trim()
+  if (!raw) return ''
+  return marked.parse(raw, { async: false, breaks: true, gfm: true }) as string
+})
+
+function handleEditNotes() {
+  notesDraft.value = currentNotes.value
+  notesEditing.value = true
+}
+
+function handleCancelEditNotes() {
+  notesDraft.value = currentNotes.value
+  notesEditing.value = false
+}
+
 async function handleStartReading() {
   if (!book.value) return
   updatingStatus.value = true
@@ -279,6 +300,7 @@ async function handleSaveNotes() {
     })
     book.value.user_status = updatedStatus
     notesDraft.value = updatedStatus.notes ?? ''
+    notesEditing.value = false
     await cacheDel(cacheKeys.bookEvents(book.value.id))
     await refreshEvents()
   } catch (error) {
@@ -540,21 +562,40 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
 
           <div class="book-notes">
             <h2>Notes</h2>
-            <textarea
-                v-model="notesDraft"
-                class="notes-textarea"
-                rows="6"
-                placeholder="Add your notes about this book..."
-            ></textarea>
-            <div class="notes-actions">
-              <button
-                  class="btn-primary"
-                  @click="handleSaveNotes"
-                  :disabled="notesSaving || !notesDirty"
-              >
-                {{ notesSaving ? 'Saving...' : 'Save Notes' }}
-              </button>
-            </div>
+            <template v-if="notesEditing">
+              <textarea
+                  v-model="notesDraft"
+                  class="notes-textarea"
+                  rows="6"
+                  placeholder="Add your notes about this book... (Markdown supported)"
+              ></textarea>
+              <div class="notes-actions">
+                <button
+                    type="button"
+                    class="btn-secondary"
+                    @click="handleCancelEditNotes"
+                    :disabled="notesSaving"
+                >
+                  Cancel
+                </button>
+                <button
+                    class="btn-primary"
+                    @click="handleSaveNotes"
+                    :disabled="notesSaving || !notesDirty"
+                >
+                  {{ notesSaving ? 'Saving...' : 'Save Notes' }}
+                </button>
+              </div>
+            </template>
+            <template v-else>
+              <div v-if="renderedNotes" class="notes-rendered" v-html="renderedNotes"></div>
+              <p v-else class="notes-empty">No notes yet.</p>
+              <div class="notes-actions">
+                <button type="button" class="btn-secondary" @click="handleEditNotes">
+                  Update
+                </button>
+              </div>
+            </template>
           </div>
 
           <div class="book-metadata">
@@ -947,6 +988,30 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
   margin-top: var(--spacing-sm);
   display: flex;
   justify-content: flex-end;
+  gap: var(--spacing-sm);
+}
+
+.notes-rendered {
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.notes-rendered :first-child {
+  margin-top: 0;
+}
+
+.notes-rendered :last-child {
+  margin-bottom: 0;
+}
+
+.notes-empty {
+  margin: 0;
+  color: var(--color-text-muted, #888);
+  font-style: italic;
 }
 
 .progress-row {
