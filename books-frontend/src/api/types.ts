@@ -120,6 +120,14 @@ export interface BookProgressUpdate {
   page: number
 }
 
+export interface ImportRecord {
+  id: number
+  filename: string | null
+  occurred_at: string
+  imported_count: number
+  skipped_count: number
+}
+
 export interface CoverSearchResult {
   title: string
   author: string | null
