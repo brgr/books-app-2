@@ -28,7 +28,7 @@ mkdir -p uploads media
 echo "==> Running migrations"
 uv run alembic upgrade head
 
-echo "==> Creating user '$USERNAME'"
+echo "==> Creating user '$USERNAME' with password '$PASSWORD'"
 uv run python manage.py create-superuser --username "$USERNAME" --password "$PASSWORD"
 
 echo "==> Seeding Reading List from $FIXTURE"
