@@ -217,3 +217,13 @@ class BookEventResponse(BaseModel):
 
 class BookProgressUpdate(BaseModel):
     page: int = Field(..., ge=0)
+
+
+class ImportResponse(BaseModel):
+    id: int
+    filename: Optional[str] = None
+    occurred_at: datetime
+    imported_count: int
+    skipped_count: int
+
+    model_config = ConfigDict(from_attributes=True)

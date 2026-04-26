@@ -13,6 +13,7 @@ import type {
   BookProgressUpdate,
   BookList,
   BookListReorderRequest,
+  ImportRecord,
 } from './types'
 
 export async function getBooks(page = 1, pageSize = 20): Promise<PaginatedBooks> {
@@ -116,5 +117,10 @@ export async function importReadingList(file: File): Promise<{ imported: number 
   const response = await apiClient.post<{ imported: number }>('/import/reading-list', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
+  return response.data
+}
+
+export async function getImports(): Promise<ImportRecord[]> {
+  const response = await apiClient.get<ImportRecord[]>('/imports')
   return response.data
 }

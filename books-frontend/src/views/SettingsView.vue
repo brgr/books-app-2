@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import NavigationBar from '../components/NavigationBar.vue'
-import { deleteAllBooks, importReadingList } from '../api/books'
+import { deleteAllBooks, getImports, importReadingList } from '../api/books'
+import type { ImportRecord } from '../api/types'
 
 const router = useRouter()
 const showConfirm = ref(false)
@@ -12,6 +13,25 @@ const importFile = ref<File | null>(null)
 const isImporting = ref(false)
 const importResult = ref<{ imported: number } | null>(null)
 const importError = ref<string | null>(null)
+
+const imports = ref<ImportRecord[]>([])
+const importsError = ref<string | null>(null)
+
+async function loadImports() {
+  importsError.value = null
+  try {
+    imports.value = await getImports()
+  } catch (e: any) {
+    importsError.value = e.response?.data?.detail ?? 'Failed to load imports'
+  }
+}
+
+onMounted(loadImports)
+
+function formatTimestamp(iso: string): string {
+  const d = new Date(iso)
+  return `${d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })} at ${d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`
+}
 
 function handleDeleteAll() {
   showConfirm.value = true
@@ -46,6 +66,7 @@ async function handleImport() {
   importError.value = null
   try {
     importResult.value = await importReadingList(importFile.value)
+    await loadImports()
   } catch (e: any) {
     importError.value = e.response?.data?.detail ?? 'Import failed'
   } finally {
@@ -77,6 +98,22 @@ async function handleImport() {
             Successfully imported {{ importResult.imported }} books.
           </p>
           <p v-if="importError" class="import-error">{{ importError }}</p>
+        </div>
+
+        <div v-if="imports.length > 0 || importsError" class="imports-history">
+          <h3>Previous imports</h3>
+          <p v-if="importsError" class="import-error">{{ importsError }}</p>
+          <ul v-if="imports.length > 0" class="imports-list">
+            <li v-for="imp in imports" :key="imp.id" class="imports-item">
+              <div class="imports-item-main">
+                <strong>{{ imp.filename ?? 'Unnamed import' }}</strong>
+                <span class="imports-item-date">{{ formatTimestamp(imp.occurred_at) }}</span>
+              </div>
+              <div class="imports-item-counts text-muted">
+                {{ imp.imported_count }} imported<span v-if="imp.skipped_count > 0">, {{ imp.skipped_count }} skipped</span>
+              </div>
+            </li>
+          </ul>
         </div>
       </div>
     </section>
@@ -153,6 +190,56 @@ async function handleImport() {
   color: var(--color-danger);
   margin: 0;
   font-weight: 500;
+}
+
+.imports-history {
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.imports-history h3 {
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: 1rem;
+}
+
+.imports-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.imports-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.imports-item:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.imports-item-main {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.imports-item-date {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.imports-item-counts {
+  font-size: 13px;
 }
 
 .danger-zone {
