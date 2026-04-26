@@ -202,7 +202,9 @@ class BookList(Base):
     __tablename__ = "book_lists"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
     name = Column(String(100), nullable=False)
 
     user = relationship("User", back_populates="lists")
@@ -210,7 +212,9 @@ class BookList(Base):
         "BookListItem", back_populates="list", cascade="all, delete-orphan"
     )
 
-    __table_args__ = (UniqueConstraint("user_id", "name", name="uq_book_lists_user_name"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "name", name="uq_book_lists_user_name"),
+    )
 
     def __repr__(self):
         return f"<BookList(user_id={self.user_id}, name='{self.name}')>"
@@ -220,7 +224,9 @@ class BookListItem(Base):
     __tablename__ = "book_list_items"
 
     id = Column(Integer, primary_key=True)
-    list_id = Column(Integer, ForeignKey("book_lists.id", ondelete="CASCADE"), nullable=False)
+    list_id = Column(
+        Integer, ForeignKey("book_lists.id", ondelete="CASCADE"), nullable=False
+    )
     user_book_id = Column(
         Integer, ForeignKey("user_books.id", ondelete="CASCADE"), nullable=False
     )
@@ -230,7 +236,9 @@ class BookListItem(Base):
     user_book = relationship("UserBook", back_populates="list_items")
 
     __table_args__ = (
-        UniqueConstraint("list_id", "user_book_id", name="uq_book_list_items_list_user_book"),
+        UniqueConstraint(
+            "list_id", "user_book_id", name="uq_book_list_items_list_user_book"
+        ),
     )
 
     def __repr__(self):

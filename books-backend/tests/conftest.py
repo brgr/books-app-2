@@ -27,6 +27,7 @@ def _enable_sqlite_foreign_keys(dbapi_connection, _connection_record):
     cursor.execute("PRAGMA foreign_keys=ON")
     cursor.close()
 
+
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
@@ -84,7 +85,9 @@ def test_user_credentials():
 @pytest.fixture
 def test_user(db_session, test_user_credentials):
     """Create a test user directly in the database and return credentials."""
-    create_user(db_session, test_user_credentials["username"], test_user_credentials["password"])
+    create_user(
+        db_session, test_user_credentials["username"], test_user_credentials["password"]
+    )
     return test_user_credentials
 
 
@@ -104,5 +107,5 @@ def sample_book_data():
         "author": "Test Author",
         "isbn": "1234567890",
         "description": "A test book",
-        "page_count": 300
+        "page_count": 300,
     }

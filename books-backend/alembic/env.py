@@ -12,7 +12,9 @@ from app.models import Base
 config = context.config
 
 # Prefer DATABASE_URL from the environment so migrations hit the mounted storage path.
-database_url = os.getenv("DATABASE_URL") or config.get_main_option("sqlalchemy.url") or ""
+database_url = (
+    os.getenv("DATABASE_URL") or config.get_main_option("sqlalchemy.url") or ""
+)
 config.set_main_option("sqlalchemy.url", database_url)
 
 # Interpret the config file for Python logging.
@@ -75,7 +77,9 @@ def run_migrations_online() -> None:
                 context.run_migrations()
     else:
         # Test path: reuse the externally provided connection (e.g., in-memory SQLite).
-        context.configure(connection=existing_connection, target_metadata=target_metadata)
+        context.configure(
+            connection=existing_connection, target_metadata=target_metadata
+        )
         with context.begin_transaction():
             context.run_migrations()
 

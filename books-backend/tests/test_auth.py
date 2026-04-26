@@ -48,7 +48,9 @@ def test_refresh_token(client, test_user):
     assert login_response.status_code == status.HTTP_200_OK
     refresh_token = login_response.json()["refresh_token"]
 
-    refresh_response = client.post("/auth/refresh", json={"refresh_token": refresh_token})
+    refresh_response = client.post(
+        "/auth/refresh", json={"refresh_token": refresh_token}
+    )
     assert refresh_response.status_code == status.HTTP_200_OK
     data = refresh_response.json()
     assert "access_token" in data
@@ -72,7 +74,9 @@ def test_refresh_token_not_valid_for_access(client, test_user):
     refresh_token = login_response.json()["refresh_token"]
 
     client.cookies.clear()
-    response = client.get("/users/me", headers={"Authorization": f"Bearer {refresh_token}"})
+    response = client.get(
+        "/users/me", headers={"Authorization": f"Bearer {refresh_token}"}
+    )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
@@ -90,8 +94,12 @@ def test_expired_tokens_rejected(client, test_user):
         algorithm=settings.jwt_algorithm,
     )
 
-    access_response = client.get("/users/me", headers={"Authorization": f"Bearer {access_token}"})
-    refresh_response = client.post("/auth/refresh", json={"refresh_token": refresh_token})
+    access_response = client.get(
+        "/users/me", headers={"Authorization": f"Bearer {access_token}"}
+    )
+    refresh_response = client.post(
+        "/auth/refresh", json={"refresh_token": refresh_token}
+    )
 
     assert access_response.status_code == status.HTTP_401_UNAUTHORIZED
     assert refresh_response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -99,7 +107,9 @@ def test_expired_tokens_rejected(client, test_user):
 
 def test_single_user_limit(db_session, test_user_credentials):
     """Ensure only one user can be created."""
-    create_user(db_session, test_user_credentials["username"], test_user_credentials["password"])
+    create_user(
+        db_session, test_user_credentials["username"], test_user_credentials["password"]
+    )
 
     with pytest.raises(ValueError):
         create_user(db_session, "anotheruser", "anotherpass123")

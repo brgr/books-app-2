@@ -1,4 +1,5 @@
 """Google Books API integration for book search."""
+
 import re
 import httpx
 from typing import Optional
@@ -227,9 +228,8 @@ def _normalize_book_data(item: dict) -> Optional[dict]:
         image_links = volume_info.get("imageLinks", {})
         if image_links:
             # Get thumbnail (prefer thumbnail over smallThumbnail)
-            thumbnail = (
-                image_links.get("thumbnail") or
-                image_links.get("smallThumbnail")
+            thumbnail = image_links.get("thumbnail") or image_links.get(
+                "smallThumbnail"
             )
 
             if thumbnail:
@@ -241,7 +241,8 @@ def _normalize_book_data(item: dict) -> Optional[dict]:
                 # Google Books uses zoom=1 (default) or zoom=5 (small), zoom=0 gives highest res
                 if "zoom=" in thumbnail:
                     import re
-                    thumbnail = re.sub(r'zoom=\d+', 'zoom=0', thumbnail)
+
+                    thumbnail = re.sub(r"zoom=\d+", "zoom=0", thumbnail)
 
         # Get Google Books ID
         google_books_id = item.get("id")
