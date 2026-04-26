@@ -5,6 +5,7 @@ import { getBook, updateBook } from '../api/books'
 import type { Book, BookUpdate } from '../api/types'
 import NavigationBar from '../components/NavigationBar.vue'
 import CoverPickerModal from '../components/CoverPickerModal.vue'
+import CoverUpgradeModal from '../components/CoverUpgradeModal.vue'
 import { useCachedQuery } from '../composables/useCachedQuery'
 import { cacheKeys } from '../cache/keys'
 import { cacheDel, cacheInvalidateByPrefix } from '../cache/store'
@@ -39,6 +40,12 @@ const formData = ref({
 const loading = ref(false)
 const error = ref('')
 const showCoverPicker = ref(false)
+const showCoverUpgrade = ref(false)
+
+const canUpgradeCover = computed(() => {
+  const url = book.value?.cover_image_url
+  return !!url && !url.startsWith('http')
+})
 
 const loadError = computed(() => {
   const e = bookError.value
@@ -64,6 +71,11 @@ watch(book, (b) => {
 function handleCoverSelected(imageUrl: string) {
   formData.value.cover_image_url = imageUrl
   showCoverPicker.value = false
+}
+
+function handleUpgradeSelected(imageUrl: string) {
+  formData.value.cover_image_url = imageUrl
+  showCoverUpgrade.value = false
 }
 
 async function handleSubmit() {
@@ -234,6 +246,14 @@ function handleCancel() {
                   </button>
                   <button
                     type="button"
+                    v-if="canUpgradeCover"
+                    @click="showCoverUpgrade = true"
+                    :disabled="loading"
+                  >
+                    Upgrade cover
+                  </button>
+                  <button
+                    type="button"
                     v-if="formData.cover_image_url"
                     @click="formData.cover_image_url = ''"
                     :disabled="loading"
@@ -265,6 +285,13 @@ function handleCancel() {
       :initial-isbn="formData.isbn"
       @select="handleCoverSelected"
       @close="showCoverPicker = false"
+    />
+
+    <CoverUpgradeModal
+      v-if="showCoverUpgrade && book"
+      :book-id="book.id"
+      @select="handleUpgradeSelected"
+      @close="showCoverUpgrade = false"
     />
   </div>
 </template>
