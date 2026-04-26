@@ -9,6 +9,7 @@ from app.models import (
     BookEvent,
     BookEventCode,
     BookEventCover,
+    BookEventImportSource,
     BookEventNote,
     BookEventProgress,
     BookEventType,
@@ -55,6 +56,7 @@ def record_added_to_library(
     user_id: int,
     book_id: int,
     occurred_at: Optional[datetime] = None,
+    import_id: Optional[int] = None,
 ) -> BookEvent:
     """Create the user_book record if needed and append the first add event.
 
@@ -76,6 +78,9 @@ def record_added_to_library(
     )
     session.add(event)
     session.flush()
+    if import_id is not None:
+        session.add(BookEventImportSource(event_id=event.id, import_id=import_id))
+        session.flush()
     return event
 
 
@@ -96,7 +101,12 @@ def _ensure_user_book(session: Session, user_id: int, book_id: int) -> UserBook:
     return user_book
 
 
-def ensure_added_event(session: Session, user_id: int, book_id: int) -> UserBook:
+def ensure_added_event(
+    session: Session,
+    user_id: int,
+    book_id: int,
+    import_id: Optional[int] = None,
+) -> UserBook:
     """Guarantee a user_book row and its initial add event exist."""
     user_book: UserBook | None = (
         session.query(UserBook)
@@ -105,7 +115,9 @@ def ensure_added_event(session: Session, user_id: int, book_id: int) -> UserBook
     )
 
     if user_book is None:
-        record_added_to_library(session, user_id=user_id, book_id=book_id)
+        record_added_to_library(
+            session, user_id=user_id, book_id=book_id, import_id=import_id
+        )
         user_book = (
             session.query(UserBook)
             .filter(UserBook.user_id == user_id, UserBook.book_id == book_id)
@@ -117,7 +129,9 @@ def ensure_added_event(session: Session, user_id: int, book_id: int) -> UserBook
 
     existing_add = _latest_event(session, user_book.id, BookEventCode.ADDED_TO_LIBRARY)
     if not existing_add:
-        record_added_to_library(session, user_id=user_id, book_id=book_id)
+        record_added_to_library(
+            session, user_id=user_id, book_id=book_id, import_id=import_id
+        )
     return user_book
 
 

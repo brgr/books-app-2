@@ -210,6 +210,7 @@ class BookEventResponse(BaseModel):
     new_cover_image_url: Optional[str] = None
     old_cover_thumbnail_url: Optional[str] = None
     new_cover_thumbnail_url: Optional[str] = None
+    import_id: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 

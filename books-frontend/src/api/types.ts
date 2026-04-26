@@ -113,6 +113,7 @@ export interface BookEvent {
   occurred_at: string
   note?: string | null
   page?: number | null
+  import_id?: number | null
 }
 
 export interface BookProgressUpdate {

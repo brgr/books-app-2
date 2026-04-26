@@ -202,6 +202,7 @@ def get_book_events(
             joinedload(BookEvent.note_entry),
             joinedload(BookEvent.progress_entry),
             joinedload(BookEvent.cover_entry),
+            joinedload(BookEvent.import_source),
         )
         .filter(BookEvent.user_book_id == user_book.id)
         .order_by(BookEvent.occurred_at.desc(), BookEvent.id.desc())
@@ -227,6 +228,7 @@ def get_book_events(
             new_cover_thumbnail_url=event.cover_entry.new_cover_thumbnail_url
             if event.cover_entry
             else None,
+            import_id=event.import_source.import_id if event.import_source else None,
         )
         for event in events
     ]

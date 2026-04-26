@@ -6,7 +6,18 @@ from pathlib import Path
 
 from fastapi import status
 
-from app.models import Book, UserBook, ReadingStatus, BookList, BookListItem
+from app.models import (
+    Book,
+    BookEvent,
+    BookEventCode,
+    BookEventImportSource,
+    BookEventType,
+    BookList,
+    BookListItem,
+    Import,
+    ReadingStatus,
+    UserBook,
+)
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -395,6 +406,96 @@ def test_import_puts_books_in_default_shelves(client, auth_headers, db_session):
 
     assert to_read_titles == {"Queued", "Reading"}
     assert finished_titles == {"Done"}
+
+
+# --- Import provenance ---
+
+
+def test_import_creates_import_record(client, auth_headers, db_session):
+    zip_bytes = _make_zip(
+        [
+            {"Reading List ID": "AAA", "Title": "Book One", "Authors": "A, B"},
+            {"Reading List ID": "BBB", "Title": "Book Two", "Authors": "C, D"},
+        ]
+    )
+
+    resp = client.post(
+        "/import/reading-list",
+        headers=auth_headers,
+        files={"file": ("my-export.zip", zip_bytes, "application/zip")},
+    )
+    assert resp.status_code == status.HTTP_200_OK
+
+    imports = db_session.query(Import).all()
+    assert len(imports) == 1
+    imp = imports[0]
+    assert imp.filename == "my-export.zip"
+    assert imp.imported_count == 2
+    assert imp.skipped_count == 0
+    assert imp.occurred_at is not None
+
+
+def test_import_links_added_events_to_import(client, auth_headers, db_session):
+    zip_bytes = _make_zip(
+        [
+            {"Reading List ID": "AAA", "Title": "Book One", "Authors": "A, B"},
+            {"Reading List ID": "BBB", "Title": "Book Two", "Authors": "C, D"},
+        ]
+    )
+
+    resp = _upload_zip(client, auth_headers, zip_bytes)
+    assert resp.status_code == status.HTTP_200_OK
+
+    imp = db_session.query(Import).one()
+    add_events = (
+        db_session.query(BookEvent)
+        .join(BookEventType, BookEvent.event_type_id == BookEventType.id)
+        .filter(BookEventType.code == BookEventCode.ADDED_TO_LIBRARY.value)
+        .all()
+    )
+    assert len(add_events) == 2
+    for event in add_events:
+        source = (
+            db_session.query(BookEventImportSource)
+            .filter(BookEventImportSource.event_id == event.id)
+            .one()
+        )
+        assert source.import_id == imp.id
+
+
+def test_import_does_not_link_started_or_finished_events(
+    client, auth_headers, db_session
+):
+    """Only added_to_library events carry the import provenance."""
+    zip_bytes = _make_zip(
+        [
+            {
+                "Reading List ID": "AAA",
+                "Title": "Done",
+                "Authors": "A, B",
+                "Started Reading": "2025-01-01",
+                "Finished Reading": "2025-02-01",
+            },
+        ]
+    )
+
+    resp = _upload_zip(client, auth_headers, zip_bytes)
+    assert resp.status_code == status.HTTP_200_OK
+
+    non_add_events = (
+        db_session.query(BookEvent)
+        .join(BookEventType, BookEvent.event_type_id == BookEventType.id)
+        .filter(BookEventType.code != BookEventCode.ADDED_TO_LIBRARY.value)
+        .all()
+    )
+    assert len(non_add_events) >= 2
+    for event in non_add_events:
+        source = (
+            db_session.query(BookEventImportSource)
+            .filter(BookEventImportSource.event_id == event.id)
+            .first()
+        )
+        assert source is None
 
 
 def test_import_rejects_non_zip(client, auth_headers):

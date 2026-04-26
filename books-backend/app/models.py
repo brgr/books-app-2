@@ -143,6 +143,12 @@ class BookEvent(Base):
         uselist=False,
         cascade="all, delete-orphan",
     )
+    import_source = relationship(
+        "BookEventImportSource",
+        back_populates="event",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (UniqueConstraint("id", name="uq_book_events_id"),)
 
@@ -179,6 +185,45 @@ class BookEventProgress(Base):
 
     def __repr__(self):
         return f"<BookEventProgress(event_id='{self.event_id}', page={self.page})>"
+
+
+class Import(Base):
+    __tablename__ = "imports"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    filename = Column(String(255), nullable=True)
+    occurred_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
+    imported_count = Column(Integer, nullable=False, default=0)
+    skipped_count = Column(Integer, nullable=False, default=0)
+
+    def __repr__(self):
+        return (
+            f"<Import(id={self.id}, user_id={self.user_id}, "
+            f"filename='{self.filename}', imported_count={self.imported_count})>"
+        )
+
+
+class BookEventImportSource(Base):
+    __tablename__ = "book_event_import_sources"
+
+    event_id = Column(
+        String(36), ForeignKey("book_events.id", ondelete="CASCADE"), primary_key=True
+    )
+    import_id = Column(
+        Integer, ForeignKey("imports.id", ondelete="CASCADE"), nullable=False
+    )
+
+    event = relationship("BookEvent", back_populates="import_source")
+    import_record = relationship("Import")
+
+    def __repr__(self):
+        return (
+            f"<BookEventImportSource(event_id='{self.event_id}', "
+            f"import_id={self.import_id})>"
+        )
 
 
 class BookEventCover(Base):
