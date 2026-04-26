@@ -37,7 +37,11 @@ def _parse_lists(raw: str) -> list[str]:
     """Parse 'Name (count); Name (count)' into list of names."""
     if not raw:
         return []
-    return [re.sub(r"\s*\(\d+\)\s*$", "", seg).strip() for seg in raw.split(";") if seg.strip()]
+    return [
+        re.sub(r"\s*\(\d+\)\s*$", "", seg).strip()
+        for seg in raw.split(";")
+        if seg.strip()
+    ]
 
 
 def _derive_status(row: dict) -> ReadingStatus:
@@ -72,7 +76,11 @@ def import_reading_list_from_bytes(
     except KeyError as exc:
         raise ImportReadingListError("ZIP does not contain data.csv") from exc
 
-    image_names = {n.split("/")[-1] for n in zf.namelist() if n.startswith("images/") and "/" in n and n != "images/"}
+    image_names = {
+        n.split("/")[-1]
+        for n in zf.namelist()
+        if n.startswith("images/") and "/" in n and n != "images/"
+    }
 
     reader = csv.DictReader(io.StringIO(csv_data))
     # Process STARTED books first so they get the lowest sort_order in the
@@ -168,11 +176,15 @@ def import_reading_list_from_bytes(
         ensure_added_event(db, user_id=user_id, book_id=book_id)
         if derived_status in (ReadingStatus.STARTED, ReadingStatus.FINISHED):
             record_started_reading(
-                db, user_book_id=cast(int, user_book.id), occurred_at=started_at,
+                db,
+                user_book_id=cast(int, user_book.id),
+                occurred_at=started_at,
             )
         if derived_status == ReadingStatus.FINISHED:
             record_finished_reading(
-                db, user_book_id=cast(int, user_book.id), occurred_at=finished_at,
+                db,
+                user_book_id=cast(int, user_book.id),
+                occurred_at=finished_at,
             )
 
         default_list_name = list_name_for_status(derived_status)

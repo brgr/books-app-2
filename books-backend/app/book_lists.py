@@ -10,7 +10,11 @@ SORT_ORDER_GAP = Decimal("1000")
 
 
 def list_name_for_status(status: ReadingStatus) -> str | None:
-    if status in {ReadingStatus.WANT_TO_READ, ReadingStatus.STARTED, ReadingStatus.ABANDONED}:
+    if status in {
+        ReadingStatus.WANT_TO_READ,
+        ReadingStatus.STARTED,
+        ReadingStatus.ABANDONED,
+    }:
         return "To Read"
     if status == ReadingStatus.FINISHED:
         return "Finished"
@@ -47,7 +51,9 @@ def ensure_list_item(db: Session, list_id: int, user_book_id: int) -> BookListIt
         .scalar()
     )
     next_sort = (max_sort or Decimal("0")) + SORT_ORDER_GAP
-    item = BookListItem(list_id=list_id, user_book_id=user_book_id, sort_order=next_sort)
+    item = BookListItem(
+        list_id=list_id, user_book_id=user_book_id, sort_order=next_sort
+    )
     db.add(item)
     db.flush()
     return item

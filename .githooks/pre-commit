@@ -9,6 +9,12 @@ echo "Running backend typecheck (ty)..."
   uv run ty check
 )
 
+echo "Running backend format check (ruff)..."
+(
+  cd "$repo_root/books-backend"
+  uv run ruff format --check
+)
+
 echo "Running backend lint (ruff)..."
 (
   cd "$repo_root/books-backend"

@@ -28,16 +28,22 @@ def _make_book(db_session, **overrides):
     return book
 
 
-def _patch_cover_download(monkeypatch, new_path="/uploads/covers/new.jpg",
-                          new_thumb="/uploads/covers/thumbnails/new.jpg"):
+def _patch_cover_download(
+    monkeypatch,
+    new_path="/uploads/covers/new.jpg",
+    new_thumb="/uploads/covers/thumbnails/new.jpg",
+):
     async def fake_download(url):
         return (new_path, new_thumb)
 
     monkeypatch.setattr("app.routers.books.download_cover_image", fake_download)
 
 
-def _patch_cover_store(monkeypatch, new_path="/uploads/covers/uploaded.jpg",
-                       new_thumb="/uploads/covers/thumbnails/uploaded.jpg"):
+def _patch_cover_store(
+    monkeypatch,
+    new_path="/uploads/covers/uploaded.jpg",
+    new_thumb="/uploads/covers/thumbnails/uploaded.jpg",
+):
     def fake_store(content, extension):
         return (new_path, new_thumb)
 
@@ -78,11 +84,7 @@ def test_put_book_with_new_cover_records_event_on_user_book(
     user_book = db_session.query(UserBook).filter_by(book_id=book.id).one()
     events = _cover_events_for_user_book(db_session, user_book.id)
     assert len(events) == 1
-    payload = (
-        db_session.query(BookEventCover)
-        .filter_by(event_id=events[0].id)
-        .one()
-    )
+    payload = db_session.query(BookEventCover).filter_by(event_id=events[0].id).one()
     assert payload.old_cover_image_url == "/uploads/covers/old.jpg"
     assert payload.new_cover_image_url == "/uploads/covers/new.jpg"
     assert payload.old_cover_thumbnail_url == "/uploads/covers/thumbnails/old.jpg"
@@ -107,8 +109,11 @@ def test_put_book_with_unchanged_cover_records_nothing(
 def test_put_book_with_same_cover_url_records_nothing(
     client, auth_headers, db_session, monkeypatch
 ):
-    book = _make_book(db_session, cover_image_url="/uploads/covers/keep.jpg",
-                      cover_thumbnail_url="/uploads/covers/thumbnails/keep.jpg")
+    book = _make_book(
+        db_session,
+        cover_image_url="/uploads/covers/keep.jpg",
+        cover_thumbnail_url="/uploads/covers/thumbnails/keep.jpg",
+    )
 
     response = client.put(
         f"/books/{book.id}",
@@ -135,17 +140,13 @@ def test_put_book_clearing_cover_records_event(
     user_book = db_session.query(UserBook).filter_by(book_id=book.id).one()
     events = _cover_events_for_user_book(db_session, user_book.id)
     assert len(events) == 1
-    payload = (
-        db_session.query(BookEventCover).filter_by(event_id=events[0].id).one()
-    )
+    payload = db_session.query(BookEventCover).filter_by(event_id=events[0].id).one()
     assert payload.old_cover_image_url == "/uploads/covers/old.jpg"
     assert payload.new_cover_image_url is None
     assert payload.new_cover_thumbnail_url is None
 
 
-def test_upload_cover_records_event(
-    client, auth_headers, db_session, monkeypatch
-):
+def test_upload_cover_records_event(client, auth_headers, db_session, monkeypatch):
     book = _make_book(db_session)
     _patch_cover_store(monkeypatch)
 
@@ -159,9 +160,7 @@ def test_upload_cover_records_event(
     user_book = db_session.query(UserBook).filter_by(book_id=book.id).one()
     events = _cover_events_for_user_book(db_session, user_book.id)
     assert len(events) == 1
-    payload = (
-        db_session.query(BookEventCover).filter_by(event_id=events[0].id).one()
-    )
+    payload = db_session.query(BookEventCover).filter_by(event_id=events[0].id).one()
     assert payload.old_cover_image_url == "/uploads/covers/old.jpg"
     assert payload.new_cover_image_url == "/uploads/covers/uploaded.jpg"
 
@@ -171,8 +170,11 @@ def test_two_consecutive_changes_record_two_events(
 ):
     book = _make_book(db_session)
 
-    _patch_cover_download(monkeypatch, new_path="/uploads/covers/v2.jpg",
-                          new_thumb="/uploads/covers/thumbnails/v2.jpg")
+    _patch_cover_download(
+        monkeypatch,
+        new_path="/uploads/covers/v2.jpg",
+        new_thumb="/uploads/covers/thumbnails/v2.jpg",
+    )
     r1 = client.put(
         f"/books/{book.id}",
         json={"cover_image_url": "https://example.com/v2.jpg"},
@@ -180,8 +182,11 @@ def test_two_consecutive_changes_record_two_events(
     )
     assert r1.status_code == 200
 
-    _patch_cover_download(monkeypatch, new_path="/uploads/covers/v3.jpg",
-                          new_thumb="/uploads/covers/thumbnails/v3.jpg")
+    _patch_cover_download(
+        monkeypatch,
+        new_path="/uploads/covers/v3.jpg",
+        new_thumb="/uploads/covers/thumbnails/v3.jpg",
+    )
     r2 = client.put(
         f"/books/{book.id}",
         json={"cover_image_url": "https://example.com/v3.jpg"},
@@ -193,8 +198,7 @@ def test_two_consecutive_changes_record_two_events(
     events = _cover_events_for_user_book(db_session, user_book.id)
     assert len(events) == 2
     payloads = [
-        db_session.query(BookEventCover).filter_by(event_id=e.id).one()
-        for e in events
+        db_session.query(BookEventCover).filter_by(event_id=e.id).one() for e in events
     ]
     assert payloads[0].new_cover_image_url == "/uploads/covers/v2.jpg"
     assert payloads[1].old_cover_image_url == "/uploads/covers/v2.jpg"
@@ -237,8 +241,11 @@ def test_get_book_events_includes_cover_changes_for_user(
     """Cover-change events should appear in the user's event timeline."""
     book = _make_book(db_session)
 
-    _patch_cover_download(monkeypatch, new_path="/uploads/covers/v2.jpg",
-                          new_thumb="/uploads/covers/thumbnails/v2.jpg")
+    _patch_cover_download(
+        monkeypatch,
+        new_path="/uploads/covers/v2.jpg",
+        new_thumb="/uploads/covers/thumbnails/v2.jpg",
+    )
     r = client.put(
         f"/books/{book.id}",
         json={"cover_image_url": "https://example.com/v2.jpg"},

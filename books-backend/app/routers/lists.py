@@ -56,7 +56,9 @@ def list_books_in_list(
         .first()
     )
     if not book_list:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="List not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="List not found"
+        )
 
     total = (
         db.query(BookListItem)
@@ -106,7 +108,9 @@ def reorder_list_item(
         .first()
     )
     if not book_list:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="List not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="List not found"
+        )
 
     moved_user_book = (
         db.query(UserBook)
@@ -161,7 +165,9 @@ def reorder_list_item(
         after_item = _resolve_item(payload.after_book_id)
 
     if before_item and after_item:
-        moved_item.sort_order = (before_item.sort_order + after_item.sort_order) / Decimal("2")
+        moved_item.sort_order = (
+            before_item.sort_order + after_item.sort_order
+        ) / Decimal("2")
     elif before_item:
         moved_item.sort_order = before_item.sort_order + SORT_ORDER_GAP
     elif after_item:

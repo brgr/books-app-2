@@ -116,9 +116,7 @@ def build_parser() -> argparse.ArgumentParser:
         "seed-reading-list",
         help="Import a Reading List ZIP fixture for an existing user.",
     )
-    seed_parser.add_argument(
-        "--username", "-u", required=True, help="Target username."
-    )
+    seed_parser.add_argument("--username", "-u", required=True, help="Target username.")
     seed_parser.add_argument(
         "--zip",
         required=True,

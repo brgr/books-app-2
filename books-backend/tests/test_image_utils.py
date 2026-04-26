@@ -1,4 +1,5 @@
 """Tests for image utilities."""
+
 import pytest
 
 from app.image_utils import download_cover_image

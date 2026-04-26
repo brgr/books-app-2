@@ -104,11 +104,17 @@ def test_cascade_on_user_book_delete(db_session):
 
 def test_timeline_ordering(db_session):
     user, book = _create_user_and_book(db_session)
-    record_added_to_library(db_session, user.id, book.id, occurred_at=datetime(2024, 1, 1, tzinfo=UTC))
+    record_added_to_library(
+        db_session, user.id, book.id, occurred_at=datetime(2024, 1, 1, tzinfo=UTC)
+    )
     user_book_id = db_session.query(UserBook.id).scalar()
 
-    record_started_reading(db_session, user_book_id, occurred_at=datetime(2024, 1, 2, tzinfo=UTC))
-    record_finished_reading(db_session, user_book_id, occurred_at=datetime(2024, 1, 3, tzinfo=UTC))
+    record_started_reading(
+        db_session, user_book_id, occurred_at=datetime(2024, 1, 2, tzinfo=UTC)
+    )
+    record_finished_reading(
+        db_session, user_book_id, occurred_at=datetime(2024, 1, 3, tzinfo=UTC)
+    )
 
     ordered = (
         db_session.query(BookEvent)

@@ -30,7 +30,14 @@ def upgrade() -> None:
     book_list_items = sa.Table("book_list_items", meta, autoload_with=bind)
 
     default_lists = ("To Read", "Finished")
-    to_read_statuses = ("want_to_read", "started", "abandoned", "WANT_TO_READ", "STARTED", "ABANDONED")
+    to_read_statuses = (
+        "want_to_read",
+        "started",
+        "abandoned",
+        "WANT_TO_READ",
+        "STARTED",
+        "ABANDONED",
+    )
     finished_statuses = ("finished", "FINISHED")
 
     user_ids = bind.execute(sa.select(users.c.id)).scalars().all()
@@ -54,11 +61,15 @@ def upgrade() -> None:
             list_ids[name] = int(list_id)
 
         def _existing_user_books(list_id: int) -> set[int]:
-            rows = bind.execute(
-                sa.select(book_list_items.c.user_book_id).where(
-                    book_list_items.c.list_id == list_id
+            rows = (
+                bind.execute(
+                    sa.select(book_list_items.c.user_book_id).where(
+                        book_list_items.c.list_id == list_id
+                    )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             return {int(row) for row in rows}
 
         def _insert_items(list_name: str, statuses: tuple[str, ...]) -> None:

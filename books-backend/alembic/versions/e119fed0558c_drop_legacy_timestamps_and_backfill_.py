@@ -5,6 +5,7 @@ Revises: 5f22316bd406
 Create Date: 2025-12-08 16:41:34.436659
 
 """
+
 from datetime import UTC, datetime
 import uuid
 from typing import Sequence, Union
@@ -14,8 +15,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'e119fed0558c'
-down_revision: Union[str, None] = '5f22316bd406'
+revision: str = "e119fed0558c"
+down_revision: Union[str, None] = "5f22316bd406"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -24,7 +25,7 @@ def upgrade() -> None:
     conn = op.get_bind()
 
     # Ensure event types exist (idempotent safety)
-    for code in ('added_to_library', 'started_reading', 'finished_reading'):
+    for code in ("added_to_library", "started_reading", "finished_reading"):
         conn.execute(
             sa.text("INSERT OR IGNORE INTO book_event_types (code) VALUES (:code)"),
             {"code": code},
@@ -145,26 +146,26 @@ def upgrade() -> None:
                     },
                 )
 
-    with op.batch_alter_table('users') as batch_op:
-        batch_op.drop_column('created_at')
+    with op.batch_alter_table("users") as batch_op:
+        batch_op.drop_column("created_at")
 
-    with op.batch_alter_table('books') as batch_op:
-        batch_op.drop_column('created_at')
-        batch_op.drop_column('updated_at')
+    with op.batch_alter_table("books") as batch_op:
+        batch_op.drop_column("created_at")
+        batch_op.drop_column("updated_at")
 
-    with op.batch_alter_table('user_books') as batch_op:
-        batch_op.drop_column('created_at')
-        batch_op.drop_column('updated_at')
+    with op.batch_alter_table("user_books") as batch_op:
+        batch_op.drop_column("created_at")
+        batch_op.drop_column("updated_at")
 
 
 def downgrade() -> None:
-    with op.batch_alter_table('users') as batch_op:
-        batch_op.add_column(sa.Column('created_at', sa.DateTime(), nullable=True))
+    with op.batch_alter_table("users") as batch_op:
+        batch_op.add_column(sa.Column("created_at", sa.DateTime(), nullable=True))
 
-    with op.batch_alter_table('books') as batch_op:
-        batch_op.add_column(sa.Column('updated_at', sa.DateTime(), nullable=True))
-        batch_op.add_column(sa.Column('created_at', sa.DateTime(), nullable=True))
+    with op.batch_alter_table("books") as batch_op:
+        batch_op.add_column(sa.Column("updated_at", sa.DateTime(), nullable=True))
+        batch_op.add_column(sa.Column("created_at", sa.DateTime(), nullable=True))
 
-    with op.batch_alter_table('user_books') as batch_op:
-        batch_op.add_column(sa.Column('updated_at', sa.DateTime(), nullable=True))
-        batch_op.add_column(sa.Column('created_at', sa.DateTime(), nullable=True))
+    with op.batch_alter_table("user_books") as batch_op:
+        batch_op.add_column(sa.Column("updated_at", sa.DateTime(), nullable=True))
+        batch_op.add_column(sa.Column("created_at", sa.DateTime(), nullable=True))

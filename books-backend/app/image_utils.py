@@ -1,4 +1,5 @@
 """Utilities for downloading and storing book cover images."""
+
 from __future__ import annotations
 
 import uuid
@@ -57,7 +58,9 @@ def _create_thumbnail(content: bytes, cover_id: uuid.UUID) -> str | None:
         thumb = ImageOps.contain(image, THUMBNAIL_SIZE, method=Image.Resampling.LANCZOS)
         thumb_filename = f"{cover_id}_thumb.jpg"
         thumb_path = thumbnails_dir / thumb_filename
-        thumb.save(thumb_path, format="JPEG", quality=85, optimize=True, progressive=True)
+        thumb.save(
+            thumb_path, format="JPEG", quality=85, optimize=True, progressive=True
+        )
         return f"{settings.uploads_url_prefix}/covers/thumbnails/{thumb_filename}"
     except Exception as exc:
         print(f"Failed to generate cover thumbnail: {exc}")
@@ -96,7 +99,9 @@ async def download_cover_image(url: str) -> tuple[str, str | None] | None:
             response = await client.get(url, headers=headers)
             response.raise_for_status()
 
-            content_type = response.headers.get("content-type", "").split(";")[0].strip()
+            content_type = (
+                response.headers.get("content-type", "").split(";")[0].strip()
+            )
             extension = CONTENT_TYPE_TO_EXT.get(content_type)
 
             if not extension:

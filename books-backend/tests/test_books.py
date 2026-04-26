@@ -94,10 +94,7 @@ def test_update_book(client, auth_headers, sample_book_data):
     book_id = create_response.json()["id"]
 
     # Update the book
-    update_data = {
-        "title": "Updated Title",
-        "page_count": 350
-    }
+    update_data = {"title": "Updated Title", "page_count": 350}
     response = client.put(f"/books/{book_id}", json=update_data, headers=auth_headers)
 
     assert response.status_code == status.HTTP_200_OK
@@ -109,7 +106,9 @@ def test_update_book(client, auth_headers, sample_book_data):
 
 def test_update_nonexistent_book(client, auth_headers):
     """Test updating a book that doesn't exist."""
-    response = client.put("/books/99999", json={"title": "New Title"}, headers=auth_headers)
+    response = client.put(
+        "/books/99999", json={"title": "New Title"}, headers=auth_headers
+    )
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
@@ -201,16 +200,20 @@ def test_delete_all_books_requires_auth(client):
 def test_book_validation(client, auth_headers):
     """Test book data validation."""
     # Missing required field
-    response = client.post("/books", json={
-        "author": "Test Author"
-        # Missing title
-    }, headers=auth_headers)
+    response = client.post(
+        "/books",
+        json={
+            "author": "Test Author"
+            # Missing title
+        },
+        headers=auth_headers,
+    )
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     # Invalid page count (negative)
-    response = client.post("/books", json={
-        "title": "Test Book",
-        "author": "Test Author",
-        "page_count": -10
-    }, headers=auth_headers)
+    response = client.post(
+        "/books",
+        json={"title": "Test Book", "author": "Test Author", "page_count": -10},
+        headers=auth_headers,
+    )
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY

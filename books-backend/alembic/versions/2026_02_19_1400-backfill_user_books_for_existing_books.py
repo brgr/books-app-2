@@ -35,7 +35,9 @@ def upgrade() -> None:
     book_events = sa.Table("book_events", meta, autoload_with=bind)
 
     event_type_id = bind.execute(
-        sa.select(book_event_types.c.id).where(book_event_types.c.code == "added_to_library")
+        sa.select(book_event_types.c.id).where(
+            book_event_types.c.code == "added_to_library"
+        )
     ).scalar()
     if event_type_id is None:
         raise RuntimeError("book_event_types must include 'added_to_library'")
@@ -67,20 +69,24 @@ def upgrade() -> None:
         ).scalar()
         next_sort = Decimal(max_sort or 0) + Decimal("1000")
 
-        missing_books = bind.execute(
-            sa.select(books.c.id)
-            .select_from(
-                books.outerjoin(
-                    user_books,
-                    sa.and_(
-                        user_books.c.book_id == books.c.id,
-                        user_books.c.user_id == user_id,
-                    ),
+        missing_books = (
+            bind.execute(
+                sa.select(books.c.id)
+                .select_from(
+                    books.outerjoin(
+                        user_books,
+                        sa.and_(
+                            user_books.c.book_id == books.c.id,
+                            user_books.c.user_id == user_id,
+                        ),
+                    )
                 )
+                .where(user_books.c.id.is_(None))
+                .order_by(books.c.id.asc())
             )
-            .where(user_books.c.id.is_(None))
-            .order_by(books.c.id.asc())
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         for book_id in missing_books:
             result = bind.execute(

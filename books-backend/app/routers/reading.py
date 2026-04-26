@@ -215,10 +215,18 @@ def get_book_events(
             occurred_at=event.occurred_at,
             note=event.note_entry.note if event.note_entry else None,
             page=event.progress_entry.page if event.progress_entry else None,
-            old_cover_image_url=event.cover_entry.old_cover_image_url if event.cover_entry else None,
-            new_cover_image_url=event.cover_entry.new_cover_image_url if event.cover_entry else None,
-            old_cover_thumbnail_url=event.cover_entry.old_cover_thumbnail_url if event.cover_entry else None,
-            new_cover_thumbnail_url=event.cover_entry.new_cover_thumbnail_url if event.cover_entry else None,
+            old_cover_image_url=event.cover_entry.old_cover_image_url
+            if event.cover_entry
+            else None,
+            new_cover_image_url=event.cover_entry.new_cover_image_url
+            if event.cover_entry
+            else None,
+            old_cover_thumbnail_url=event.cover_entry.old_cover_thumbnail_url
+            if event.cover_entry
+            else None,
+            new_cover_thumbnail_url=event.cover_entry.new_cover_thumbnail_url
+            if event.cover_entry
+            else None,
         )
         for event in events
     ]

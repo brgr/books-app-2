@@ -1,7 +1,9 @@
 from fastapi import status
 
 
-def test_user_books_export_sorted_by_id(client, auth_headers, sample_book_data, test_user):
+def test_user_books_export_sorted_by_id(
+    client, auth_headers, sample_book_data, test_user
+):
     """Ensure the export endpoint returns books sorted by their IDs."""
     created_books = []
     titles = ["Zulu Book", "Alpha Book", "Gamma Book"]
@@ -23,21 +25,21 @@ def test_user_books_export_sorted_by_id(client, auth_headers, sample_book_data, 
             start_response = client.put(
                 f"/books/{book['id']}/status",
                 json={"status": "started"},
-                headers=auth_headers
+                headers=auth_headers,
             )
             assert start_response.status_code == status.HTTP_200_OK
 
             response = client.put(
                 f"/books/{book['id']}/status",
                 json={"status": "finished", "notes": notes},
-                headers=auth_headers
+                headers=auth_headers,
             )
             assert response.status_code == status.HTTP_200_OK
         else:
             response = client.put(
                 f"/books/{book['id']}/status",
                 json={"status": new_status, "notes": notes},
-                headers=auth_headers
+                headers=auth_headers,
             )
             assert response.status_code == status.HTTP_200_OK
         expected_status_by_id[book["id"]] = {"status": new_status, "notes": notes}

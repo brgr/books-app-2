@@ -17,12 +17,29 @@ def _make_zip(rows: list[dict], images: dict[str, bytes] | None = None) -> bytes
     with zipfile.ZipFile(buf, "w") as zf:
         csv_buf = io.StringIO()
         fieldnames = [
-            "Reading List ID", "Google Books ID", "Apple Books ID",
-            "Open Library Edition ID", "ISBN-13", "Title", "Subtitle",
-            "Authors", "Page Count", "Publication Date", "Publisher",
-            "Description", "Subjects", "Language Code", "Started Reading",
-            "Paused", "Finished Reading", "Did Not Finish", "Current Page",
-            "Current Percentage", "Rating", "Notes", "Lists",
+            "Reading List ID",
+            "Google Books ID",
+            "Apple Books ID",
+            "Open Library Edition ID",
+            "ISBN-13",
+            "Title",
+            "Subtitle",
+            "Authors",
+            "Page Count",
+            "Publication Date",
+            "Publisher",
+            "Description",
+            "Subjects",
+            "Language Code",
+            "Started Reading",
+            "Paused",
+            "Finished Reading",
+            "Did Not Finish",
+            "Current Page",
+            "Current Percentage",
+            "Rating",
+            "Notes",
+            "Lists",
         ]
         writer = csv.DictWriter(csv_buf, fieldnames=fieldnames)
         writer.writeheader()
@@ -50,16 +67,18 @@ def _upload_zip(client, auth_headers, zip_bytes: bytes):
 
 
 def test_import_creates_books(client, auth_headers, db_session):
-    zip_bytes = _make_zip([
-        {
-            "Reading List ID": "AAA",
-            "Title": "Test Book",
-            "Authors": "Doe, John",
-            "ISBN-13": "9781234567890",
-            "Page Count": "300",
-            "Description": "A great book",
-        },
-    ])
+    zip_bytes = _make_zip(
+        [
+            {
+                "Reading List ID": "AAA",
+                "Title": "Test Book",
+                "Authors": "Doe, John",
+                "ISBN-13": "9781234567890",
+                "Page Count": "300",
+                "Description": "A great book",
+            },
+        ]
+    )
 
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
@@ -75,9 +94,11 @@ def test_import_creates_books(client, auth_headers, db_session):
 
 
 def test_import_creates_user_book(client, auth_headers, db_session):
-    zip_bytes = _make_zip([
-        {"Reading List ID": "AAA", "Title": "Book One", "Authors": "Smith, Jane"},
-    ])
+    zip_bytes = _make_zip(
+        [
+            {"Reading List ID": "AAA", "Title": "Book One", "Authors": "Smith, Jane"},
+        ]
+    )
 
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
@@ -90,15 +111,17 @@ def test_import_creates_user_book(client, auth_headers, db_session):
 
 
 def test_import_status_finished(client, auth_headers, db_session):
-    zip_bytes = _make_zip([
-        {
-            "Reading List ID": "AAA",
-            "Title": "Done Book",
-            "Authors": "A, B",
-            "Started Reading": "2025-01-01",
-            "Finished Reading": "2025-02-01",
-        },
-    ])
+    zip_bytes = _make_zip(
+        [
+            {
+                "Reading List ID": "AAA",
+                "Title": "Done Book",
+                "Authors": "A, B",
+                "Started Reading": "2025-01-01",
+                "Finished Reading": "2025-02-01",
+            },
+        ]
+    )
 
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
@@ -108,14 +131,16 @@ def test_import_status_finished(client, auth_headers, db_session):
 
 
 def test_import_status_abandoned(client, auth_headers, db_session):
-    zip_bytes = _make_zip([
-        {
-            "Reading List ID": "AAA",
-            "Title": "Gave Up",
-            "Authors": "A, B",
-            "Did Not Finish": "true",
-        },
-    ])
+    zip_bytes = _make_zip(
+        [
+            {
+                "Reading List ID": "AAA",
+                "Title": "Gave Up",
+                "Authors": "A, B",
+                "Did Not Finish": "true",
+            },
+        ]
+    )
 
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
@@ -125,14 +150,16 @@ def test_import_status_abandoned(client, auth_headers, db_session):
 
 
 def test_import_status_started(client, auth_headers, db_session):
-    zip_bytes = _make_zip([
-        {
-            "Reading List ID": "AAA",
-            "Title": "Reading Now",
-            "Authors": "A, B",
-            "Started Reading": "2025-03-01",
-        },
-    ])
+    zip_bytes = _make_zip(
+        [
+            {
+                "Reading List ID": "AAA",
+                "Title": "Reading Now",
+                "Authors": "A, B",
+                "Started Reading": "2025-03-01",
+            },
+        ]
+    )
 
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
@@ -145,16 +172,18 @@ def test_import_status_started(client, auth_headers, db_session):
 
 
 def test_import_notes_and_current_page(client, auth_headers, db_session):
-    zip_bytes = _make_zip([
-        {
-            "Reading List ID": "AAA",
-            "Title": "Noted",
-            "Authors": "A, B",
-            "Notes": "Very insightful",
-            "Current Page": "42",
-            "Started Reading": "2025-01-01",
-        },
-    ])
+    zip_bytes = _make_zip(
+        [
+            {
+                "Reading List ID": "AAA",
+                "Title": "Noted",
+                "Authors": "A, B",
+                "Notes": "Very insightful",
+                "Current Page": "42",
+                "Started Reading": "2025-01-01",
+            },
+        ]
+    )
 
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
@@ -168,14 +197,16 @@ def test_import_notes_and_current_page(client, auth_headers, db_session):
 
 
 def test_import_creates_lists(client, auth_headers, db_session):
-    zip_bytes = _make_zip([
-        {
-            "Reading List ID": "AAA",
-            "Title": "Listed Book",
-            "Authors": "A, B",
-            "Lists": "Sci-Fi (5); Philosophy (3)",
-        },
-    ])
+    zip_bytes = _make_zip(
+        [
+            {
+                "Reading List ID": "AAA",
+                "Title": "Listed Book",
+                "Authors": "A, B",
+                "Lists": "Sci-Fi (5); Philosophy (3)",
+            },
+        ]
+    )
 
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
@@ -232,10 +263,12 @@ def test_import_multiple_books(client, auth_headers, db_session):
 
 
 def test_import_skips_books_without_title(client, auth_headers, db_session):
-    zip_bytes = _make_zip([
-        {"Reading List ID": "AAA", "Title": "", "Authors": "A, B"},
-        {"Reading List ID": "BBB", "Title": "Valid", "Authors": "A, B"},
-    ])
+    zip_bytes = _make_zip(
+        [
+            {"Reading List ID": "AAA", "Title": "", "Authors": "A, B"},
+            {"Reading List ID": "BBB", "Title": "Valid", "Authors": "A, B"},
+        ]
+    )
 
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
@@ -243,9 +276,11 @@ def test_import_skips_books_without_title(client, auth_headers, db_session):
 
 
 def test_import_author_single_name(client, auth_headers, db_session):
-    zip_bytes = _make_zip([
-        {"Reading List ID": "AAA", "Title": "Book", "Authors": "Plato"},
-    ])
+    zip_bytes = _make_zip(
+        [
+            {"Reading List ID": "AAA", "Title": "Book", "Authors": "Plato"},
+        ]
+    )
 
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
@@ -255,10 +290,22 @@ def test_import_author_single_name(client, auth_headers, db_session):
 
 
 def test_import_duplicate_isbn_is_skipped(client, auth_headers, db_session):
-    zip_bytes = _make_zip([
-        {"Reading List ID": "AAA", "Title": "Book A", "Authors": "A, B", "ISBN-13": "9781234567890"},
-        {"Reading List ID": "BBB", "Title": "Book B", "Authors": "C, D", "ISBN-13": "9781234567890"},
-    ])
+    zip_bytes = _make_zip(
+        [
+            {
+                "Reading List ID": "AAA",
+                "Title": "Book A",
+                "Authors": "A, B",
+                "ISBN-13": "9781234567890",
+            },
+            {
+                "Reading List ID": "BBB",
+                "Title": "Book B",
+                "Authors": "C, D",
+                "ISBN-13": "9781234567890",
+            },
+        ]
+    )
 
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
@@ -275,7 +322,9 @@ def test_import_started_books_appear_first_in_to_read(client, auth_headers, db_s
     """
     rows = []
     for i in range(30):
-        rows.append({"Reading List ID": f"Q{i}", "Title": f"Queued {i}", "Authors": "A, B"})
+        rows.append(
+            {"Reading List ID": f"Q{i}", "Title": f"Queued {i}", "Authors": "A, B"}
+        )
     rows.insert(
         25,
         {
@@ -306,22 +355,24 @@ def test_import_puts_books_in_default_shelves(client, auth_headers, db_session):
     The frontend loads the main shelf by querying these lists, so books not in
     them show up as 'No books yet' even though rows exist in user_books.
     """
-    zip_bytes = _make_zip([
-        {"Reading List ID": "A1", "Title": "Queued", "Authors": "A, B"},
-        {
-            "Reading List ID": "A2",
-            "Title": "Reading",
-            "Authors": "A, B",
-            "Started Reading": "2026-04-01",
-        },
-        {
-            "Reading List ID": "A3",
-            "Title": "Done",
-            "Authors": "A, B",
-            "Started Reading": "2026-03-01",
-            "Finished Reading": "2026-04-01",
-        },
-    ])
+    zip_bytes = _make_zip(
+        [
+            {"Reading List ID": "A1", "Title": "Queued", "Authors": "A, B"},
+            {
+                "Reading List ID": "A2",
+                "Title": "Reading",
+                "Authors": "A, B",
+                "Started Reading": "2026-04-01",
+            },
+            {
+                "Reading List ID": "A3",
+                "Title": "Done",
+                "Authors": "A, B",
+                "Started Reading": "2026-03-01",
+                "Finished Reading": "2026-04-01",
+            },
+        ]
+    )
 
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
@@ -331,11 +382,15 @@ def test_import_puts_books_in_default_shelves(client, auth_headers, db_session):
 
     to_read_titles = {
         item.user_book.book.title
-        for item in db_session.query(BookListItem).filter(BookListItem.list_id == to_read.id).all()
+        for item in db_session.query(BookListItem)
+        .filter(BookListItem.list_id == to_read.id)
+        .all()
     }
     finished_titles = {
         item.user_book.book.title
-        for item in db_session.query(BookListItem).filter(BookListItem.list_id == finished.id).all()
+        for item in db_session.query(BookListItem)
+        .filter(BookListItem.list_id == finished.id)
+        .all()
     }
 
     assert to_read_titles == {"Queued", "Reading"}
@@ -384,8 +439,11 @@ def test_import_real_export_counts_match_csv(client, auth_headers, db_session):
     expected_imported = len(unique_rows)
     expected_finished = sum(1 for r in unique_rows if r["Finished Reading"])
     expected_started = sum(
-        1 for r in unique_rows
-        if r["Started Reading"] and not r["Finished Reading"] and not r["Did Not Finish"]
+        1
+        for r in unique_rows
+        if r["Started Reading"]
+        and not r["Finished Reading"]
+        and not r["Did Not Finish"]
     )
     expected_abandoned = sum(
         1 for r in unique_rows if r["Did Not Finish"] and not r["Finished Reading"]
@@ -420,9 +478,7 @@ def test_import_real_export_counts_match_csv(client, auth_headers, db_session):
         == expected_abandoned
     )
     assert (
-        db_session.query(UserBook)
-        .filter(UserBook.notes.isnot(None))
-        .count()
+        db_session.query(UserBook).filter(UserBook.notes.isnot(None)).count()
         == expected_with_notes
     )
 
@@ -462,7 +518,8 @@ def test_import_real_export_currently_reading(client, auth_headers, db_session):
     assert ekel.started_at == datetime(2026, 4, 13)
 
     unix = next(
-        ub for book, ub in started
+        ub
+        for book, ub in started
         if book.title == "UNIX and Linux System Administration Handbook, 5/e"
     )
     assert unix.started_at == datetime(2026, 4, 18)
