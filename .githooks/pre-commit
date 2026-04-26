@@ -24,7 +24,7 @@ echo "Running backend lint (ruff)..."
 echo "Running backend tests (pytest)..."
 (
   cd "$repo_root/books-backend"
-  uv run pytest
+  uv run pytest -m "not external"
 )
 
 echo "Running frontend typecheck..."
