@@ -18,7 +18,7 @@ from app.book_lists import (
     list_name_for_status,
 )
 from app.image_utils import store_cover_image
-from app.models import Book, BookList, ReadingStatus, UserBook
+from app.models import Book, BookList, Import, ReadingStatus, UserBook
 
 
 class ImportReadingListError(ValueError):
@@ -64,7 +64,7 @@ def _parse_date(val: str) -> datetime | None:
 
 
 def import_reading_list_from_bytes(
-    db: Session, user_id: int, content: bytes
+    db: Session, user_id: int, content: bytes, filename: str | None = None
 ) -> dict[str, int]:
     try:
         zf = zipfile.ZipFile(io.BytesIO(content))
@@ -91,6 +91,10 @@ def import_reading_list_from_bytes(
         key=lambda r: 0 if _derive_status(r) == ReadingStatus.STARTED else 1,
     )
     default_lists = get_or_create_default_lists(db, user_id)
+    import_record = Import(user_id=user_id, filename=filename)
+    db.add(import_record)
+    db.flush()
+    import_id = cast(int, import_record.id)
     imported = 0
     skipped = 0
 
@@ -173,7 +177,7 @@ def import_reading_list_from_bytes(
         db.add(user_book)
         db.flush()
 
-        ensure_added_event(db, user_id=user_id, book_id=book_id)
+        ensure_added_event(db, user_id=user_id, book_id=book_id, import_id=import_id)
         if derived_status in (ReadingStatus.STARTED, ReadingStatus.FINISHED):
             record_started_reading(
                 db,
@@ -214,5 +218,7 @@ def import_reading_list_from_bytes(
 
         imported += 1
 
+    import_record.imported_count = imported
+    import_record.skipped_count = skipped
     db.commit()
     return {"imported": imported, "skipped": skipped}

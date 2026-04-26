@@ -22,7 +22,10 @@ def import_reading_list(
 ):
     try:
         return import_reading_list_from_bytes(
-            db, cast(int, current_user.id), file.file.read()
+            db,
+            cast(int, current_user.id),
+            file.file.read(),
+            filename=file.filename,
         )
     except ImportReadingListError as exc:
         raise HTTPException(

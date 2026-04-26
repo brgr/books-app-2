@@ -8,7 +8,7 @@ defineProps<{
 function formatEventType(event: BookEvent): string {
   switch (event.event_type) {
     case BookEventType.ADDED_TO_LIBRARY:
-      return 'Added to library'
+      return event.import_id != null ? 'Imported to library' : 'Added to library'
     case BookEventType.STARTED_READING:
       return 'Started reading'
     case BookEventType.FINISHED_READING:
