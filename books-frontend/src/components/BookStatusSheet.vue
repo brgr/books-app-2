@@ -7,12 +7,16 @@ const props = defineProps<{
   statusLabel: string
   statusSubtitle: string
   updating: boolean
+  currentPage?: number | null
+  pageCount?: number | null
+  progressSaving?: boolean
 }>()
 
 const emit = defineEmits<{
   close: []
   start: [payload: {occurredAt?: string}]
   finish: [payload: {occurredAt?: string}]
+  'update-progress': [page: number]
 }>()
 
 function todayIsoDate(): string {
@@ -40,6 +44,14 @@ const canStart = computed(
   () => props.status === null || props.status === ReadingStatus.WANT_TO_READ,
 )
 const canFinish = computed(() => props.status === ReadingStatus.STARTED)
+const canUpdateProgress = computed(() => props.status === ReadingStatus.STARTED)
+
+const progressDraft = ref<string>(props.currentPage?.toString() ?? '')
+
+watch(
+  () => props.currentPage,
+  (val) => { progressDraft.value = val?.toString() ?? '' },
+)
 
 function handleStart() {
   emit('start', {occurredAt: resolveOccurredAt()})
@@ -47,6 +59,26 @@ function handleStart() {
 
 function handleFinish() {
   emit('finish', {occurredAt: resolveOccurredAt()})
+}
+
+function handleSaveProgress() {
+  if (!canUpdateProgress.value || props.progressSaving) return
+  const trimmed = String(progressDraft.value ?? '').trim()
+  if (!trimmed) {
+    alert('Please enter a page number.')
+    return
+  }
+  const page = Number.parseInt(trimmed, 10)
+  if (Number.isNaN(page) || page < 0) {
+    alert('Please enter a valid page number.')
+    return
+  }
+  emit('update-progress', page)
+}
+
+function handleProgressFocus(event: FocusEvent) {
+  const target = event.target as HTMLInputElement | null
+  target?.select()
 }
 </script>
 
@@ -64,6 +96,33 @@ function handleFinish() {
       </div>
       <div class="sheet-body">
         <p class="sheet-status-detail">{{ statusSubtitle }}</p>
+        <div v-if="canUpdateProgress" class="sheet-progress-field">
+          <span>Progress</span>
+          <div class="sheet-progress-row">
+            <input
+              v-model="progressDraft"
+              type="number"
+              min="0"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              class="sheet-progress-input"
+              data-test="progress-input"
+              :disabled="progressSaving"
+              placeholder="Page"
+              @focus="handleProgressFocus"
+            />
+            <span v-if="pageCount" class="sheet-progress-total">of {{ pageCount }}</span>
+            <button
+              class="btn-secondary"
+              type="button"
+              data-test="save-progress"
+              @click="handleSaveProgress"
+              :disabled="progressSaving"
+            >
+              {{ progressSaving ? 'Saving...' : 'Save progress' }}
+            </button>
+          </div>
+        </div>
         <label v-if="canStart || canFinish" class="sheet-date-field">
           <span>Date</span>
           <input
@@ -173,6 +232,45 @@ function handleFinish() {
   gap: var(--spacing-xs);
   font-size: 0.9rem;
   color: var(--color-text-secondary);
+}
+
+.sheet-progress-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+.sheet-progress-row {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.sheet-progress-input {
+  width: 80px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 1rem;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.sheet-progress-input::-webkit-outer-spin-button,
+.sheet-progress-input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.sheet-progress-total {
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
 }
 
 .sheet-date-field input {

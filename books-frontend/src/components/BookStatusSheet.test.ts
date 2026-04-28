@@ -8,6 +8,9 @@ function makeProps(overrides: Partial<{
   statusLabel: string
   statusSubtitle: string
   updating: boolean
+  currentPage: number | null
+  pageCount: number | null
+  progressSaving: boolean
 }> = {}) {
   return {
     status: null,
@@ -94,6 +97,23 @@ describe('BookStatusSheet', () => {
     expect(payload.occurredAt).toBeUndefined()
 
     vi.useRealTimers()
+  })
+
+  it('emits "update-progress" with parsed page number when Save progress is clicked', async () => {
+    const wrapper = mount(BookStatusSheet, {
+      props: makeProps({status: ReadingStatus.STARTED, currentPage: 10, pageCount: 200}),
+    })
+    await wrapper.find('[data-test="save-progress"]').trigger('click')
+    expect(wrapper.emitted('update-progress')?.[0]?.[0]).toBe(10)
+  })
+
+  it('emits "update-progress" with new page after editing the input', async () => {
+    const wrapper = mount(BookStatusSheet, {
+      props: makeProps({status: ReadingStatus.STARTED, currentPage: 10, pageCount: 200}),
+    })
+    await wrapper.find('[data-test="progress-input"]').setValue('42')
+    await wrapper.find('[data-test="save-progress"]').trigger('click')
+    expect(wrapper.emitted('update-progress')?.[0]?.[0]).toBe(42)
   })
 
   it('emits ISO occurredAt when a past date is picked', async () => {
