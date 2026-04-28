@@ -13,7 +13,6 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  close: []
   start: [payload: {occurredAt?: string}]
   finish: [payload: {occurredAt?: string}]
   'update-progress': [page: number]
@@ -47,10 +46,14 @@ const canFinish = computed(() => props.status === ReadingStatus.STARTED)
 const canUpdateProgress = computed(() => props.status === ReadingStatus.STARTED)
 
 const progressDraft = ref<string>(props.currentPage?.toString() ?? '')
+const editingProgress = ref(false)
 
 watch(
   () => props.currentPage,
-  (val) => { progressDraft.value = val?.toString() ?? '' },
+  (val) => {
+    progressDraft.value = val?.toString() ?? ''
+    editingProgress.value = false
+  },
 )
 
 function handleStart() {
@@ -80,205 +83,199 @@ function handleProgressFocus(event: FocusEvent) {
   const target = event.target as HTMLInputElement | null
   target?.select()
 }
+
+function startEditingProgress() {
+  progressDraft.value = props.currentPage?.toString() ?? ''
+  editingProgress.value = true
+}
+
+function cancelEditingProgress() {
+  progressDraft.value = props.currentPage?.toString() ?? ''
+  editingProgress.value = false
+}
 </script>
 
 <template>
-  <div class="sheet-overlay" data-test="overlay" @click.self="emit('close')">
-    <div class="sheet">
-      <div class="sheet-header">
-        <div>
-          <h3>Reading status</h3>
-          <p>{{ statusLabel }}</p>
-        </div>
-        <button class="sheet-close" type="button" data-test="close" @click="emit('close')">
-          Close
-        </button>
-      </div>
-      <div class="sheet-body">
-        <p class="sheet-status-detail">{{ statusSubtitle }}</p>
-        <div v-if="canUpdateProgress" class="sheet-progress-field">
-          <span>Progress</span>
-          <div class="sheet-progress-row">
-            <input
-              v-model="progressDraft"
-              type="number"
-              min="0"
-              inputmode="numeric"
-              pattern="[0-9]*"
-              class="sheet-progress-input"
-              data-test="progress-input"
-              :disabled="progressSaving"
-              placeholder="Page"
-              @focus="handleProgressFocus"
-            />
-            <span v-if="pageCount" class="sheet-progress-total">of {{ pageCount }}</span>
-            <button
-              class="btn-secondary"
-              type="button"
-              data-test="save-progress"
-              @click="handleSaveProgress"
-              :disabled="progressSaving"
-            >
-              {{ progressSaving ? 'Saving...' : 'Save progress' }}
-            </button>
-          </div>
-        </div>
-        <label v-if="canStart || canFinish" class="sheet-date-field">
-          <span>Date</span>
+  <div class="status-card" data-test="status-card">
+    <div class="status-row">
+      <span class="status-label">{{ statusLabel }}</span>
+      <span class="status-sep">·</span>
+      <span class="status-subtitle">{{ statusSubtitle }}</span>
+      <template v-if="canUpdateProgress">
+        <span class="status-sep">·</span>
+        <span v-if="editingProgress" class="progress-edit">
           <input
-            type="date"
-            data-test="date-input"
-            v-model="dateDraft"
-            :max="todayIsoDate()"
+            v-model="progressDraft"
+            type="number"
+            min="0"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            class="progress-input"
+            data-test="progress-input"
+            :disabled="progressSaving"
+            placeholder="Page"
+            @focus="handleProgressFocus"
           />
-        </label>
-        <div class="sheet-actions">
+          <span v-if="pageCount" class="progress-total">of {{ pageCount }}</span>
           <button
-            v-if="canStart"
-            class="btn-secondary"
+            class="btn-link"
             type="button"
-            data-test="start-reading"
-            @click="handleStart"
-            :disabled="updating"
+            data-test="save-progress"
+            @click="handleSaveProgress"
+            :disabled="progressSaving"
           >
-            Start Reading
+            {{ progressSaving ? 'Saving…' : 'Save' }}
           </button>
           <button
-            v-if="canFinish"
-            class="btn-primary"
+            class="btn-link btn-link-cancel"
             type="button"
-            data-test="finish-reading"
-            @click="handleFinish"
-            :disabled="updating"
+            data-test="cancel-progress"
+            @click="cancelEditingProgress"
+            :disabled="progressSaving"
           >
-            Finish Reading
+            Cancel
           </button>
-        </div>
-      </div>
+        </span>
+        <button
+          v-else
+          class="btn-link"
+          type="button"
+          data-test="edit-progress"
+          @click="startEditingProgress"
+        >
+          Update progress
+        </button>
+      </template>
+    </div>
+    <div v-if="canStart || canFinish" class="action-row">
+      <input
+        type="date"
+        class="date-input"
+        data-test="date-input"
+        v-model="dateDraft"
+        :max="todayIsoDate()"
+      />
+      <button
+        v-if="canStart"
+        class="btn-secondary btn-compact"
+        type="button"
+        data-test="start-reading"
+        @click="handleStart"
+        :disabled="updating"
+      >
+        Start Reading
+      </button>
+      <button
+        v-if="canFinish"
+        class="btn-primary btn-compact"
+        type="button"
+        data-test="finish-reading"
+        @click="handleFinish"
+        :disabled="updating"
+      >
+        Finish Reading
+      </button>
     </div>
   </div>
 </template>
 
 <style scoped>
-.sheet-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(6, 6, 8, 0.55);
+.status-card {
+  background: rgba(12, 8, 16, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-sm) var(--spacing-md);
+  box-shadow: 0 10px 20px rgba(7, 5, 8, 0.2);
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  z-index: 50;
-  backdrop-filter: blur(6px);
+  flex-direction: column;
+  gap: var(--spacing-xs);
 }
 
-.sheet {
-  width: min(480px, 96vw);
-  background: #1a141f;
-  border-radius: 20px 20px 0 0;
-  padding: var(--spacing-lg);
-  box-shadow: 0 -20px 40px rgba(6, 6, 8, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.sheet-header {
+.status-row,
+.action-row,
+.progress-edit {
   display: flex;
-  justify-content: space-between;
+  gap: var(--spacing-sm);
   align-items: center;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-md);
-}
-
-.sheet-header h3 {
-  margin: 0;
-  font-size: 1.1rem;
-}
-
-.sheet-header p {
-  margin: 4px 0 0 0;
-  color: var(--color-text-secondary);
+  flex-wrap: wrap;
   font-size: 0.9rem;
 }
 
-.sheet-close {
-  border: none;
-  background: rgba(255, 255, 255, 0.08);
+.status-label {
+  font-weight: 600;
   color: var(--color-text);
-  padding: 6px 12px;
-  border-radius: 999px;
-  cursor: pointer;
 }
 
-.sheet-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-}
-
-.sheet-status-detail {
-  margin: 0;
-  font-size: 0.95rem;
+.status-subtitle {
   color: var(--color-text-secondary);
 }
 
-.sheet-actions {
-  display: flex;
-  gap: var(--spacing-sm);
-  flex-wrap: wrap;
-}
-
-.sheet-date-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-  font-size: 0.9rem;
+.status-sep {
   color: var(--color-text-secondary);
+  opacity: 0.5;
 }
 
-.sheet-progress-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-  font-size: 0.9rem;
-  color: var(--color-text-secondary);
-}
-
-.sheet-progress-row {
-  display: flex;
-  gap: var(--spacing-sm);
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.sheet-progress-input {
-  width: 80px;
-  padding: var(--spacing-xs) var(--spacing-sm);
+.progress-input {
+  width: 70px;
+  padding: 4px var(--spacing-sm);
   border-radius: var(--border-radius);
   border: 1px solid var(--color-border);
   background: var(--color-bg);
   color: var(--color-text);
   font-family: inherit;
-  font-size: 1rem;
+  font-size: 0.9rem;
   appearance: textfield;
   -moz-appearance: textfield;
 }
 
-.sheet-progress-input::-webkit-outer-spin-button,
-.sheet-progress-input::-webkit-inner-spin-button {
+.progress-input::-webkit-outer-spin-button,
+.progress-input::-webkit-inner-spin-button {
   margin: 0;
   -webkit-appearance: none;
 }
 
-.sheet-progress-total {
+.progress-total {
   color: var(--color-text-secondary);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }
 
-.sheet-date-field input {
-  padding: var(--spacing-xs) var(--spacing-sm);
+input.date-input {
+  padding: 4px var(--spacing-sm);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-bg);
   color: var(--color-text);
-  font-size: 1rem;
+  font-size: 0.9rem;
+  width: auto;
+  flex: 0 0 auto;
+  display: inline-block;
+}
+
+.btn-compact {
+  padding: 4px 10px;
+  font-size: 0.9rem;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-primary);
+  font-size: 0.9rem;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.btn-link:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.btn-link:disabled {
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+.btn-link-cancel {
+  color: var(--color-danger);
 }
 </style>

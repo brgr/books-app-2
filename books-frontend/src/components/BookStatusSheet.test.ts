@@ -66,19 +66,7 @@ describe('BookStatusSheet', () => {
     expect(wrapper.emitted('finish')).toBeTruthy()
   })
 
-  it('emits "close" when overlay is clicked', async () => {
-    const wrapper = mount(BookStatusSheet, {props: makeProps()})
-    await wrapper.find('[data-test="overlay"]').trigger('click.self')
-    expect(wrapper.emitted('close')).toBeTruthy()
-  })
-
-  it('emits "close" when Close button is clicked', async () => {
-    const wrapper = mount(BookStatusSheet, {props: makeProps()})
-    await wrapper.find('[data-test="close"]').trigger('click')
-    expect(wrapper.emitted('close')).toBeTruthy()
-  })
-
-  it('disables action button while updating', () => {
+it('disables action button while updating', () => {
     const wrapper = mount(BookStatusSheet, {
       props: makeProps({status: null, updating: true}),
     })
@@ -99,10 +87,20 @@ describe('BookStatusSheet', () => {
     vi.useRealTimers()
   })
 
-  it('emits "update-progress" with parsed page number when Save progress is clicked', async () => {
+  it('hides progress input until Update progress is clicked', async () => {
     const wrapper = mount(BookStatusSheet, {
       props: makeProps({status: ReadingStatus.STARTED, currentPage: 10, pageCount: 200}),
     })
+    expect(wrapper.find('[data-test="progress-input"]').exists()).toBe(false)
+    await wrapper.find('[data-test="edit-progress"]').trigger('click')
+    expect(wrapper.find('[data-test="progress-input"]').exists()).toBe(true)
+  })
+
+  it('emits "update-progress" with parsed page number when Save is clicked', async () => {
+    const wrapper = mount(BookStatusSheet, {
+      props: makeProps({status: ReadingStatus.STARTED, currentPage: 10, pageCount: 200}),
+    })
+    await wrapper.find('[data-test="edit-progress"]').trigger('click')
     await wrapper.find('[data-test="save-progress"]').trigger('click')
     expect(wrapper.emitted('update-progress')?.[0]?.[0]).toBe(10)
   })
@@ -111,9 +109,21 @@ describe('BookStatusSheet', () => {
     const wrapper = mount(BookStatusSheet, {
       props: makeProps({status: ReadingStatus.STARTED, currentPage: 10, pageCount: 200}),
     })
+    await wrapper.find('[data-test="edit-progress"]').trigger('click')
     await wrapper.find('[data-test="progress-input"]').setValue('42')
     await wrapper.find('[data-test="save-progress"]').trigger('click')
     expect(wrapper.emitted('update-progress')?.[0]?.[0]).toBe(42)
+  })
+
+  it('Cancel exits edit mode without emitting', async () => {
+    const wrapper = mount(BookStatusSheet, {
+      props: makeProps({status: ReadingStatus.STARTED, currentPage: 10, pageCount: 200}),
+    })
+    await wrapper.find('[data-test="edit-progress"]').trigger('click')
+    await wrapper.find('[data-test="progress-input"]').setValue('99')
+    await wrapper.find('[data-test="cancel-progress"]').trigger('click')
+    expect(wrapper.emitted('update-progress')).toBeFalsy()
+    expect(wrapper.find('[data-test="progress-input"]').exists()).toBe(false)
   })
 
   it('emits ISO occurredAt when a past date is picked', async () => {

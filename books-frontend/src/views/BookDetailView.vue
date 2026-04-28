@@ -53,7 +53,6 @@ const notesSaving = ref(false)
 const progressSaving = ref(false)
 const showSearchModal = ref(false)
 const addingBook = ref(false)
-const showStatusSheet = ref(false)
 const descriptionRef = ref<HTMLElement | null>(null)
 const {
   expanded: descriptionExpanded,
@@ -110,7 +109,6 @@ async function changeStatus(status: ReadingStatus, occurredAt?: string) {
     await setReadingStatus(book.value.id, {status, occurred_at: occurredAt})
     await cacheInvalidateByPrefix('lists:')
     await loadBook()
-    showStatusSheet.value = false
   } catch (err) {
     console.error('Failed to update reading status:', err)
     alert('Failed to update reading status')
@@ -238,10 +236,18 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
             <p class="book-author">by {{ book.author }}</p>
 
             <div class="book-status-section">
-              <button class="status-pill" type="button" @click="showStatusSheet = true">
-                <span class="status-pill-label">{{ readingStatusLabel }}</span>
-                <span class="status-pill-subtitle">{{ readingStatusSubtitle }}</span>
-              </button>
+              <BookStatusSheet
+                :status="book.user_status?.status ?? null"
+                :status-label="readingStatusLabel"
+                :status-subtitle="readingStatusSubtitle"
+                :updating="updatingStatus"
+                :current-page="book.user_status?.current_page ?? null"
+                :page-count="book.page_count ?? null"
+                :progress-saving="progressSaving"
+                @start="handleStartReading"
+                @finish="handleFinishReading"
+                @update-progress="handleSaveProgress"
+              />
             </div>
 
             <div v-if="book.user_status" class="book-dates">
@@ -329,20 +335,6 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
         @select="handleBookSelected"
     />
 
-    <BookStatusSheet
-      v-if="showStatusSheet"
-      :status="book?.user_status?.status ?? null"
-      :status-label="readingStatusLabel"
-      :status-subtitle="readingStatusSubtitle"
-      :updating="updatingStatus"
-      :current-page="book?.user_status?.current_page ?? null"
-      :page-count="book?.page_count ?? null"
-      :progress-saving="progressSaving"
-      @close="showStatusSheet = false"
-      @start="handleStartReading"
-      @finish="handleFinishReading"
-      @update-progress="handleSaveProgress"
-    />
   </div>
 </template>
 
@@ -481,37 +473,6 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
-}
-
-.status-pill {
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(12, 8, 16, 0.45);
-  color: var(--color-text);
-  border-radius: 999px;
-  padding: 10px 16px;
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  width: fit-content;
-  box-shadow: 0 10px 20px rgba(7, 5, 8, 0.2);
-  cursor: pointer;
-  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
-}
-
-.status-pill:hover {
-  transform: translateY(-1px);
-  border-color: rgba(255, 255, 255, 0.32);
-  background: rgba(16, 10, 22, 0.6);
-}
-
-.status-pill-label {
-  font-weight: 700;
-  font-size: 0.95rem;
-}
-
-.status-pill-subtitle {
-  font-size: 0.85rem;
-  color: var(--color-text-secondary);
 }
 
 .book-dates {
@@ -672,11 +633,7 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
     width: 100%;
   }
 
-  .status-pill {
-    margin: 0 auto;
-  }
-
-  .book-actions {
+.book-actions {
     flex-direction: column;
   }
 
