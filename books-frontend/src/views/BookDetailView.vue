@@ -4,7 +4,6 @@ import {useRouter, useRoute} from 'vue-router'
 import {createBook, getBook, setReadingStatus, getBookEvents, addBookProgress} from '../api/books'
 import {getMediaUrl} from '../api/client'
 import BookNotes from '../components/BookNotes.vue'
-import BookProgress from '../components/BookProgress.vue'
 import BookSearchModal from '../components/BookSearchModal.vue'
 import BookStatusSheet from '../components/BookStatusSheet.vue'
 import NavigationBar from '../components/NavigationBar.vue'
@@ -245,14 +244,6 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
               </button>
             </div>
 
-            <BookProgress
-              :current-page="book.user_status?.current_page ?? null"
-              :page-count="book.page_count ?? null"
-              :can-update="canUpdateProgress"
-              :saving="progressSaving"
-              @save="handleSaveProgress"
-            />
-
             <div v-if="book.user_status" class="book-dates">
               <div v-if="book.user_status.started_at" class="date-item">
                 <strong>Started:</strong> {{ formatShortDate(book.user_status.started_at) }}
@@ -344,9 +335,13 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
       :status-label="readingStatusLabel"
       :status-subtitle="readingStatusSubtitle"
       :updating="updatingStatus"
+      :current-page="book?.user_status?.current_page ?? null"
+      :page-count="book?.page_count ?? null"
+      :progress-saving="progressSaving"
       @close="showStatusSheet = false"
       @start="handleStartReading"
       @finish="handleFinishReading"
+      @update-progress="handleSaveProgress"
     />
   </div>
 </template>
