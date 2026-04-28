@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getBook, updateBook } from '../api/books'
+import { getBook, updateBook, deleteBook } from '../api/books'
 import type { Book, BookUpdate } from '../api/types'
 import NavigationBar from '../components/NavigationBar.vue'
 import CoverPickerModal from '../components/CoverPickerModal.vue'
@@ -112,6 +112,23 @@ function handleCancel() {
     router.push({ name: 'book-detail', params: { id: book.value.id } })
   } else {
     router.push({ name: 'books' })
+  }
+}
+
+async function handleDelete() {
+  if (!book.value || loading.value) return
+  if (!confirm(`Are you sure you want to delete "${book.value.title}"?`)) return
+
+  loading.value = true
+  try {
+    await deleteBook(book.value.id)
+    await cacheInvalidateByPrefix(`books:${book.value.id}`)
+    await cacheInvalidateByPrefix('lists:')
+    router.push({ name: 'books' })
+  } catch (err: any) {
+    console.error('Failed to delete book:', err)
+    error.value = 'Failed to delete book. Please try again.'
+    loading.value = false
   }
 }
 </script>
@@ -267,6 +284,9 @@ function handleCancel() {
           </div>
 
           <div class="form-actions">
+            <button type="button" @click="handleDelete" :disabled="loading" class="btn-danger delete-action">
+              Delete Book
+            </button>
             <button type="button" @click="handleCancel" :disabled="loading">
               Cancel
             </button>
@@ -388,5 +408,9 @@ function handleCancel() {
   gap: var(--spacing-md);
   justify-content: flex-end;
   margin-top: var(--spacing-xl);
+}
+
+.form-actions .delete-action {
+  margin-right: auto;
 }
 </style>
