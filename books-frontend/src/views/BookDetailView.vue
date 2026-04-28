@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {computed, ref} from 'vue'
 import {useRouter, useRoute} from 'vue-router'
-import {createBook, getBook, setReadingStatus, deleteBook, getBookEvents, addBookProgress} from '../api/books'
+import {createBook, getBook, setReadingStatus, getBookEvents, addBookProgress} from '../api/books'
 import {getMediaUrl} from '../api/client'
 import BookNotes from '../components/BookNotes.vue'
 import BookProgress from '../components/BookProgress.vue'
@@ -162,24 +162,6 @@ async function handleSaveProgress(page: number) {
 function handleEdit() {
   if (!book.value) return
   router.push({name: 'book-edit', params: {id: book.value.id}})
-}
-
-async function handleDelete() {
-  if (!book.value) return
-
-  if (!confirm(`Are you sure you want to delete "${book.value.title}"?`)) {
-    return
-  }
-
-  try {
-    await deleteBook(book.value.id)
-    await cacheInvalidateByPrefix(`books:${book.value.id}`)
-    await cacheInvalidateByPrefix('lists:')
-    router.push({name: 'books'})
-  } catch (err: any) {
-    console.error('Failed to delete book:', err)
-    alert('Failed to delete book. Please try again.')
-  }
 }
 
 function handleAddBook() {
@@ -344,9 +326,6 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
           <div class="book-actions">
             <button @click="handleEdit" class="btn-primary">
               Edit Book
-            </button>
-            <button @click="handleDelete" class="btn-danger">
-              Delete Book
             </button>
           </div>
         </div>
