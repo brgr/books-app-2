@@ -642,6 +642,10 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
     flex: 0 0 auto;
   }
 
+  .book-status-section {
+    align-items: center;
+  }
+
   .book-status-section select {
     max-width: 100%;
   }

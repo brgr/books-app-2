@@ -102,7 +102,6 @@ function cancelEditingProgress() {
       <span class="status-sep">·</span>
       <span class="status-subtitle">{{ statusSubtitle }}</span>
       <template v-if="canUpdateProgress">
-        <span class="status-sep">·</span>
         <span v-if="editingProgress" class="progress-edit">
           <input
             v-model="progressDraft"
@@ -184,21 +183,44 @@ function cancelEditingProgress() {
   background: rgba(12, 8, 16, 0.45);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--border-radius);
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-lg);
   box-shadow: 0 10px 20px rgba(7, 5, 8, 0.2);
-  display: flex;
+  display: inline-flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: var(--spacing-md);
+  width: fit-content;
+  max-width: 100%;
 }
 
 .status-row,
 .action-row,
 .progress-edit {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-md);
   align-items: center;
   flex-wrap: wrap;
   font-size: 0.9rem;
+}
+
+.status-row {
+  justify-content: space-between;
+}
+
+.status-row > .btn-link,
+.status-row > .progress-edit {
+  margin-left: auto;
+}
+
+.action-row {
+  align-items: stretch;
+}
+
+.action-row .btn-compact {
+  padding: 6px 14px;
+}
+
+input.date-input {
+  align-self: stretch;
 }
 
 .status-label {
