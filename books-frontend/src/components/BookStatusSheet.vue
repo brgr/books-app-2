@@ -99,7 +99,6 @@ function cancelEditingProgress() {
   <div class="status-card" data-test="status-card">
     <div class="status-row">
       <span class="status-label">{{ statusLabel }}</span>
-      <span class="status-sep">·</span>
       <span class="status-subtitle">{{ statusSubtitle }}</span>
       <template v-if="canUpdateProgress">
         <span v-if="editingProgress" class="progress-edit">
@@ -142,7 +141,7 @@ function cancelEditingProgress() {
           data-test="edit-progress"
           @click="startEditingProgress"
         >
-          Update progress
+          Update
         </button>
       </template>
     </div>
@@ -202,13 +201,12 @@ function cancelEditingProgress() {
   font-size: 0.9rem;
 }
 
-.status-row {
-  justify-content: space-between;
+.status-row > .btn-link {
+  margin-left: auto;
 }
 
-.status-row > .btn-link,
 .status-row > .progress-edit {
-  margin-left: auto;
+  flex-basis: 100%;
 }
 
 .action-row {
@@ -230,11 +228,6 @@ input.date-input {
 
 .status-subtitle {
   color: var(--color-text-secondary);
-}
-
-.status-sep {
-  color: var(--color-text-secondary);
-  opacity: 0.5;
 }
 
 .progress-input {
@@ -285,7 +278,6 @@ input.date-input {
   color: var(--color-primary);
   font-size: 0.9rem;
   cursor: pointer;
-  align-self: flex-start;
 }
 
 .btn-link:hover:not(:disabled) {
