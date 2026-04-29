@@ -674,7 +674,7 @@ const dragOpts = computed(() => ({
 .books-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: var(--spacing-md);
+  gap: 1.25rem;
   align-items: center;
   width: 100%;
   max-width: 100%;
@@ -711,14 +711,14 @@ const dragOpts = computed(() => ({
 @media (max-width: 768px) {
   .books-grid {
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: var(--spacing-md);
+    gap: 1.25rem;
   }
 }
 
 @media (max-width: 480px) {
   .books-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: var(--spacing-sm);
+    gap: 0.75rem;
   }
 }
 
