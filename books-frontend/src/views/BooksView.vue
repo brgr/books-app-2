@@ -3,8 +3,8 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import draggable from 'vuedraggable'
 import { useRouter } from 'vue-router'
 import { createBook, getListBooks, getLists, reorderListItem } from '../api/books'
-import { getMediaUrl } from '../api/client'
 import BookCard from '../components/BookCard.vue'
+import BookCoverTile from '../components/BookCoverTile.vue'
 import BookSearchModal from '../components/BookSearchModal.vue'
 import NavigationBar from '../components/NavigationBar.vue'
 import { ReadingStatus, type PaginatedBooks, type GoogleBookResult, type Book, type BookList } from '../api/types'
@@ -306,22 +306,16 @@ function handleCoverClick(bookId: number) {
   router.push({ name: 'book-detail', params: { id: bookId } })
 }
 
-function showProgressBadge(book: Book): boolean {
-  return (
-    book.user_status?.status === ReadingStatus.STARTED &&
-    Boolean(book.page_count) &&
-    book.user_status?.current_page !== null &&
-    book.user_status?.current_page !== undefined
-  )
-}
-
-function getProgressPercent(book: Book): number {
-  const pageCount = book.page_count ?? 0
-  const currentPage = book.user_status?.current_page ?? 0
-  if (pageCount <= 0) return 0
-  const percent = Math.round((currentPage / pageCount) * 100)
-  return Math.min(100, Math.max(0, percent))
-}
+const dragOpts = computed(() => ({
+  'item-key': 'id',
+  animation: 150,
+  delay: 120,
+  'delay-on-touch-only': true,
+  disabled: Boolean(searchQuery.value.trim()) || Boolean(filterStatus.value),
+  'ghost-class': 'grid-ghost',
+  'drag-class': 'grid-drag',
+  'chosen-class': 'grid-chosen',
+}))
 
 </script>
 
@@ -430,46 +424,16 @@ function getProgressPercent(book: Book): number {
             <draggable
               class="books-container books-grid sectioned"
               :list="gridCurrentlyReading"
-              item-key="id"
-              :animation="150"
-              :delay="120"
-              :delay-on-touch-only="true"
-              :disabled="Boolean(searchQuery.trim()) || Boolean(filterStatus)"
-              ghost-class="grid-ghost"
-              drag-class="grid-drag"
-              chosen-class="grid-chosen"
+              v-bind="dragOpts"
               @start="handleDragStart"
               @end="handleDragEndForList(gridCurrentlyReading, $event)"
             >
               <template #item="{ element: book }">
-                <div class="grid-item">
-                  <button
-                    type="button"
-                    class="grid-cover-link"
-                    @click="handleCoverClick(book.id)"
-                  >
-                    <span
-                      v-if="showProgressBadge(book)"
-                      class="grid-progress-badge"
-                    >
-                      {{ getProgressPercent(book) }}%
-                    </span>
-                    <img
-                      v-if="book.cover_thumbnail_url || book.cover_image_url"
-                      :src="getMediaUrl(book.cover_thumbnail_url || book.cover_image_url)"
-                      :alt="book.title"
-                      :title="book.title + ' by ' + book.author"
-                      class="grid-cover"
-                    />
-                    <div
-                      v-else
-                      class="grid-cover-placeholder"
-                      :title="book.title + ' by ' + book.author"
-                    >
-                      <div class="grid-no-cover-text">{{ book.title }}</div>
-                    </div>
-                  </button>
-                </div>
+                <BookCoverTile
+                  :book="book"
+                  show-progress
+                  @click="handleCoverClick"
+                />
               </template>
             </draggable>
           </section>
@@ -479,40 +443,12 @@ function getProgressPercent(book: Book): number {
             <draggable
               class="books-container books-grid sectioned"
               :list="gridToRead"
-              item-key="id"
-              :animation="150"
-              :delay="120"
-              :delay-on-touch-only="true"
-              :disabled="Boolean(searchQuery.trim()) || Boolean(filterStatus)"
-              ghost-class="grid-ghost"
-              drag-class="grid-drag"
-              chosen-class="grid-chosen"
+              v-bind="dragOpts"
               @start="handleDragStart"
               @end="handleDragEndForList(gridToRead, $event)"
             >
               <template #item="{ element: book }">
-                <div class="grid-item">
-                  <button
-                    type="button"
-                    class="grid-cover-link"
-                    @click="handleCoverClick(book.id)"
-                  >
-                    <img
-                      v-if="book.cover_thumbnail_url || book.cover_image_url"
-                      :src="getMediaUrl(book.cover_thumbnail_url || book.cover_image_url)"
-                      :alt="book.title"
-                      :title="book.title + ' by ' + book.author"
-                      class="grid-cover"
-                    />
-                    <div
-                      v-else
-                      class="grid-cover-placeholder"
-                      :title="book.title + ' by ' + book.author"
-                    >
-                      <div class="grid-no-cover-text">{{ book.title }}</div>
-                    </div>
-                  </button>
-                </div>
+                <BookCoverTile :book="book" @click="handleCoverClick" />
               </template>
             </draggable>
           </section>
@@ -522,40 +458,12 @@ function getProgressPercent(book: Book): number {
           v-else
           class="books-container books-grid"
           :list="gridBooks"
-          item-key="id"
-          :animation="150"
-          :delay="120"
-          :delay-on-touch-only="true"
-          :disabled="Boolean(searchQuery.trim()) || Boolean(filterStatus)"
-          ghost-class="grid-ghost"
-          drag-class="grid-drag"
-          chosen-class="grid-chosen"
+          v-bind="dragOpts"
           @start="handleDragStart"
           @end="handleDragEndForList(gridBooks, $event)"
         >
           <template #item="{ element: book }">
-            <div class="grid-item">
-              <button
-                type="button"
-                class="grid-cover-link"
-                @click="handleCoverClick(book.id)"
-              >
-                <img
-                  v-if="book.cover_thumbnail_url || book.cover_image_url"
-                  :src="getMediaUrl(book.cover_thumbnail_url || book.cover_image_url)"
-                  :alt="book.title"
-                  :title="book.title + ' by ' + book.author"
-                  class="grid-cover"
-                />
-                <div
-                  v-else
-                  class="grid-cover-placeholder"
-                  :title="book.title + ' by ' + book.author"
-                >
-                  <div class="grid-no-cover-text">{{ book.title }}</div>
-                </div>
-              </button>
-            </div>
+            <BookCoverTile :book="book" @click="handleCoverClick" />
           </template>
         </draggable>
       </template>
@@ -1025,125 +933,15 @@ function getProgressPercent(book: Book): number {
   overflow-y: visible;
 }
 
-.grid-ghost {
-  opacity: 0;
-}
-
-.grid-drag,
-.grid-chosen {
-  opacity: 1 !important;
-}
-
-.grid-item {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  min-width: 0;
-  width: 100%;
-  max-width: 100%;
-  overflow: visible;
-}
-
-.grid-cover-link {
-  padding: 0;
-  border: none;
-  background: transparent;
-  text-decoration: none;
-  display: block;
-  cursor: grab;
-  width: 100%;
-  text-align: left;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-  touch-action: manipulation;
-  position: relative;
-}
-
-.grid-cover {
-  width: 100%;
-  max-width: 100%;
-  height: auto;
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  transition: transform 0.2s ease;
-  box-shadow: var(--shadow);
-  display: block;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-  touch-action: manipulation;
-}
-
-.grid-cover:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-}
-
-.books-grid .sortable-ghost .grid-cover,
-.books-grid .sortable-ghost .grid-cover-placeholder,
-.books-grid .sortable-chosen .grid-cover,
-.books-grid .sortable-chosen .grid-cover-placeholder,
-.books-grid .sortable-drag .grid-cover,
-.books-grid .sortable-drag .grid-cover-placeholder {
+/*noinspection CssUnusedSymbol*/
+.books-grid :deep(.sortable-ghost .grid-cover),
+.books-grid :deep(.sortable-ghost .grid-cover-placeholder),
+.books-grid :deep(.sortable-chosen .grid-cover),
+.books-grid :deep(.sortable-chosen .grid-cover-placeholder),
+.books-grid :deep(.sortable-drag .grid-cover),
+.books-grid :deep(.sortable-drag .grid-cover-placeholder) {
   transform: none;
   box-shadow: var(--shadow);
-}
-
-.grid-cover-placeholder {
-  width: 100%;
-  max-width: 100%;
-  aspect-ratio: 2/3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  transition: transform 0.2s ease;
-  box-shadow: var(--shadow);
-  padding: var(--spacing-md);
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-  touch-action: manipulation;
-}
-
-.grid-cover-placeholder:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-}
-
-.grid-no-cover-text {
-  text-align: center;
-  color: var(--color-text);
-  font-size: 14px;
-  font-weight: 500;
-  word-break: break-word;
-  line-height: 1.4;
-}
-
-.grid-progress-badge {
-  position: absolute;
-  right: 6px;
-  bottom: 6px;
-  z-index: 2;
-  background: rgba(20, 24, 31, 0.85);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 4px 7px;
-  border-radius: 999px;
-  letter-spacing: 0.02em;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
-  pointer-events: none;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.grid-cover-link:hover .grid-progress-badge {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
 }
 
 .infinite-sentinel {
@@ -1204,5 +1002,17 @@ function getProgressPercent(book: Book): number {
   .books-view {
     padding-bottom: 120px;
   }
+}
+
+/* vuedraggable applies these classes at runtime to slot content during drag. */
+/*noinspection CssUnusedSymbol*/
+.grid-ghost {
+  opacity: 0;
+}
+
+/*noinspection CssUnusedSymbol*/
+.grid-drag,
+.grid-chosen {
+  opacity: 1 !important;
 }
 </style>
