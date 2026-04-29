@@ -201,14 +201,6 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
     <NavigationBar @add-book="handleAddBook"/>
 
     <div class="container">
-      <div class="breadcrumb">
-        <router-link to="/" class="breadcrumb-link">Books</router-link>
-        <span class="breadcrumb-separator">/</span>
-        <span class="breadcrumb-current">
-          {{ book ? book.title : 'Book details' }}
-        </span>
-      </div>
-
       <div v-if="!book && !error" class="loading">
         Loading book...
       </div>
@@ -342,37 +334,6 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
 .book-detail-page {
   min-height: 100vh;
   background-color: var(--color-bg);
-}
-
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  margin-bottom: var(--spacing-lg);
-  font-size: 0.9rem;
-  color: var(--color-text-secondary);
-}
-
-.breadcrumb-link {
-  color: var(--color-text);
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.breadcrumb-link:hover {
-  color: var(--color-primary);
-}
-
-.breadcrumb-separator {
-  color: var(--color-text-secondary);
-}
-
-.breadcrumb-current {
-  color: var(--color-text-secondary);
-  max-width: min(520px, 70vw);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .book-detail {
