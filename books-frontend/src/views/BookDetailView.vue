@@ -6,6 +6,7 @@ import {getMediaUrl} from '../api/client'
 import BookNotes from '../components/BookNotes.vue'
 import BookSearchModal from '../components/BookSearchModal.vue'
 import BookStatusSheet from '../components/BookStatusSheet.vue'
+import BookStatusPill from '../components/BookStatusPill.vue'
 import NavigationBar from '../components/NavigationBar.vue'
 import EventTimeline from '../components/EventTimeline.vue'
 import {ReadingStatus, type Book, type GoogleBookResult, type BookEvent} from '../api/types'
@@ -70,38 +71,6 @@ async function loadBook() {
 
 const canUpdateProgress = computed(() => book.value?.user_status?.status === ReadingStatus.STARTED)
 
-
-const progressSummary = computed(() => {
-  if (!book.value) return ''
-  const currentPage = book.value.user_status?.current_page
-  if (currentPage === null || currentPage === undefined) {
-    return 'No progress yet'
-  }
-  if (book.value.page_count) {
-    return `Page ${currentPage} of ${book.value.page_count}`
-  }
-  return `Page ${currentPage}`
-})
-
-const readingStatusLabel = computed(() => {
-  const status = book.value?.user_status?.status ?? ReadingStatus.WANT_TO_READ
-  if (status === ReadingStatus.STARTED) return 'Reading'
-  if (status === ReadingStatus.FINISHED) return 'Finished'
-  return 'Want to read'
-})
-
-const readingStatusSubtitle = computed(() => {
-  if (!book.value) return ''
-  if (readingStatusLabel.value === 'Reading') return progressSummary.value
-  if (readingStatusLabel.value === 'Finished') {
-    if (book.value.user_status?.finished_at) {
-      return `Finished ${formatShortDate(book.value.user_status.finished_at)}`
-    }
-    return 'Finished'
-  }
-  return 'Not started yet'
-})
-
 async function changeStatus(status: ReadingStatus, occurredAt?: string) {
   if (!book.value) return
   updatingStatus.value = true
@@ -117,12 +86,8 @@ async function changeStatus(status: ReadingStatus, occurredAt?: string) {
   }
 }
 
-function handleStartReading(payload: {occurredAt?: string}) {
-  return changeStatus(ReadingStatus.STARTED, payload.occurredAt)
-}
-
-function handleFinishReading(payload: {occurredAt?: string}) {
-  return changeStatus(ReadingStatus.FINISHED, payload.occurredAt)
+function handleStatusChange(status: ReadingStatus) {
+  return changeStatus(status)
 }
 
 async function handleSaveNotes(notes: string) {
@@ -228,16 +193,16 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
             <p class="book-author">by {{ book.author }}</p>
 
             <div class="book-status-section">
-              <BookStatusSheet
+              <BookStatusPill
                 :status="book.user_status?.status ?? null"
-                :status-label="readingStatusLabel"
-                :status-subtitle="readingStatusSubtitle"
                 :updating="updatingStatus"
+                @change="handleStatusChange"
+              />
+              <BookStatusSheet
+                v-if="canUpdateProgress"
                 :current-page="book.user_status?.current_page ?? null"
                 :page-count="book.page_count ?? null"
                 :progress-saving="progressSaving"
-                @start="handleStartReading"
-                @finish="handleFinishReading"
                 @update-progress="handleSaveProgress"
               />
             </div>
