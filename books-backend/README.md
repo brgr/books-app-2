@@ -6,8 +6,7 @@ The application runs in single-user mode and does not expose a public registrati
 Create the sole account with the management command:
 
 ```bash
-# Probably use uv instead of python directly: uv run manage.py create-superuser
-python manage.py create-superuser
+uv run manage.py create-superuser
 ```
 
 You will be prompted for a username and password unless you pass them via flags:
@@ -23,27 +22,18 @@ one.
 
 ## Development
 
-Run type checks with Ty:
+Type checking, linting, tests:
 
 ```bash
-uv run ty check
-```
-
-Run lint checks with Ruff:
-
-```bash
-uv run ruff check
-```
-
-Run the API locally with FastAPI's dev server (binds to all interfaces so you can test from your phone):
-
-```bash
-uv run fastapi dev main.py --host 0.0.0.0 --port 8000
+cd books-backend
+uv run ty check    # type checking
+uv run ruff check  # linting
+uv run pytest      # run the tests
 ```
 
 ## Google Books API key setup
 
-The Books API expects each request to identify your application using an API key. For this app, an API key is enough.
+The Books API expects each request to identify your application using an API key.
 
 Create and enable a key:
 
