@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import { createBook, getListBooks, getLists, reorderListItem } from '../api/books'
 import BookCard from '../components/BookCard.vue'
 import BookCoverTile from '../components/BookCoverTile.vue'
+import BookContextMenu from '../components/BookContextMenu.vue'
 import BookSearchModal from '../components/BookSearchModal.vue'
 import BooksSearchHeader from '../components/BooksSearchHeader.vue'
 import NavigationBar from '../components/NavigationBar.vue'
@@ -302,6 +303,28 @@ function handleCoverClick(bookId: number) {
   router.push({ name: 'book-detail', params: { id: bookId } })
 }
 
+const contextMenu = ref<{ visible: boolean; x: number; y: number; bookId: number | null }>({
+  visible: false,
+  x: 0,
+  y: 0,
+  bookId: null,
+})
+
+function openContextMenu(payload: { bookId: number; x: number; y: number }) {
+  contextMenu.value = { visible: true, x: payload.x, y: payload.y, bookId: payload.bookId }
+}
+
+function closeContextMenu() {
+  contextMenu.value.visible = false
+  contextMenu.value.bookId = null
+}
+
+function handleContextView() {
+  const bookId = contextMenu.value.bookId
+  closeContextMenu()
+  if (bookId !== null) router.push({ name: 'book-detail', params: { id: bookId } })
+}
+
 const dragOpts = computed(() => ({
   'item-key': 'id',
   animation: 150,
@@ -359,6 +382,7 @@ const dragOpts = computed(() => ({
                   :book="book"
                   show-progress
                   @click="handleCoverClick"
+                  @menu="openContextMenu"
                 />
               </template>
             </draggable>
@@ -374,7 +398,7 @@ const dragOpts = computed(() => ({
               @end="handleDragEndForList(gridToRead, $event)"
             >
               <template #item="{ element: book }">
-                <BookCoverTile :book="book" @click="handleCoverClick" />
+                <BookCoverTile :book="book" @click="handleCoverClick" @menu="openContextMenu" />
               </template>
             </draggable>
           </section>
@@ -389,7 +413,7 @@ const dragOpts = computed(() => ({
           @end="handleDragEndForList(gridBooks, $event)"
         >
           <template #item="{ element: book }">
-            <BookCoverTile :book="book" @click="handleCoverClick" />
+            <BookCoverTile :book="book" @click="handleCoverClick" @menu="openContextMenu" />
           </template>
         </draggable>
       </template>
@@ -402,7 +426,7 @@ const dragOpts = computed(() => ({
               v-for="book in currentlyReadingBooks"
               :key="book.id"
             >
-              <BookCard :book="book" />
+              <BookCard :book="book" @menu="openContextMenu" />
             </div>
           </section>
           <section v-if="toReadBooks.length" class="shelf-section">
@@ -411,7 +435,7 @@ const dragOpts = computed(() => ({
               v-for="book in toReadBooks"
               :key="book.id"
             >
-              <BookCard :book="book" />
+              <BookCard :book="book" @menu="openContextMenu" />
             </div>
           </section>
         </template>
@@ -420,7 +444,7 @@ const dragOpts = computed(() => ({
           v-for="book in filteredBooks"
           :key="book.id"
         >
-          <BookCard :book="book" />
+          <BookCard :book="book" @menu="openContextMenu" />
         </div>
       </div>
 
@@ -437,6 +461,14 @@ const dragOpts = computed(() => ({
       v-if="showSearchModal"
       @close="handleSearchModalClose"
       @select="handleBookSelected"
+    />
+
+    <BookContextMenu
+      v-if="contextMenu.visible && contextMenu.bookId !== null"
+      :x="contextMenu.x"
+      :y="contextMenu.y"
+      @view="handleContextView"
+      @close="closeContextMenu"
     />
 
     <div class="bottom-bar">

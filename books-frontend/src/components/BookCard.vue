@@ -8,6 +8,15 @@ const props = defineProps<{
   book: Book
 }>()
 
+const emit = defineEmits<{
+  (e: 'menu', payload: { bookId: number; x: number; y: number }): void
+}>()
+
+function openMenu(e: MouseEvent) {
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  emit('menu', { bookId: props.book.id, x: rect.left, y: rect.bottom + 4 })
+}
+
 const readingStatus = computed(() => props.book.user_status?.status || null)
 
 function getStatusColor(status: ReadingStatus | null): string {
@@ -44,6 +53,18 @@ function getStatusLabel(status: ReadingStatus | null): string {
 
 <template>
   <div class="book-card">
+    <button
+      type="button"
+      class="book-menu-button"
+      aria-label="Book actions"
+      @click="openMenu"
+    >
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+        <circle cx="5" cy="12" r="2" />
+        <circle cx="12" cy="12" r="2" />
+        <circle cx="19" cy="12" r="2" />
+      </svg>
+    </button>
     <div class="book-content">
       <router-link :to="{ name: 'book-detail', params: { id: book.id } }" class="book-cover-link">
         <img
@@ -111,6 +132,7 @@ function getStatusLabel(status: ReadingStatus | null): string {
 
 <style scoped>
 .book-card {
+  position: relative;
   background-color: var(--color-bg-card);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
@@ -119,6 +141,36 @@ function getStatusLabel(status: ReadingStatus | null): string {
   margin-bottom: var(--spacing-md);
   transition: box-shadow 0.15s ease;
   overflow: hidden;
+}
+
+.book-menu-button {
+  position: absolute;
+  top: 8px;
+  right: 16px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 2px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.book-menu-button:hover,
+.book-menu-button:focus-visible {
+  background: var(--color-bg);
+  color: var(--color-text);
+  outline: none;
+}
+
+.book-menu-button svg {
+  fill: currentColor;
 }
 
 .book-card:hover {
@@ -194,6 +246,7 @@ function getStatusLabel(status: ReadingStatus | null): string {
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: var(--spacing-sm);
+  padding-right: 44px;
 }
 
 .book-header h3 {
