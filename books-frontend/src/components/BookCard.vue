@@ -2,8 +2,9 @@
 import { computed } from 'vue'
 import { type Book } from '../api/types'
 import { getMediaUrl } from '../api/client'
-import { formatShortDate } from '../utils/date'
-import { getStatusColor, getStatusLabel } from '../book/status'
+import KebabButton from './KebabButton.vue'
+import BookCardMeta from './BookCardMeta.vue'
+import BookCardStatus from './BookCardStatus.vue'
 
 const props = defineProps<{
   book: Book
@@ -18,25 +19,13 @@ function openMenu(e: MouseEvent) {
   emit('menu', { bookId: props.book.id, x: rect.left, y: rect.bottom + 4 })
 }
 
-const readingStatus = computed(() => props.book.user_status?.status || null)
 const detailRoute = computed(() => ({ name: 'book-detail', params: { id: props.book.id } }))
 const coverUrl = computed(() => props.book.cover_thumbnail_url || props.book.cover_image_url)
 </script>
 
 <template>
   <div class="book-card">
-    <button
-      type="button"
-      class="book-menu-button"
-      aria-label="Book actions"
-      @click="openMenu"
-    >
-      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-        <circle cx="5" cy="12" r="2" />
-        <circle cx="12" cy="12" r="2" />
-        <circle cx="19" cy="12" r="2" />
-      </svg>
-    </button>
+    <KebabButton class="card-menu-button" aria-label="Book actions" @click="openMenu" />
     <div class="book-content">
       <router-link :to="detailRoute" class="book-cover-link">
         <img
@@ -63,40 +52,9 @@ const coverUrl = computed(() => props.book.cover_thumbnail_url || props.book.cov
           {{ book.description }}
         </div>
 
-        <div class="book-meta">
-          <span v-if="book.isbn" class="meta-item">
-            <strong>ISBN:</strong> {{ book.isbn }}
-          </span>
-          <span v-if="book.page_count" class="meta-item">
-            <strong>Pages:</strong> {{ book.page_count }}
-          </span>
-          <span v-if="book.published_date" class="meta-item">
-            <strong>Published:</strong> {{ formatShortDate(book.published_date) }}
-          </span>
-        </div>
+        <BookCardMeta :book="book" />
 
-        <div v-if="readingStatus" class="book-status">
-          <span class="book-status-label">Reading status:</span>
-          <span
-            class="book-status-pill"
-            :style="{ borderColor: getStatusColor(readingStatus), color: getStatusColor(readingStatus) }"
-          >
-            {{ getStatusLabel(readingStatus) }}
-          </span>
-        </div>
-
-        <div v-if="book.user_status" class="book-dates text-small text-muted">
-          <div v-if="book.user_status.started_at">
-            Started: {{ formatShortDate(book.user_status.started_at) }}
-          </div>
-          <div v-if="book.user_status.finished_at">
-            Finished: {{ formatShortDate(book.user_status.finished_at) }}
-          </div>
-          <div v-if="book.user_status.current_page !== null">
-            Progress: {{ book.user_status.current_page }}
-            <span v-if="book.page_count">/ {{ book.page_count }}</span>
-          </div>
-        </div>
+        <BookCardStatus :book="book" />
       </div>
     </div>
   </div>
@@ -115,34 +73,11 @@ const coverUrl = computed(() => props.book.cover_thumbnail_url || props.book.cov
   overflow: hidden;
 }
 
-.book-menu-button {
+.card-menu-button {
   position: absolute;
   top: 8px;
   right: 16px;
   z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  background: transparent;
-  border: none;
-  border-radius: 2px;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.book-menu-button:hover,
-.book-menu-button:focus-visible {
-  background: var(--color-bg);
-  color: var(--color-text);
-  outline: none;
-}
-
-.book-menu-button svg {
-  fill: currentColor;
 }
 
 .book-card:hover {
@@ -252,53 +187,6 @@ const coverUrl = computed(() => props.book.cover_thumbnail_url || props.book.cov
   overflow-wrap: anywhere;
 }
 
-.book-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-md);
-  padding-top: var(--spacing-md);
-  border-top: 1px solid var(--color-border);
-}
-
-.meta-item {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  word-break: break-word;
-  overflow-wrap: anywhere;
-}
-
-.meta-item strong {
-  color: var(--color-text);
-}
-
-.book-status {
-  margin-bottom: var(--spacing-sm);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-}
-
-.book-status-label {
-  font-size: 14px;
-  color: var(--color-text-secondary);
-}
-
-.book-status-pill {
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  padding: 4px 12px;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.book-dates {
-  padding-top: var(--spacing-sm);
-  display: flex;
-  gap: var(--spacing-md);
-  flex-wrap: wrap;
-}
-
 @media (max-width: 768px) {
   .book-content {
     flex-direction: column;
@@ -311,11 +199,6 @@ const coverUrl = computed(() => props.book.cover_thumbnail_url || props.book.cov
   }
 
   .book-header {
-    flex-direction: column;
-  }
-
-  .book-status {
-    align-items: flex-start;
     flex-direction: column;
   }
 }
