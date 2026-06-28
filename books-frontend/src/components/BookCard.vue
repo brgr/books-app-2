@@ -19,6 +19,8 @@ function openMenu(e: MouseEvent) {
 }
 
 const readingStatus = computed(() => props.book.user_status?.status || null)
+const detailRoute = computed(() => ({ name: 'book-detail', params: { id: props.book.id } }))
+const coverUrl = computed(() => props.book.cover_thumbnail_url || props.book.cover_image_url)
 </script>
 
 <template>
@@ -36,10 +38,10 @@ const readingStatus = computed(() => props.book.user_status?.status || null)
       </svg>
     </button>
     <div class="book-content">
-      <router-link :to="{ name: 'book-detail', params: { id: book.id } }" class="book-cover-link">
+      <router-link :to="detailRoute" class="book-cover-link">
         <img
-          v-if="book.cover_thumbnail_url || book.cover_image_url"
-          :src="getMediaUrl(book.cover_thumbnail_url || book.cover_image_url)"
+          v-if="coverUrl"
+          :src="getMediaUrl(coverUrl)"
           :alt="book.title"
           class="book-cover book-cover-clickable"
         />
@@ -50,51 +52,51 @@ const readingStatus = computed(() => props.book.user_status?.status || null)
 
       <div class="book-details">
         <div class="book-header">
-          <router-link :to="{ name: 'book-detail', params: { id: book.id } }" class="book-title-link">
+          <router-link :to="detailRoute" class="book-title-link">
             <h3 class="book-title-clickable">{{ book.title }}</h3>
           </router-link>
         </div>
 
         <p class="book-author">by {{ book.author }}</p>
 
-    <div v-if="book.description" class="book-description">
-      {{ book.description }}
-    </div>
+        <div v-if="book.description" class="book-description">
+          {{ book.description }}
+        </div>
 
-    <div class="book-meta">
-      <span v-if="book.isbn" class="meta-item">
-        <strong>ISBN:</strong> {{ book.isbn }}
-      </span>
-      <span v-if="book.page_count" class="meta-item">
-        <strong>Pages:</strong> {{ book.page_count }}
-      </span>
-      <span v-if="book.published_date" class="meta-item">
-        <strong>Published:</strong> {{ formatShortDate(book.published_date) }}
-      </span>
-    </div>
+        <div class="book-meta">
+          <span v-if="book.isbn" class="meta-item">
+            <strong>ISBN:</strong> {{ book.isbn }}
+          </span>
+          <span v-if="book.page_count" class="meta-item">
+            <strong>Pages:</strong> {{ book.page_count }}
+          </span>
+          <span v-if="book.published_date" class="meta-item">
+            <strong>Published:</strong> {{ formatShortDate(book.published_date) }}
+          </span>
+        </div>
 
-    <div v-if="readingStatus" class="book-status">
-      <span class="book-status-label">Reading status:</span>
-      <span
-        class="book-status-pill"
-        :style="{ borderColor: getStatusColor(readingStatus), color: getStatusColor(readingStatus) }"
-      >
-        {{ getStatusLabel(readingStatus) }}
-      </span>
-    </div>
+        <div v-if="readingStatus" class="book-status">
+          <span class="book-status-label">Reading status:</span>
+          <span
+            class="book-status-pill"
+            :style="{ borderColor: getStatusColor(readingStatus), color: getStatusColor(readingStatus) }"
+          >
+            {{ getStatusLabel(readingStatus) }}
+          </span>
+        </div>
 
-    <div v-if="book.user_status" class="book-dates text-small text-muted">
-      <div v-if="book.user_status.started_at">
-        Started: {{ formatShortDate(book.user_status.started_at) }}
-      </div>
-      <div v-if="book.user_status.finished_at">
-        Finished: {{ formatShortDate(book.user_status.finished_at) }}
-      </div>
-      <div v-if="book.user_status.current_page !== null">
-        Progress: {{ book.user_status.current_page }}
-        <span v-if="book.page_count">/ {{ book.page_count }}</span>
-      </div>
-    </div>
+        <div v-if="book.user_status" class="book-dates text-small text-muted">
+          <div v-if="book.user_status.started_at">
+            Started: {{ formatShortDate(book.user_status.started_at) }}
+          </div>
+          <div v-if="book.user_status.finished_at">
+            Finished: {{ formatShortDate(book.user_status.finished_at) }}
+          </div>
+          <div v-if="book.user_status.current_page !== null">
+            Progress: {{ book.user_status.current_page }}
+            <span v-if="book.page_count">/ {{ book.page_count }}</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
