@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed} from 'vue'
+import {computed, onBeforeUnmount} from 'vue'
 import {ReadingStatus, type Book} from '../api/types'
 import {getMediaUrl} from '../api/client'
 
@@ -13,7 +13,65 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (e: 'click', bookId: number): void
+  (e: 'menu', payload: { bookId: number; x: number; y: number }): void
 }>()
+
+const LONG_PRESS_MS = 500
+const MOVE_THRESHOLD = 10
+let pressTimer: ReturnType<typeof setTimeout> | null = null
+let longPressed = false
+let startX = 0
+let startY = 0
+
+function clearPressTimer() {
+  if (pressTimer !== null) {
+    clearTimeout(pressTimer)
+    pressTimer = null
+  }
+}
+
+function onContextMenu(e: MouseEvent) {
+  e.preventDefault()
+  emit('menu', { bookId: props.book.id, x: e.clientX, y: e.clientY })
+}
+
+function onTouchStart(e: TouchEvent) {
+  longPressed = false
+  const touch = e.touches[0]
+  if (!touch) return
+  startX = touch.clientX
+  startY = touch.clientY
+  clearPressTimer()
+  pressTimer = setTimeout(() => {
+    longPressed = true
+    emit('menu', { bookId: props.book.id, x: startX, y: startY })
+  }, LONG_PRESS_MS)
+}
+
+function onTouchMove(e: TouchEvent) {
+  const touch = e.touches[0]
+  if (!touch) return
+  if (
+    Math.abs(touch.clientX - startX) > MOVE_THRESHOLD ||
+    Math.abs(touch.clientY - startY) > MOVE_THRESHOLD
+  ) {
+    clearPressTimer()
+  }
+}
+
+function onTouchEnd() {
+  clearPressTimer()
+}
+
+function onClick() {
+  if (longPressed) {
+    longPressed = false
+    return
+  }
+  emit('click', props.book.id)
+}
+
+onBeforeUnmount(clearPressTimer)
 
 const coverUrl = computed(() =>
   getMediaUrl(props.book.cover_thumbnail_url || props.book.cover_image_url)
@@ -44,7 +102,12 @@ const progressPercent = computed(() => {
     <button
       type="button"
       class="grid-cover-link"
-      @click="emit('click', book.id)"
+      @click="onClick"
+      @contextmenu="onContextMenu"
+      @touchstart.passive="onTouchStart"
+      @touchmove.passive="onTouchMove"
+      @touchend="onTouchEnd"
+      @touchcancel="onTouchEnd"
     >
       <span v-if="showBadge" class="grid-progress-badge">
         {{ progressPercent }}%
