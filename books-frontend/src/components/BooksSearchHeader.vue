@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ReadingStatus } from '../api/types'
+import { getStatusLabel } from '../book/status'
 
 const searchQuery = defineModel<string>('searchQuery', { required: true })
 const filterStatus = defineModel<ReadingStatus | ''>('filterStatus', { required: true })
@@ -12,15 +13,6 @@ function toggleFilterDropdown() {
   showFilterDropdown.value = !showFilterDropdown.value
 }
 
-function getStatusLabel(status: ReadingStatus): string {
-  const labels = {
-    [ReadingStatus.WANT_TO_READ]: 'Want to read',
-    [ReadingStatus.STARTED]: 'Started',
-    [ReadingStatus.FINISHED]: 'Finished',
-    [ReadingStatus.ABANDONED]: 'Abandoned',
-  }
-  return labels[status] || status
-}
 </script>
 
 <template>
