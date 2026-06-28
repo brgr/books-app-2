@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { type Book } from '../api/types'
-import { getMediaUrl } from '../api/client'
-import KebabButton from './KebabButton.vue'
+import { type Book } from '../../../api/types'
+import { getMediaUrl } from '../../../api/client'
+import KebabButton from '../../ui/KebabButton.vue'
 import BookCardMeta from './BookCardMeta.vue'
 import BookCardStatus from './BookCardStatus.vue'
 

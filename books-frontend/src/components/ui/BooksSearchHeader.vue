@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { ReadingStatus } from '../api/types'
-import { getStatusLabel } from '../book/status'
+import { ReadingStatus } from '../../api/types'
+import { getStatusLabel } from '../../book/status'
 
 const searchQuery = defineModel<string>('searchQuery', { required: true })
 const filterStatus = defineModel<ReadingStatus | ''>('filterStatus', { required: true })

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {computed, onBeforeUnmount} from 'vue'
-import {ReadingStatus, type Book} from '../api/types'
-import {getMediaUrl} from '../api/client'
+import {ReadingStatus, type Book} from '../../api/types'
+import {getMediaUrl} from '../../api/client'
 
 const props = withDefaults(
   defineProps<{

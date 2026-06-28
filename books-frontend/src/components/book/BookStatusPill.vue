@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {computed, onBeforeUnmount, onMounted, ref} from 'vue'
-import {ReadingStatus} from '../api/types'
+import {ReadingStatus} from '../../api/types'
 
 const props = defineProps<{
   status: ReadingStatus | null

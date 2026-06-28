@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import NavigationBar from '../components/NavigationBar.vue'
+import NavigationBar from '../components/ui/NavigationBar.vue'
 import { deleteAllBooks, getImports, importReadingList } from '../api/books'
 import type { ImportRecord } from '../api/types'
 

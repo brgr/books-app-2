@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {BookEventType, type BookEvent} from '../api/types'
+import {BookEventType, type BookEvent} from '../../api/types'
 
 defineProps<{
   events: BookEvent[]
