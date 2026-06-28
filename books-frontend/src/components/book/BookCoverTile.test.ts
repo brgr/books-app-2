@@ -1,7 +1,7 @@
 import {describe, it, expect} from 'vitest'
 import {mount} from '@vue/test-utils'
 import BookCoverTile from './BookCoverTile.vue'
-import {ReadingStatus, type Book} from '../api/types'
+import {ReadingStatus, type Book} from '../../api/types'
 
 function makeBook(overrides: Partial<Book> = {}): Book {
   return {

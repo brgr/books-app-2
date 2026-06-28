@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { type Book } from '../api/types'
-import { formatShortDate } from '../utils/date'
+import { type Book } from '../../../api/types'
+import { formatShortDate } from '../../../utils/date'
 
 defineProps<{
   book: Book

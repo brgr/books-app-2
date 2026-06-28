@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
-import { startCoverUpgradeSearch, getCoverUpgradeSearch } from '../api/books'
-import type { CoverUpgradeCandidate } from '../api/types'
-import { getMediaUrl } from '../api/client'
+import { startCoverUpgradeSearch, getCoverUpgradeSearch } from '../../api/books'
+import type { CoverUpgradeCandidate } from '../../api/types'
+import { getMediaUrl } from '../../api/client'
 
 const props = defineProps<{
   bookId: number

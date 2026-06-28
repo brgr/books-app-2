@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { searchBookCovers } from '../api/books'
-import type { CoverSearchResult } from '../api/types'
+import { searchBookCovers } from '../../api/books'
+import type { CoverSearchResult } from '../../api/types'
 
 const props = defineProps<{
   initialTitle?: string

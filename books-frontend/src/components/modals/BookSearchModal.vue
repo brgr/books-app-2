@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { searchGoogleBooks } from '../api/books'
-import type { GoogleBookResult } from '../api/types'
+import { searchGoogleBooks } from '../../api/books'
+import type { GoogleBookResult } from '../../api/types'
 
 const emit = defineEmits<{
   close: []

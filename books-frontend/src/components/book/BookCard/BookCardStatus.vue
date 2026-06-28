@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { type Book } from '../api/types'
-import { formatShortDate } from '../utils/date'
-import { getStatusColor, getStatusLabel } from '../book/status'
+import { type Book } from '../../../api/types'
+import { formatShortDate } from '../../../utils/date'
+import { getStatusColor, getStatusLabel } from '../../../book/status'
 
 const props = defineProps<{
   book: Book
