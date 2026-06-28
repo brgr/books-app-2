@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { ReadingStatus, type Book } from '../api/types'
+import { type Book } from '../api/types'
 import { getMediaUrl } from '../api/client'
 import { formatShortDate } from '../utils/date'
+import { getStatusColor, getStatusLabel } from '../book/status'
 
 const props = defineProps<{
   book: Book
@@ -18,37 +19,6 @@ function openMenu(e: MouseEvent) {
 }
 
 const readingStatus = computed(() => props.book.user_status?.status || null)
-
-function getStatusColor(status: ReadingStatus | null): string {
-  if (!status) return 'var(--color-text-secondary)'
-
-  switch (status) {
-    case ReadingStatus.WANT_TO_READ:
-      return 'var(--color-primary)'
-    case ReadingStatus.STARTED:
-      return 'var(--color-warning)'
-    case ReadingStatus.FINISHED:
-      return 'var(--color-success)'
-    case ReadingStatus.ABANDONED:
-      return 'var(--color-text-secondary)'
-    default:
-      return 'var(--color-text-secondary)'
-  }
-}
-
-function getStatusLabel(status: ReadingStatus | null): string {
-  if (!status) return 'N/A'
-
-  const labels: Record<ReadingStatus, string> = {
-    [ReadingStatus.WANT_TO_READ]: 'Want to read',
-    [ReadingStatus.STARTED]: 'Started',
-    [ReadingStatus.FINISHED]: 'Finished',
-    [ReadingStatus.ABANDONED]: 'Abandoned',
-  }
-
-  return labels[status] || status
-}
-
 </script>
 
 <template>

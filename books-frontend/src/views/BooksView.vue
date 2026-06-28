@@ -10,6 +10,7 @@ import BookSearchModal from '../components/BookSearchModal.vue'
 import BooksSearchHeader from '../components/BooksSearchHeader.vue'
 import NavigationBar from '../components/NavigationBar.vue'
 import { ReadingStatus, type PaginatedBooks, type GoogleBookResult, type Book, type BookList } from '../api/types'
+import { getStatusLabel } from '../book/status'
 import { useCachedQuery } from '../composables/useCachedQuery'
 import { cacheKeys } from '../cache/keys'
 import { cacheInvalidateByPrefix } from '../cache/store'
@@ -224,16 +225,6 @@ async function handleBookSelected(book: GoogleBookResult) {
   } finally {
     addingBook.value = false
   }
-}
-
-function getStatusLabel(status: ReadingStatus): string {
-  const labels = {
-    [ReadingStatus.WANT_TO_READ]: 'Want to read',
-    [ReadingStatus.STARTED]: 'Started',
-    [ReadingStatus.FINISHED]: 'Finished',
-    [ReadingStatus.ABANDONED]: 'Abandoned',
-  }
-  return labels[status] || status
 }
 
 const shelfLabel = computed(() => (shelfFilter.value === 'to-read' ? 'To Read' : 'Finished'))
