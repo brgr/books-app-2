@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 from datetime import datetime
-from typing import Literal, Optional
-from app.models import Book, ReadingStatus, BookEventCode, UserBook
+from typing import Literal, Optional, cast
+from app.models import Book, BookEvent, ReadingStatus, BookEventCode, UserBook
 
 
 # User schemas
@@ -234,6 +234,31 @@ class BookEventResponse(BaseModel):
     import_id: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @classmethod
+    def from_event(cls, event: BookEvent) -> "BookEventResponse":
+        """Flatten a BookEvent and its detail rows into a response object."""
+        return cls(
+            id=str(event.id),
+            event_type=cast(BookEventCode, event.event_type.code),
+            occurred_at=cast(datetime, event.occurred_at),
+            note=event.note_entry.note if event.note_entry else None,
+            page=event.progress_entry.page if event.progress_entry else None,
+            percent=event.progress_entry.percent if event.progress_entry else None,
+            old_cover_image_url=event.cover_entry.old_cover_image_url
+            if event.cover_entry
+            else None,
+            new_cover_image_url=event.cover_entry.new_cover_image_url
+            if event.cover_entry
+            else None,
+            old_cover_thumbnail_url=event.cover_entry.old_cover_thumbnail_url
+            if event.cover_entry
+            else None,
+            new_cover_thumbnail_url=event.cover_entry.new_cover_thumbnail_url
+            if event.cover_entry
+            else None,
+            import_id=event.import_source.import_id if event.import_source else None,
+        )
 
 
 class BookProgressUpdate(BaseModel):

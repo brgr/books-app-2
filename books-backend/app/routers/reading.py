@@ -1,33 +1,13 @@
-from datetime import datetime, UTC
 from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
-from app.book_events import (
-    apply_progress_event,
-    ensure_added_event,
-    project_user_book_state,
-    record_finished_reading,
-    record_note_event,
-    record_started_reading,
-)
-from app.book_lists import (
-    ensure_list_item,
-    get_or_create_default_lists,
-    list_name_for_status,
-)
+from app.book_queries import get_book_by_id
 from app.database import get_db
-from app.models import (
-    Book,
-    BookEvent,
-    BookEventCode,
-    BookListItem,
-    ReadingStatus,
-    User,
-    UserBook,
-)
+from app.models import User
+from app.reading_service import ReadingService
 from app.schemas import (
     BookEventResponse,
     BookProgressUpdate,
@@ -38,200 +18,61 @@ from app.schemas import (
 router = APIRouter()
 
 
+def get_reading_service(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> ReadingService:
+    return ReadingService(db, current_user)
+
+
 @router.put("/books/{book_id}/status", response_model=UserBookResponse)
 def set_reading_status(
     book_id: int,
     status_data: UserBookStatusUpdate,
-    current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    service: Annotated[ReadingService, Depends(get_reading_service)],
 ):
     """Set or update the reading status for a book for the current user."""
-    book = db.query(Book).filter(Book.id == book_id).first()
-    if not book:
+    if not get_book_by_id(db, book_id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
         )
 
-    user_id = cast(int, current_user.id)
-
     try:
-        user_book = ensure_added_event(db, user_id=user_id, book_id=book_id)
+        return service.set_status(book_id, status_data)
     except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
         ) from exc
-
-    project_user_book_state(db, user_book)
-
-    user_book_id = cast(int, user_book.id)
-
-    occurred_at = status_data.occurred_at
-    if occurred_at is not None:
-        if occurred_at.tzinfo is None:
-            occurred_at = occurred_at.replace(tzinfo=UTC)
-        if occurred_at > datetime.now(UTC):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="occurred_at cannot be in the future",
-            )
-
-    try:
-        if (
-            status_data.status == ReadingStatus.WANT_TO_READ
-            and user_book.status != ReadingStatus.WANT_TO_READ
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot revert to 'want_to_read' after reading has started",
-            )
-
-        if (
-            status_data.status == ReadingStatus.STARTED
-            and user_book.status != ReadingStatus.STARTED
-        ):
-            record_started_reading(
-                db, user_book_id=user_book_id, occurred_at=occurred_at
-            )
-        elif (
-            status_data.status == ReadingStatus.FINISHED
-            and user_book.status != ReadingStatus.FINISHED
-        ):
-            record_finished_reading(
-                db, user_book_id=user_book_id, occurred_at=occurred_at
-            )
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
-
-    notes_provided = "notes" in status_data.model_fields_set
-    if notes_provided:
-        normalized_notes = status_data.notes
-        if normalized_notes == "":
-            normalized_notes = None
-
-        if normalized_notes != user_book.notes:
-            record_note_event(
-                db,
-                user_book_id=user_book_id,
-                code=BookEventCode.NOTE_SET,
-                note=normalized_notes,
-            )
-            user_book.notes = normalized_notes
-
-    project_user_book_state(db, user_book)
-
-    lists_by_name = get_or_create_default_lists(db, user_id)
-    target_list_name = list_name_for_status(cast(ReadingStatus, user_book.status))
-    target_list_id = (
-        lists_by_name[target_list_name].id
-        if target_list_name in lists_by_name
-        else None
-    )
-    if target_list_id is not None:
-        ensure_list_item(
-            db, list_id=cast(int, target_list_id), user_book_id=user_book_id
-        )
-
-    for list_name, book_list in lists_by_name.items():
-        if book_list.id != target_list_id:
-            (
-                db.query(BookListItem)
-                .filter(
-                    BookListItem.list_id == book_list.id,
-                    BookListItem.user_book_id == user_book_id,
-                )
-                .delete()
-            )
-    db.commit()
-    db.refresh(user_book)
-    return user_book
 
 
 @router.delete("/books/{book_id}/status", status_code=status.HTTP_204_NO_CONTENT)
 def remove_reading_status(
     book_id: int,
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)],
+    service: Annotated[ReadingService, Depends(get_reading_service)],
 ):
     """Remove a book from the current user's reading list."""
-    user_book = (
-        db.query(UserBook)
-        .filter(UserBook.user_id == current_user.id, UserBook.book_id == book_id)
-        .first()
-    )
-
-    if not user_book:
+    if not service.remove_status(book_id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Book not in your reading list",
         )
 
-    db.delete(user_book)
-    db.commit()
-    return None
-
 
 @router.get("/books/{book_id}/events", response_model=list[BookEventResponse])
 def get_book_events(
     book_id: int,
-    current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    service: Annotated[ReadingService, Depends(get_reading_service)],
 ):
     """Get all events for a book for the current user, ordered by most recent first."""
-    book = db.query(Book).filter(Book.id == book_id).first()
-    if not book:
+    if not get_book_by_id(db, book_id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
         )
 
-    user_book = (
-        db.query(UserBook)
-        .filter(UserBook.user_id == current_user.id, UserBook.book_id == book_id)
-        .first()
-    )
-
-    if not user_book:
-        return []
-
-    events = (
-        db.query(BookEvent)
-        .options(
-            joinedload(BookEvent.note_entry),
-            joinedload(BookEvent.progress_entry),
-            joinedload(BookEvent.cover_entry),
-            joinedload(BookEvent.import_source),
-        )
-        .filter(BookEvent.user_book_id == user_book.id)
-        .order_by(BookEvent.occurred_at.desc(), BookEvent.id.desc())
-        .all()
-    )
-
     return [
-        BookEventResponse(
-            id=event.id,
-            event_type=event.event_type.code,
-            occurred_at=event.occurred_at,
-            note=event.note_entry.note if event.note_entry else None,
-            page=event.progress_entry.page if event.progress_entry else None,
-            percent=event.progress_entry.percent if event.progress_entry else None,
-            old_cover_image_url=event.cover_entry.old_cover_image_url
-            if event.cover_entry
-            else None,
-            new_cover_image_url=event.cover_entry.new_cover_image_url
-            if event.cover_entry
-            else None,
-            old_cover_thumbnail_url=event.cover_entry.old_cover_thumbnail_url
-            if event.cover_entry
-            else None,
-            new_cover_thumbnail_url=event.cover_entry.new_cover_thumbnail_url
-            if event.cover_entry
-            else None,
-            import_id=event.import_source.import_id if event.import_source else None,
-        )
-        for event in events
+        BookEventResponse.from_event(event) for event in service.get_events(book_id)
     ]
 
 
@@ -239,38 +80,19 @@ def get_book_events(
 def add_progress_event(
     book_id: int,
     progress: BookProgressUpdate,
-    current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    service: Annotated[ReadingService, Depends(get_reading_service)],
 ):
     """Record a progress event for the current user."""
-    book = db.query(Book).filter(Book.id == book_id).first()
+    book = get_book_by_id(db, book_id)
     if not book:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
         )
 
-    user_book = (
-        db.query(UserBook)
-        .filter(UserBook.user_id == current_user.id, UserBook.book_id == book_id)
-        .first()
-    )
-    if not user_book:
+    try:
+        return service.add_progress(book_id, book.page_count, progress)
+    except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot record progress before starting reading",
-        )
-
-    project_user_book_state(db, user_book)
-    if user_book.status != ReadingStatus.STARTED:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot record progress before starting reading",
-        )
-
-    return apply_progress_event(
-        db,
-        user_book,
-        page=progress.page,
-        percent=progress.percent,
-        max_page=book.page_count,
-    )
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
+        ) from exc

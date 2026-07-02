@@ -140,9 +140,7 @@ class BookService:
         return book
 
     @staticmethod
-    async def _download_if_remote(
-            url: str | None
-    ) -> tuple[str, str | None] | None:
+    async def _download_if_remote(url: str | None) -> tuple[str, str | None] | None:
         """Download a remote (http) cover, returning (path, thumbnail) or None."""
         if url and url.startswith("http"):
             return await download_cover_image(url)
