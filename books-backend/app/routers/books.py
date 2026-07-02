@@ -4,25 +4,17 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
-from app.book_events import (
-    ensure_added_event,
-    project_user_book_state,
-    record_cover_changed,
-)
-from app.book_lists import (
-    ensure_list_item,
-    get_or_create_default_lists,
-    list_name_for_status,
-)
+from app.book_queries import get_book_by_id, get_user_book
+from app.book_service import BookService
 from app.database import get_db
 from app.google_books import (
     GoogleBooksRateLimitError,
     search_cover_images,
     search_google_books,
 )
-from app.cover_upgrade import get_job, start_job
-from app.image_utils import CONTENT_TYPE_TO_EXT, download_cover_image, store_cover_image
-from app.models import Book, ReadingStatus, User, UserBook
+from app.cover_upgrade import get_job
+from app.image_utils import CONTENT_TYPE_TO_EXT, store_cover_image
+from app.models import User
 from app.schemas import (
     BookCreate,
     BookResponse,
@@ -35,6 +27,13 @@ from app.schemas import (
 )
 
 router = APIRouter()
+
+
+def get_book_service(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> BookService:
+    return BookService(db, current_user)
 
 
 @router.get("/books/search", response_model=list[GoogleBookResult])
@@ -100,17 +99,16 @@ async def start_cover_upgrade_search(
     book_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    service: Annotated[BookService, Depends(get_book_service)],
 ):
     """Kick off an async search for higher-resolution versions of this cover."""
-    book = db.query(Book).filter(Book.id == book_id).first()
+    book = get_book_by_id(db, book_id)
     if not book:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
         )
-    user_book = (
-        db.query(UserBook)
-        .filter(UserBook.user_id == current_user.id, UserBook.book_id == book.id)
-        .first()
+    user_book = get_user_book(
+        db, user_id=cast(int, current_user.id), book_id=cast(int, book.id)
     )
     if not user_book:
         raise HTTPException(
@@ -122,14 +120,7 @@ async def start_cover_upgrade_search(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Book has no local cover to upgrade",
         )
-    job = start_job(
-        book_id=book_id,
-        user_id=cast(int, current_user.id),
-        title=cast(str | None, book.title),
-        author=cast(str | None, book.author),
-        isbn=cast(str | None, book.isbn),
-        current_cover_path=cover_path,
-    )
+    job = service.start_cover_upgrade(book, cover_path)
     return CoverUpgradeJobResponse(job_id=job.id, status=job.status)
 
 
@@ -158,45 +149,15 @@ async def get_cover_upgrade_search(
 @router.post("/books", response_model=BookResponse, status_code=status.HTTP_201_CREATED)
 async def create_book(
     book_data: BookCreate,
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)],
+    service: Annotated[BookService, Depends(get_book_service)],
 ):
     """Create a new book."""
-    data = book_data.model_dump()
-
-    cover_url = data.get("cover_image_url")
-    if cover_url and cover_url.startswith("http"):
-        download_result = await download_cover_image(cover_url)
-        if download_result:
-            cover_path, thumbnail_path = download_result
-            data["cover_image_url"] = cover_path
-            data["cover_thumbnail_url"] = thumbnail_path
-
-    book = Book(**data)
-    db.add(book)
-    db.commit()
-    db.refresh(book)
-
-    user_id = cast(int, current_user.id)
-    user_book = ensure_added_event(db, user_id=user_id, book_id=cast(int, book.id))
-    project_user_book_state(db, user_book)
-    lists_by_name = get_or_create_default_lists(db, user_id)
-    target_list_name = list_name_for_status(cast(ReadingStatus, user_book.status))
-    if target_list_name and target_list_name in lists_by_name:
-        ensure_list_item(
-            db,
-            list_id=cast(int, lists_by_name[target_list_name].id),
-            user_book_id=cast(int, user_book.id),
-        )
-    db.commit()
-
-    return book
+    return await service.create(book_data)
 
 
 @router.get("/books", response_model=PaginatedBooks)
 def list_books(
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)],
+    service: Annotated[BookService, Depends(get_book_service)],
     page: int = 1,
     page_size: int = 20,
 ):
@@ -206,19 +167,7 @@ def list_books(
     if page_size < 1 or page_size > 100:
         page_size = 20
 
-    total = db.query(Book).count()
-    books = db.query(Book).offset((page - 1) * page_size).limit(page_size).all()
-
-    for book in books:
-        user_book: UserBook | None = (
-            db.query(UserBook)
-            .filter(UserBook.user_id == current_user.id, UserBook.book_id == book.id)
-            .first()
-        )
-        if user_book:
-            project_user_book_state(db, user_book)
-        book.user_status = user_book
-
+    books, total = service.list(page, page_size)
     pages = (total + page_size - 1) // page_size
 
     return {
@@ -233,119 +182,56 @@ def list_books(
 @router.get("/books/{book_id}", response_model=BookResponse)
 def get_book(
     book_id: int,
-    current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    service: Annotated[BookService, Depends(get_book_service)],
 ):
     """Get a single book by ID. Includes user's reading status."""
-    book = db.query(Book).filter(Book.id == book_id).first()
+    book = get_book_by_id(db, book_id)
     if not book:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
         )
-
-    user_book: UserBook | None = (
-        db.query(UserBook)
-        .filter(UserBook.user_id == current_user.id, UserBook.book_id == book.id)
-        .first()
-    )
-    if user_book:
-        project_user_book_state(db, user_book)
-    book.user_status = user_book
-
-    return book
+    return service.attach_status(book)
 
 
 @router.put("/books/{book_id}", response_model=BookResponse)
 async def update_book(
     book_id: int,
     book_data: BookUpdate,
-    current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    service: Annotated[BookService, Depends(get_book_service)],
 ):
     """Update a book."""
-    book = db.query(Book).filter(Book.id == book_id).first()
+    book = get_book_by_id(db, book_id)
     if not book:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
         )
-
-    update_data = book_data.model_dump(exclude_unset=True)
-
-    old_cover_image_url = cast(str | None, book.cover_image_url)
-    old_cover_thumbnail_url = cast(str | None, book.cover_thumbnail_url)
-    cover_url = update_data.get("cover_image_url")
-    if "cover_image_url" in update_data:
-        cover_url = update_data.get("cover_image_url")
-        if cover_url and cover_url.startswith("http"):
-            download_result = await download_cover_image(cover_url)
-            if download_result:
-                cover_path, thumbnail_path = download_result
-                update_data["cover_image_url"] = cover_path
-                update_data["cover_thumbnail_url"] = thumbnail_path
-        elif not cover_url:
-            update_data["cover_thumbnail_url"] = None
-
-    for key, value in update_data.items():
-        setattr(book, key, value)
-
-    if "cover_image_url" in update_data and book.cover_image_url != old_cover_image_url:
-        actor_user_book = ensure_added_event(
-            db, user_id=cast(int, current_user.id), book_id=cast(int, book.id)
-        )
-        record_cover_changed(
-            db,
-            user_book_id=cast(int, actor_user_book.id),
-            old_cover_image_url=old_cover_image_url,
-            new_cover_image_url=cast(str | None, book.cover_image_url),
-            old_cover_thumbnail_url=old_cover_thumbnail_url,
-            new_cover_thumbnail_url=cast(str | None, book.cover_thumbnail_url),
-        )
-
-    db.commit()
-    db.refresh(book)
-
-    user_book = (
-        db.query(UserBook)
-        .filter(UserBook.user_id == current_user.id, UserBook.book_id == book.id)
-        .first()
-    )
-    book.user_status = user_book
-
-    return book
+    return await service.update(book, book_data)
 
 
 @router.delete("/books", status_code=status.HTTP_204_NO_CONTENT)
 def delete_all_books(
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)],
+    service: Annotated[BookService, Depends(get_book_service)],
 ):
-    """Delete all books, along with every user's reading state for them.
-
-    Removing user_books first lets the ondelete=CASCADE on book_events and
-    book_list_items fire at the DB level, avoiding orphaned rows that would
-    otherwise re-link to unrelated books via SQLite primary-key reuse.
-    """
-    db.query(UserBook).delete(synchronize_session=False)
-    db.query(Book).delete(synchronize_session=False)
-    db.commit()
+    """Delete all books, along with every user's reading state for them."""
+    service.delete_all()
     return None
 
 
 @router.delete("/books/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_book(
     book_id: int,
-    current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    service: Annotated[BookService, Depends(get_book_service)],
 ):
     """Delete a book."""
-    book = db.query(Book).filter(Book.id == book_id).first()
+    book = get_book_by_id(db, book_id)
     if not book:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
         )
-
-    db.delete(book)
-    db.commit()
+    service.delete(book)
     return None
 
 
@@ -353,11 +239,11 @@ def delete_book(
 async def upload_book_cover(
     book_id: int,
     file: Annotated[UploadFile, File(...)],
-    current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    service: Annotated[BookService, Depends(get_book_service)],
 ):
     """Upload a cover image for a book."""
-    book = db.query(Book).filter(Book.id == book_id).first()
+    book = get_book_by_id(db, book_id)
     if not book:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
@@ -388,30 +274,4 @@ async def upload_book_cover(
             detail=f"Failed to save file: {str(e)}",
         )
 
-    old_cover_image_url = cast(str | None, book.cover_image_url)
-    old_cover_thumbnail_url = cast(str | None, book.cover_thumbnail_url)
-    book.cover_image_url = cover_url
-    book.cover_thumbnail_url = thumbnail_url
-    if cover_url != old_cover_image_url:
-        actor_user_book = ensure_added_event(
-            db, user_id=cast(int, current_user.id), book_id=cast(int, book.id)
-        )
-        record_cover_changed(
-            db,
-            user_book_id=cast(int, actor_user_book.id),
-            old_cover_image_url=old_cover_image_url,
-            new_cover_image_url=cover_url,
-            old_cover_thumbnail_url=old_cover_thumbnail_url,
-            new_cover_thumbnail_url=thumbnail_url,
-        )
-    db.commit()
-    db.refresh(book)
-
-    user_book = (
-        db.query(UserBook)
-        .filter(UserBook.user_id == current_user.id, UserBook.book_id == book.id)
-        .first()
-    )
-    book.user_status = user_book
-
-    return book
+    return service.set_cover(book, cover_url, thumbnail_url)

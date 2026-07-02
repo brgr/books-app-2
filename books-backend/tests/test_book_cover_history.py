@@ -34,9 +34,9 @@ def _patch_cover_download(
     new_thumb="/uploads/covers/thumbnails/new.jpg",
 ):
     async def fake_download(url):
-        return (new_path, new_thumb)
+        return new_path, new_thumb
 
-    monkeypatch.setattr("app.routers.books.download_cover_image", fake_download)
+    monkeypatch.setattr("app.book_service.download_cover_image", fake_download)
 
 
 def _patch_cover_store(
@@ -45,7 +45,7 @@ def _patch_cover_store(
     new_thumb="/uploads/covers/thumbnails/uploaded.jpg",
 ):
     def fake_store(content, extension):
-        return (new_path, new_thumb)
+        return new_path, new_thumb
 
     monkeypatch.setattr("app.routers.books.store_cover_image", fake_store)
 

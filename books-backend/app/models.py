@@ -12,8 +12,12 @@ from sqlalchemy import (
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime, UTC
+from typing import TYPE_CHECKING
 import enum
 import uuid
+
+if TYPE_CHECKING:
+    from app.schemas import BookCreate, BookUpdate
 
 Base = declarative_base()
 
@@ -70,6 +74,45 @@ class Book(Base):
     user_books = relationship(
         "UserBook", back_populates="book", cascade="all, delete-orphan"
     )
+
+    @classmethod
+    def from_create(cls, data: "BookCreate") -> "Book":
+        """Build a Book from a validated BookCreate payload."""
+        return cls(
+            title=data.title,
+            author=data.author,
+            isbn=data.isbn,
+            description=data.description,
+            published_date=data.published_date,
+            page_count=data.page_count,
+            cover_image_url=data.cover_image_url,
+        )
+
+    def apply_update(self, data: "BookUpdate") -> None:
+        """Assign only the explicitly-set fields from a partial update payload.
+
+        Mirrors ``from_create``'s explicit mapping (rather than a blind
+        ``setattr`` loop, which would silently accept unknown fields) so
+        schema/model drift surfaces here. Uses ``model_fields_set`` for PATCH
+        semantics: absent fields are left untouched, fields set to ``None`` are
+        cleared. ``cover_image_url`` is assigned raw here; the service layer
+        resolves any download/thumbnail side effects afterwards.
+        """
+        fields = data.model_fields_set
+        if "title" in fields:
+            self.title = data.title
+        if "author" in fields:
+            self.author = data.author
+        if "isbn" in fields:
+            self.isbn = data.isbn
+        if "description" in fields:
+            self.description = data.description
+        if "published_date" in fields:
+            self.published_date = data.published_date
+        if "page_count" in fields:
+            self.page_count = data.page_count
+        if "cover_image_url" in fields:
+            self.cover_image_url = data.cover_image_url
 
     def __repr__(self):
         return f"<Book(title='{self.title}', author='{self.author}')>"
