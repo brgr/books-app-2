@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Annotated, cast
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -25,7 +25,7 @@ def list_book_lists(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
-    lists_by_name = get_or_create_default_lists(db, cast(int, current_user.id))
+    lists_by_name = get_or_create_default_lists(db, current_user.id)
     db.commit()
     ordered = []
     for name in DEFAULT_LIST_NAMES:

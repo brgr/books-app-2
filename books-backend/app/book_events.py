@@ -1,7 +1,7 @@
 """Event helper functions for book event sourcing (initial three-event slice)."""
 
 from datetime import datetime, UTC
-from typing import Optional, cast
+from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -19,6 +19,7 @@ from app.models import (
 
 
 def _get_event_type(session: Session, code: BookEventCode) -> BookEventType:
+    # noinspection PyTypeChecker
     event_type: BookEventType | None = (
         session.query(BookEventType).filter(BookEventType.code == code.value).first()
     )
@@ -30,6 +31,7 @@ def _get_event_type(session: Session, code: BookEventCode) -> BookEventType:
 def _latest_event(
     session: Session, user_book_id: int, code: BookEventCode
 ) -> Optional[BookEvent]:
+    # noinspection PyTypeChecker
     return (
         session.query(BookEvent)
         .join(BookEventType, BookEvent.event_type_id == BookEventType.id)
@@ -64,9 +66,7 @@ def record_added_to_library(
     """
     user_book = _ensure_user_book(session, user_id=user_id, book_id=book_id)
 
-    existing_add = _latest_event(
-        session, cast(int, user_book.id), BookEventCode.ADDED_TO_LIBRARY
-    )
+    existing_add = _latest_event(session, user_book.id, BookEventCode.ADDED_TO_LIBRARY)
     if existing_add:
         raise ValueError("Book already added to library for this user")
 
@@ -85,6 +85,7 @@ def record_added_to_library(
 
 
 def _ensure_user_book(session: Session, user_id: int, book_id: int) -> UserBook:
+    # noinspection PyTypeChecker
     user_book: UserBook | None = (
         session.query(UserBook)
         .filter(UserBook.user_id == user_id, UserBook.book_id == book_id)
@@ -108,6 +109,7 @@ def ensure_added_event(
     import_id: Optional[int] = None,
 ) -> UserBook:
     """Guarantee a user_book row and its initial add event exist."""
+    # noinspection PyTypeChecker
     user_book: UserBook | None = (
         session.query(UserBook)
         .filter(UserBook.user_id == user_id, UserBook.book_id == book_id)
@@ -118,6 +120,7 @@ def ensure_added_event(
         record_added_to_library(
             session, user_id=user_id, book_id=book_id, import_id=import_id
         )
+        # noinspection PyTypeChecker
         user_book = (
             session.query(UserBook)
             .filter(UserBook.user_id == user_id, UserBook.book_id == book_id)
@@ -262,7 +265,7 @@ def apply_progress_event(
         page = max_page
 
     record_progress_event(
-        session, user_book_id=cast(int, user_book.id), page=page, percent=percent
+        session, user_book_id=user_book.id, page=page, percent=percent
     )
     user_book.current_page = page
     user_book.current_percent = percent
@@ -307,7 +310,7 @@ def record_cover_changed(
 
 def project_user_book_state(session: Session, user_book: UserBook) -> UserBook:
     """Project the current reading state from the event stream onto the user_book snapshot fields."""
-    user_book_id = cast(int, user_book.id)
+    user_book_id = user_book.id
     latest_start = _latest_event(session, user_book_id, BookEventCode.STARTED_READING)
     latest_finish = _latest_event(session, user_book_id, BookEventCode.FINISHED_READING)
     latest_progress = _latest_event(session, user_book_id, BookEventCode.PROGRESS_SET)

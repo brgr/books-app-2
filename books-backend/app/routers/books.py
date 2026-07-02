@@ -1,4 +1,4 @@
-from typing import Annotated, cast
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
@@ -107,14 +107,12 @@ async def start_cover_upgrade_search(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
         )
-    user_book = get_user_book(
-        db, user_id=cast(int, current_user.id), book_id=cast(int, book.id)
-    )
+    user_book = get_user_book(db, user_id=current_user.id, book_id=book.id)
     if not user_book:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
         )
-    cover_path = cast(str | None, book.cover_image_url)
+    cover_path = book.cover_image_url
     if not cover_path or cover_path.startswith("http"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

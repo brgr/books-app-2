@@ -1,4 +1,4 @@
-from typing import Annotated, cast
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
@@ -24,7 +24,7 @@ def import_reading_list(
     try:
         return import_reading_list_from_bytes(
             db,
-            cast(int, current_user.id),
+            current_user.id,
             file.file.read(),
             filename=file.filename,
         )

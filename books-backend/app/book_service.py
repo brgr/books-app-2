@@ -1,7 +1,5 @@
 """Orchestration layer for book operations."""
 
-from typing import cast
-
 from sqlalchemy.orm import Session
 
 from app.book_events import (
@@ -17,7 +15,7 @@ from app.book_lists import (
 from app.book_queries import get_user_book
 from app.cover_upgrade import CoverUpgradeJob, start_job
 from app.image_utils import download_cover_image
-from app.models import Book, ReadingStatus, User, UserBook
+from app.models import Book, User, UserBook
 from app.schemas import BookCreate, BookUpdate
 
 
@@ -30,7 +28,7 @@ class BookService:
 
     @property
     def _user_id(self) -> int:
-        return cast(int, self.user.id)
+        return self.user.id
 
     async def create(self, book_data: BookCreate) -> Book:
         """Persist a new book, then add it to the acting user's library."""
@@ -50,7 +48,7 @@ class BookService:
     async def update(self, book: Book, book_data: BookUpdate) -> Book:
         """Apply a partial update, resolving and journaling any cover change."""
         old_cover_image_url = book.cover_image_url
-        old_cover_thumbnail_url = cast(str | None, book.cover_thumbnail_url)
+        old_cover_thumbnail_url = book.cover_thumbnail_url
 
         book.apply_update(book_data)
 
@@ -74,7 +72,7 @@ class BookService:
     def set_cover(self, book: Book, cover_url: str, thumbnail_url: str | None) -> Book:
         """Point the book at an already-stored cover, journaling the change."""
         old_cover_image_url = book.cover_image_url
-        old_cover_thumbnail_url = cast(str | None, book.cover_thumbnail_url)
+        old_cover_thumbnail_url = book.cover_thumbnail_url
         book.cover_image_url = cover_url
         book.cover_thumbnail_url = thumbnail_url
         if cover_url != old_cover_image_url:
@@ -117,7 +115,7 @@ class BookService:
     ) -> CoverUpgradeJob:
         """Kick off the async higher-resolution cover search for this book."""
         return start_job(
-            book_id=cast(int, book.id),
+            book_id=book.id,
             user_id=self._user_id,
             title=book.title,
             author=book.author,
@@ -131,9 +129,7 @@ class BookService:
         When ``reproject`` is set, the user_book snapshot is first recomputed
         from its event stream (used on reads); cover-only writes skip it.
         """
-        user_book = get_user_book(
-            self.db, user_id=self._user_id, book_id=cast(int, book.id)
-        )
+        user_book = get_user_book(self.db, user_id=self._user_id, book_id=book.id)
         if user_book and reproject:
             project_user_book_state(self.db, user_book)
         book.user_status = user_book
@@ -147,17 +143,15 @@ class BookService:
         return None
 
     def _add_to_library(self, book: Book) -> None:
-        user_book = ensure_added_event(
-            self.db, user_id=self._user_id, book_id=cast(int, book.id)
-        )
+        user_book = ensure_added_event(self.db, user_id=self._user_id, book_id=book.id)
         project_user_book_state(self.db, user_book)
         lists_by_name = get_or_create_default_lists(self.db, self._user_id)
-        target_list_name = list_name_for_status(cast(ReadingStatus, user_book.status))
+        target_list_name = list_name_for_status(user_book.status)
         if target_list_name and target_list_name in lists_by_name:
             ensure_list_item(
                 self.db,
-                list_id=cast(int, lists_by_name[target_list_name].id),
-                user_book_id=cast(int, user_book.id),
+                list_id=lists_by_name[target_list_name].id,
+                user_book_id=user_book.id,
             )
 
     def _record_cover_change(
@@ -167,13 +161,13 @@ class BookService:
         old_cover_thumbnail_url: str | None,
     ) -> None:
         actor_user_book = ensure_added_event(
-            self.db, user_id=self._user_id, book_id=cast(int, book.id)
+            self.db, user_id=self._user_id, book_id=book.id
         )
         record_cover_changed(
             self.db,
-            user_book_id=cast(int, actor_user_book.id),
+            user_book_id=actor_user_book.id,
             old_cover_image_url=old_cover_image_url,
             new_cover_image_url=book.cover_image_url,
             old_cover_thumbnail_url=old_cover_thumbnail_url,
-            new_cover_thumbnail_url=cast(str | None, book.cover_thumbnail_url),
+            new_cover_thumbnail_url=book.cover_thumbnail_url,
         )

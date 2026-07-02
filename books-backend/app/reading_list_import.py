@@ -3,7 +3,6 @@ import io
 import re
 import zipfile
 from datetime import datetime
-from typing import cast
 
 from sqlalchemy.orm import Session
 
@@ -94,7 +93,7 @@ def import_reading_list_from_bytes(
     import_record = Import(user_id=user_id, filename=filename)
     db.add(import_record)
     db.flush()
-    import_id = cast(int, import_record.id)
+    import_id = import_record.id
     imported = 0
     skipped = 0
 
@@ -148,7 +147,7 @@ def import_reading_list_from_bytes(
                         pass
                     break
 
-        book_id = cast(int, book.id)
+        book_id = book.id
         existing_ub = (
             db.query(UserBook)
             .filter(UserBook.user_id == user_id, UserBook.book_id == book_id)
@@ -181,13 +180,13 @@ def import_reading_list_from_bytes(
         if derived_status in (ReadingStatus.STARTED, ReadingStatus.FINISHED):
             record_started_reading(
                 db,
-                user_book_id=cast(int, user_book.id),
+                user_book_id=user_book.id,
                 occurred_at=started_at,
             )
         if derived_status == ReadingStatus.FINISHED:
             record_finished_reading(
                 db,
-                user_book_id=cast(int, user_book.id),
+                user_book_id=user_book.id,
                 occurred_at=finished_at,
             )
 
@@ -195,8 +194,8 @@ def import_reading_list_from_bytes(
         if default_list_name and default_list_name in default_lists:
             ensure_list_item(
                 db,
-                list_id=cast(int, default_lists[default_list_name].id),
-                user_book_id=cast(int, user_book.id),
+                list_id=default_lists[default_list_name].id,
+                user_book_id=user_book.id,
             )
 
         list_names = _parse_lists((row.get("Lists") or "").strip())
@@ -212,8 +211,8 @@ def import_reading_list_from_bytes(
                 db.flush()
             ensure_list_item(
                 db,
-                list_id=cast(int, book_list.id),
-                user_book_id=cast(int, user_book.id),
+                list_id=book_list.id,
+                user_book_id=user_book.id,
             )
 
         imported += 1

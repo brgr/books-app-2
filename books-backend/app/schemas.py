@@ -241,7 +241,7 @@ class BookEventResponse(BaseModel):
         return cls(
             id=str(event.id),
             event_type=cast(BookEventCode, event.event_type.code),
-            occurred_at=cast(datetime, event.occurred_at),
+            occurred_at=event.occurred_at,
             note=event.note_entry.note if event.note_entry else None,
             page=event.progress_entry.page if event.progress_entry else None,
             percent=event.progress_entry.percent if event.progress_entry else None,

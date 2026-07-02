@@ -1,5 +1,5 @@
+from decimal import Decimal
 from sqlalchemy import (
-    Column,
     Integer,
     String,
     DateTime,
@@ -9,8 +9,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Numeric,
 )
-from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import declarative_base, mapped_column, relationship, Mapped
 from datetime import datetime, UTC
 from typing import TYPE_CHECKING
 import enum
@@ -41,16 +40,16 @@ class BookEventCode(enum.Enum):
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True)
-    username = Column(String(50), unique=True, nullable=False)
-    hashed_password = Column(String(255), nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
 
     # Relationship to user's books
-    user_books = relationship(
-        "UserBook", back_populates="user", cascade="all, delete-orphan"
+    user_books: Mapped[list["UserBook"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
     )
-    lists = relationship(
-        "BookList", back_populates="user", cascade="all, delete-orphan"
+    lists: Mapped[list["BookList"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
     )
 
     def __repr__(self):
@@ -59,21 +58,28 @@ class User(Base):
 
 class Book(Base):
     __tablename__ = "books"
+    # Permit the non-Mapped ``user_status`` annotation below; it's a transient
+    # instance attribute the service layer sets, not a mapped column.
+    __allow_unmapped__ = True
 
-    id = Column(Integer, primary_key=True)
-    title = Column(String(255), nullable=False)
-    author = Column(String(100), nullable=False)
-    isbn = Column(String(20), unique=True)
-    description = Column(Text, nullable=True)
-    published_date = Column(DateTime, nullable=True)
-    page_count = Column(Integer, nullable=True)
-    cover_image_url = Column(String(500), nullable=True)
-    cover_thumbnail_url = Column(String(500), nullable=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    author: Mapped[str] = mapped_column(String(100), nullable=False)
+    isbn: Mapped[str | None] = mapped_column(String(20), unique=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    published_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    cover_image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    cover_thumbnail_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # Relationship to users who have this book
-    user_books = relationship(
-        "UserBook", back_populates="book", cascade="all, delete-orphan"
+    user_books: Mapped[list["UserBook"]] = relationship(
+        back_populates="book", cascade="all, delete-orphan"
     )
+
+    # Transient, non-persisted: the acting user's reading state, attached by the
+    # service layer for serialization. Not a mapped column.
+    user_status: "UserBook | None" = None
 
     @classmethod
     def from_create(cls, data: "BookCreate") -> "Book":
@@ -121,26 +127,30 @@ class Book(Base):
 class UserBook(Base):
     __tablename__ = "user_books"
 
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    book_id = Column(Integer, ForeignKey("books.id"), nullable=False)
-    status = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=False
+    )
+    book_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("books.id"), nullable=False
+    )
+    status: Mapped[ReadingStatus] = mapped_column(
         Enum(ReadingStatus), nullable=False, default=ReadingStatus.WANT_TO_READ
     )
-    started_at = Column(DateTime, nullable=True)
-    finished_at = Column(DateTime, nullable=True)
-    notes = Column(Text, nullable=True)
-    current_page = Column(Integer, nullable=True)
-    current_percent = Column(Numeric(5, 2), nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    current_page: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    current_percent: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
 
     # Relationships
-    user = relationship("User", back_populates="user_books")
-    book = relationship("Book", back_populates="user_books")
-    events = relationship(
-        "BookEvent", back_populates="user_book", cascade="all, delete-orphan"
+    user: Mapped["User"] = relationship(back_populates="user_books")
+    book: Mapped["Book"] = relationship(back_populates="user_books")
+    events: Mapped[list["BookEvent"]] = relationship(
+        back_populates="user_book", cascade="all, delete-orphan"
     )
-    list_items = relationship(
-        "BookListItem", back_populates="user_book", cascade="all, delete-orphan"
+    list_items: Mapped[list["BookListItem"]] = relationship(
+        back_populates="user_book", cascade="all, delete-orphan"
     )
 
     def __repr__(self):
@@ -150,8 +160,8 @@ class UserBook(Base):
 class BookEventType(Base):
     __tablename__ = "book_event_types"
 
-    id = Column(Integer, primary_key=True)
-    code = Column(String(50), unique=True, nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
 
     def __repr__(self):
         return f"<BookEventType(code='{self.code}')>"
@@ -160,35 +170,37 @@ class BookEventType(Base):
 class BookEvent(Base):
     __tablename__ = "book_events"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_book_id = Column(
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
+    user_book_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("user_books.id", ondelete="CASCADE"), nullable=False
     )
-    event_type_id = Column(Integer, ForeignKey("book_event_types.id"), nullable=False)
-    occurred_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
+    event_type_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("book_event_types.id"), nullable=False
+    )
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(UTC)
+    )
 
-    user_book = relationship("UserBook", back_populates="events")
-    event_type = relationship("BookEventType")
-    note_entry = relationship(
-        "BookEventNote",
+    user_book: Mapped["UserBook"] = relationship(back_populates="events")
+    event_type: Mapped["BookEventType"] = relationship()
+    note_entry: Mapped["BookEventNote | None"] = relationship(
         back_populates="event",
         uselist=False,
         cascade="all, delete-orphan",
     )
-    progress_entry = relationship(
-        "BookEventProgress",
+    progress_entry: Mapped["BookEventProgress | None"] = relationship(
         back_populates="event",
         uselist=False,
         cascade="all, delete-orphan",
     )
-    cover_entry = relationship(
-        "BookEventCover",
+    cover_entry: Mapped["BookEventCover | None"] = relationship(
         back_populates="event",
         uselist=False,
         cascade="all, delete-orphan",
     )
-    import_source = relationship(
-        "BookEventImportSource",
+    import_source: Mapped["BookEventImportSource | None"] = relationship(
         back_populates="event",
         uselist=False,
         cascade="all, delete-orphan",
@@ -206,12 +218,12 @@ class BookEvent(Base):
 class BookEventNote(Base):
     __tablename__ = "book_event_notes"
 
-    event_id = Column(
+    event_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("book_events.id", ondelete="CASCADE"), primary_key=True
     )
-    note = Column(Text, nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    event = relationship("BookEvent", back_populates="note_entry")
+    event: Mapped["BookEvent"] = relationship(back_populates="note_entry")
 
     def __repr__(self):
         return f"<BookEventNote(event_id='{self.event_id}')>"
@@ -220,13 +232,13 @@ class BookEventNote(Base):
 class BookEventProgress(Base):
     __tablename__ = "book_event_progress"
 
-    event_id = Column(
+    event_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("book_events.id", ondelete="CASCADE"), primary_key=True
     )
-    page = Column(Integer, nullable=True)
-    percent = Column(Numeric(5, 2), nullable=True)
+    page: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    percent: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
 
-    event = relationship("BookEvent", back_populates="progress_entry")
+    event: Mapped["BookEvent"] = relationship(back_populates="progress_entry")
 
     def __repr__(self):
         return (
@@ -238,14 +250,16 @@ class BookEventProgress(Base):
 class Import(Base):
     __tablename__ = "imports"
 
-    id = Column(Integer, primary_key=True)
-    user_id = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    filename = Column(String(255), nullable=True)
-    occurred_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
-    imported_count = Column(Integer, nullable=False, default=0)
-    skipped_count = Column(Integer, nullable=False, default=0)
+    filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(UTC)
+    )
+    imported_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    skipped_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     def __repr__(self):
         return (
@@ -257,15 +271,15 @@ class Import(Base):
 class BookEventImportSource(Base):
     __tablename__ = "book_event_import_sources"
 
-    event_id = Column(
+    event_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("book_events.id", ondelete="CASCADE"), primary_key=True
     )
-    import_id = Column(
+    import_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("imports.id", ondelete="CASCADE"), nullable=False
     )
 
-    event = relationship("BookEvent", back_populates="import_source")
-    import_record = relationship("Import")
+    event: Mapped["BookEvent"] = relationship(back_populates="import_source")
+    import_record: Mapped["Import"] = relationship()
 
     def __repr__(self):
         return (
@@ -277,15 +291,19 @@ class BookEventImportSource(Base):
 class BookEventCover(Base):
     __tablename__ = "book_event_covers"
 
-    event_id = Column(
+    event_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("book_events.id", ondelete="CASCADE"), primary_key=True
     )
-    old_cover_image_url = Column(String(500), nullable=True)
-    new_cover_image_url = Column(String(500), nullable=True)
-    old_cover_thumbnail_url = Column(String(500), nullable=True)
-    new_cover_thumbnail_url = Column(String(500), nullable=True)
+    old_cover_image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    new_cover_image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    old_cover_thumbnail_url: Mapped[str | None] = mapped_column(
+        String(500), nullable=True
+    )
+    new_cover_thumbnail_url: Mapped[str | None] = mapped_column(
+        String(500), nullable=True
+    )
 
-    event = relationship("BookEvent", back_populates="cover_entry")
+    event: Mapped["BookEvent"] = relationship(back_populates="cover_entry")
 
     def __repr__(self):
         return f"<BookEventCover(event_id='{self.event_id}')>"
@@ -294,15 +312,15 @@ class BookEventCover(Base):
 class BookList(Base):
     __tablename__ = "book_lists"
 
-    id = Column(Integer, primary_key=True)
-    user_id = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    name = Column(String(100), nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
 
-    user = relationship("User", back_populates="lists")
-    items = relationship(
-        "BookListItem", back_populates="list", cascade="all, delete-orphan"
+    user: Mapped["User"] = relationship(back_populates="lists")
+    items: Mapped[list["BookListItem"]] = relationship(
+        back_populates="list", cascade="all, delete-orphan"
     )
 
     __table_args__ = (
@@ -316,17 +334,17 @@ class BookList(Base):
 class BookListItem(Base):
     __tablename__ = "book_list_items"
 
-    id = Column(Integer, primary_key=True)
-    list_id = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    list_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("book_lists.id", ondelete="CASCADE"), nullable=False
     )
-    user_book_id = Column(
+    user_book_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("user_books.id", ondelete="CASCADE"), nullable=False
     )
-    sort_order = Column(Numeric(20, 10), nullable=False)
+    sort_order: Mapped[Decimal] = mapped_column(Numeric(20, 10), nullable=False)
 
-    list = relationship("BookList", back_populates="items")
-    user_book = relationship("UserBook", back_populates="list_items")
+    list: Mapped["BookList"] = relationship(back_populates="items")
+    user_book: Mapped["UserBook"] = relationship(back_populates="list_items")
 
     __table_args__ = (
         UniqueConstraint(

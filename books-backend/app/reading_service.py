@@ -1,7 +1,6 @@
 """Orchestration layer for a user's reading state and timeline."""
 
 from datetime import datetime, UTC
-from typing import cast
 
 from sqlalchemy.orm import Session, joinedload
 
@@ -39,7 +38,7 @@ class ReadingService:
 
     @property
     def _user_id(self) -> int:
-        return cast(int, self.user.id)
+        return self.user.id
 
     def set_status(self, book_id: int, status_data: UserBookStatusUpdate) -> UserBook:
         """Set or update the acting user's reading status for a book.
@@ -129,7 +128,7 @@ class ReadingService:
         target_status: ReadingStatus,
         occurred_at: datetime | None,
     ) -> None:
-        user_book_id = cast(int, user_book.id)
+        user_book_id = user_book.id
         if (
             target_status == ReadingStatus.WANT_TO_READ
             and user_book.status != ReadingStatus.WANT_TO_READ
@@ -164,7 +163,7 @@ class ReadingService:
         if normalized_notes != user_book.notes:
             record_note_event(
                 self.db,
-                user_book_id=cast(int, user_book.id),
+                user_book_id=user_book.id,
                 code=BookEventCode.NOTE_SET,
                 note=normalized_notes,
             )
@@ -172,18 +171,16 @@ class ReadingService:
 
     def _sync_default_lists(self, user_book: UserBook) -> None:
         """Place the user_book in the list matching its status, removing it from others."""
-        user_book_id = cast(int, user_book.id)
+        user_book_id = user_book.id
         lists_by_name = get_or_create_default_lists(self.db, self._user_id)
-        target_list_name = list_name_for_status(cast(ReadingStatus, user_book.status))
+        target_list_name = list_name_for_status(user_book.status)
         target_list_id = (
             lists_by_name[target_list_name].id
             if target_list_name in lists_by_name
             else None
         )
         if target_list_id is not None:
-            ensure_list_item(
-                self.db, list_id=cast(int, target_list_id), user_book_id=user_book_id
-            )
+            ensure_list_item(self.db, list_id=target_list_id, user_book_id=user_book_id)
 
         for book_list in lists_by_name.values():
             if book_list.id != target_list_id:
