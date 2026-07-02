@@ -88,6 +88,7 @@ class UserBook(Base):
     finished_at = Column(DateTime, nullable=True)
     notes = Column(Text, nullable=True)
     current_page = Column(Integer, nullable=True)
+    current_percent = Column(Numeric(5, 2), nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="user_books")
@@ -179,12 +180,16 @@ class BookEventProgress(Base):
     event_id = Column(
         String(36), ForeignKey("book_events.id", ondelete="CASCADE"), primary_key=True
     )
-    page = Column(Integer, nullable=False)
+    page = Column(Integer, nullable=True)
+    percent = Column(Numeric(5, 2), nullable=True)
 
     event = relationship("BookEvent", back_populates="progress_entry")
 
     def __repr__(self):
-        return f"<BookEventProgress(event_id='{self.event_id}', page={self.page})>"
+        return (
+            f"<BookEventProgress(event_id='{self.event_id}', "
+            f"page={self.page}, percent={self.percent})>"
+        )
 
 
 class Import(Base):

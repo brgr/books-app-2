@@ -221,10 +221,18 @@ def record_note_event(
 def record_progress_event(
     session: Session,
     user_book_id: int,
-    page: int,
+    page: Optional[int] = None,
+    percent: Optional[float] = None,
     occurred_at: Optional[datetime] = None,
 ) -> BookEvent:
-    """Append a progress event for the user_book."""
+    """Append a progress event for the user_book.
+
+    Progress may be expressed as a page, a percent, or both. Page and percent
+    are stored independently; neither is derived from the other.
+    """
+    if page is None and percent is None:
+        raise ValueError("Progress event requires a page or a percent")
+
     event_type = _get_event_type(session, BookEventCode.PROGRESS_SET)
     event = BookEvent(
         user_book_id=user_book_id,
@@ -233,9 +241,34 @@ def record_progress_event(
     )
     session.add(event)
     session.flush()
-    session.add(BookEventProgress(event_id=event.id, page=page))
+    session.add(BookEventProgress(event_id=event.id, page=page, percent=percent))
     session.flush()
     return event
+
+
+def apply_progress_event(
+    session: Session,
+    user_book: UserBook,
+    page: Optional[int] = None,
+    percent: Optional[float] = None,
+    max_page: Optional[int] = None,
+) -> UserBook:
+    """Record a progress event and update the user_book's current position.
+
+    ``page`` is clamped to ``max_page`` (the book's length) when provided.
+    Commits and returns the refreshed user_book.
+    """
+    if page is not None and max_page is not None and page > max_page:
+        page = max_page
+
+    record_progress_event(
+        session, user_book_id=cast(int, user_book.id), page=page, percent=percent
+    )
+    user_book.current_page = page
+    user_book.current_percent = percent
+    session.commit()
+    session.refresh(user_book)
+    return user_book
 
 
 def record_cover_changed(
@@ -297,8 +330,10 @@ def project_user_book_state(session: Session, user_book: UserBook) -> UserBook:
             .first()
         )
         user_book.current_page = progress_entry.page if progress_entry else None
+        user_book.current_percent = progress_entry.percent if progress_entry else None
     else:
         user_book.current_page = None
+        user_book.current_percent = None
     session.flush()
 
     return user_book

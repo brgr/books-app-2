@@ -316,3 +316,80 @@ def test_progress_clamps_to_page_count(client, auth_headers, created_book):
     ]
     assert progress_events
     assert progress_events[0]["page"] == created_book["page_count"]
+
+
+def _start_reading(client, auth_headers, book_id):
+    response = client.put(
+        f"/books/{book_id}/status", json={"status": "started"}, headers=auth_headers
+    )
+    assert response.status_code == status.HTTP_200_OK
+
+
+def test_progress_accepts_percent_only(client, auth_headers, created_book):
+    """Progress can be recorded as a percent without a page."""
+    book_id = created_book["id"]
+    _start_reading(client, auth_headers, book_id)
+
+    response = client.post(
+        f"/books/{book_id}/progress", json={"percent": 42.5}, headers=auth_headers
+    )
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data["current_percent"] == 42.5
+    assert data["current_page"] is None
+
+    events = client.get(f"/books/{book_id}/events", headers=auth_headers).json()
+    progress = [e for e in events if e["event_type"] == "progress_set"]
+    assert progress[0]["percent"] == 42.5
+    assert progress[0]["page"] is None
+
+
+def test_progress_accepts_page_and_percent(client, auth_headers, created_book):
+    """Page and percent can be recorded together and are stored independently."""
+    book_id = created_book["id"]
+    _start_reading(client, auth_headers, book_id)
+
+    response = client.post(
+        f"/books/{book_id}/progress",
+        json={"page": 10, "percent": 3.5},
+        headers=auth_headers,
+    )
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data["current_page"] == 10
+    assert data["current_percent"] == 3.5
+
+
+def test_progress_percent_replaces_page(client, auth_headers, created_book):
+    """The latest progress event wins; a later percent-only event clears the page."""
+    book_id = created_book["id"]
+    _start_reading(client, auth_headers, book_id)
+
+    client.post(f"/books/{book_id}/progress", json={"page": 10}, headers=auth_headers)
+    response = client.post(
+        f"/books/{book_id}/progress", json={"percent": 50}, headers=auth_headers
+    )
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data["current_percent"] == 50
+    assert data["current_page"] is None
+
+
+def test_progress_requires_page_or_percent(client, auth_headers, created_book):
+    """A progress request with neither page nor percent is rejected."""
+    book_id = created_book["id"]
+    _start_reading(client, auth_headers, book_id)
+
+    response = client.post(f"/books/{book_id}/progress", json={}, headers=auth_headers)
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+def test_progress_percent_out_of_range(client, auth_headers, created_book):
+    """Percent must be between 0 and 100."""
+    book_id = created_book["id"]
+    _start_reading(client, auth_headers, book_id)
+
+    response = client.post(
+        f"/books/{book_id}/progress", json={"percent": 150}, headers=auth_headers
+    )
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY

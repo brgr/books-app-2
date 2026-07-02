@@ -6,11 +6,11 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.auth import get_current_user
 from app.book_events import (
+    apply_progress_event,
     ensure_added_event,
     project_user_book_state,
     record_finished_reading,
     record_note_event,
-    record_progress_event,
     record_started_reading,
 )
 from app.book_lists import (
@@ -216,6 +216,7 @@ def get_book_events(
             occurred_at=event.occurred_at,
             note=event.note_entry.note if event.note_entry else None,
             page=event.progress_entry.page if event.progress_entry else None,
+            percent=event.progress_entry.percent if event.progress_entry else None,
             old_cover_image_url=event.cover_entry.old_cover_image_url
             if event.cover_entry
             else None,
@@ -266,12 +267,10 @@ def add_progress_event(
             detail="Cannot record progress before starting reading",
         )
 
-    page = progress.page
-    if book.page_count is not None and page > book.page_count:
-        page = book.page_count
-
-    record_progress_event(db, user_book_id=user_book.id, page=page)
-    user_book.current_page = page
-    db.commit()
-    db.refresh(user_book)
-    return user_book
+    return apply_progress_event(
+        db,
+        user_book,
+        page=progress.page,
+        percent=progress.percent,
+        max_page=book.page_count,
+    )

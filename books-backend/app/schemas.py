@@ -1,7 +1,7 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 from datetime import datetime
 from typing import Literal, Optional
-from app.models import ReadingStatus, BookEventCode
+from app.models import Book, ReadingStatus, BookEventCode, UserBook
 
 
 # User schemas
@@ -102,6 +102,7 @@ class UserBookResponse(UserBookBase):
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
     current_page: Optional[int] = None
+    current_percent: Optional[float] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -188,6 +189,25 @@ class ExportBookEntry(BaseModel):
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
     current_page: Optional[int] = None
+    current_percent: Optional[float] = None
+
+    @classmethod
+    def from_orm_pair(cls, book: Book, user_book: UserBook) -> "ExportBookEntry":
+        return cls(
+            id=book.id,
+            title=book.title,
+            author=book.author,
+            isbn=book.isbn,
+            description=book.description,
+            published_date=book.published_date,
+            page_count=book.page_count,
+            status=user_book.status,
+            notes=user_book.notes,
+            started_at=user_book.started_at,
+            finished_at=user_book.finished_at,
+            current_page=user_book.current_page,
+            current_percent=user_book.current_percent,
+        )
 
 
 class UserBooksExportResponse(BaseModel):
@@ -206,6 +226,7 @@ class BookEventResponse(BaseModel):
     occurred_at: datetime
     note: Optional[str] = None
     page: Optional[int] = None
+    percent: Optional[float] = None
     old_cover_image_url: Optional[str] = None
     new_cover_image_url: Optional[str] = None
     old_cover_thumbnail_url: Optional[str] = None
@@ -216,7 +237,14 @@ class BookEventResponse(BaseModel):
 
 
 class BookProgressUpdate(BaseModel):
-    page: int = Field(..., ge=0)
+    page: Optional[int] = Field(default=None, ge=0)
+    percent: Optional[float] = Field(default=None, ge=0, le=100)
+
+    @model_validator(mode="after")
+    def _require_page_or_percent(self) -> "BookProgressUpdate":
+        if self.page is None and self.percent is None:
+            raise ValueError("Must provide page or percent")
+        return self
 
 
 class ImportResponse(BaseModel):

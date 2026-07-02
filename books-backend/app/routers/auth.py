@@ -16,10 +16,9 @@ from app.auth import (
     set_access_token_cookie,
     set_auth_cookies,
 )
-from app.book_events import project_user_book_state
 from app.config import settings
 from app.database import get_db
-from app.models import Book, User, UserBook
+from app.models import User
 from app.schemas import (
     AccessTokenResponse,
     RefreshRequest,
@@ -27,6 +26,7 @@ from app.schemas import (
     UserBooksExportResponse,
     UserResponse,
 )
+from app.user_export import build_user_books_export
 
 router = APIRouter()
 
@@ -127,36 +127,8 @@ def export_user_books(
     db: Annotated[Session, Depends(get_db)],
 ):
     """Export the current user's books along with their reading state."""
-    user_books = (
-        db.query(UserBook, Book)
-        .join(Book, UserBook.book_id == Book.id)
-        .filter(UserBook.user_id == current_user.id)
-        .order_by(Book.id.asc())
-        .all()
-    )
-
-    books_payload = []
-    for user_book, book in user_books:
-        project_user_book_state(db, user_book)
-        books_payload.append(
-            {
-                "id": book.id,
-                "title": book.title,
-                "author": book.author,
-                "isbn": book.isbn,
-                "description": book.description,
-                "published_date": book.published_date,
-                "page_count": book.page_count,
-                "status": user_book.status,
-                "notes": user_book.notes,
-                "started_at": user_book.started_at,
-                "finished_at": user_book.finished_at,
-                "current_page": user_book.current_page,
-            }
-        )
-
     return {
         "exported_at": datetime.now(UTC),
         "user": current_user,
-        "books": books_payload,
+        "books": build_user_books_export(db, current_user),
     }
