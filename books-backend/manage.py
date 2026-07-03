@@ -8,7 +8,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from app.auth import create_user
+from app.auth.security import create_user
 from app.database import SessionLocal
 from app.models import User
 from app.schemas import UserCreate
@@ -58,7 +58,7 @@ def handle_create_superuser(args: argparse.Namespace) -> int:
 def handle_seed_reading_list(args: argparse.Namespace) -> int:
     """Import a Reading List ZIP for an existing user."""
 
-    from app.reading_list_import import (
+    from app.imports.reading_list_import import (
         ImportReadingListError,
         import_reading_list_from_bytes,
     )

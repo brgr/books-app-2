@@ -4,7 +4,7 @@ import jwt
 import pytest
 from fastapi import status
 
-from app.auth import create_user
+from app.auth.security import create_user
 from app.config import settings
 
 

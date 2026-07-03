@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-from app.auth import (
+from app.auth.security import (
     REFRESH_TOKEN_COOKIE,
     authenticate_user,
     clear_auth_cookies,
@@ -26,7 +26,7 @@ from app.schemas import (
     UserBooksExportResponse,
     UserResponse,
 )
-from app.user_export import build_user_books_export
+from app.imports.user_export import build_user_books_export
 
 router = APIRouter()
 

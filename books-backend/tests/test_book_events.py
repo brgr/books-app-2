@@ -1,7 +1,7 @@
 from datetime import datetime, UTC
 
 import pytest
-from app.auth import create_user
+from app.auth.security import create_user
 from app.book_events import (
     record_added_to_library,
     record_finished_reading,

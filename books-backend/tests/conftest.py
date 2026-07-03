@@ -6,7 +6,7 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.auth import create_user
+from app.auth.security import create_user
 from app.database import get_db
 from app.models import Base
 from main import app
