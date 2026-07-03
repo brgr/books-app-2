@@ -11,7 +11,7 @@ from app.book_events import (
     record_finished_reading,
     record_started_reading,
 )
-from app.book_lists import (
+from app.book_lists.book_lists import (
     ensure_list_item,
     get_or_create_default_lists,
     list_name_for_status,

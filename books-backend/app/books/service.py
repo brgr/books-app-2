@@ -7,7 +7,7 @@ from app.book_events import (
     project_user_book_state,
     record_cover_changed,
 )
-from app.book_lists import (
+from app.book_lists.book_lists import (
     ensure_list_item,
     get_or_create_default_lists,
     list_name_for_status,

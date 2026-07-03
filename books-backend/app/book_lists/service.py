@@ -5,7 +5,7 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 
 from app.book_events import project_user_book_state
-from app.book_lists import (
+from app.book_lists.book_lists import (
     DEFAULT_LIST_NAMES,
     SORT_ORDER_GAP,
     ensure_list_item,

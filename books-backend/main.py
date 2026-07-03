@@ -4,7 +4,8 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.books import router as books
-from app.routers import auth, imports, lists, reading
+from app.book_lists import router as lists
+from app.routers import auth, imports, reading
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
 

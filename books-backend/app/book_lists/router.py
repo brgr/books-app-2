@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
-from app.book_list_service import (
+from app.book_lists.service import (
     BookListService,
     BookNotInLibraryError,
     ListNotFoundError,
