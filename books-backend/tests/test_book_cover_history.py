@@ -36,7 +36,7 @@ def _patch_cover_download(
     async def fake_download(url):
         return new_path, new_thumb
 
-    monkeypatch.setattr("app.book_service.download_cover_image", fake_download)
+    monkeypatch.setattr("app.books.service.download_cover_image", fake_download)
 
 
 def _patch_cover_store(
@@ -47,7 +47,7 @@ def _patch_cover_store(
     def fake_store(content, extension):
         return new_path, new_thumb
 
-    monkeypatch.setattr("app.routers.books.store_cover_image", fake_store)
+    monkeypatch.setattr("app.books.router.store_cover_image", fake_store)
 
 
 def _cover_events_for_user_book(db_session, user_book_id):

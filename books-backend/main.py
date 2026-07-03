@@ -3,7 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
-from app.routers import auth, books, imports, lists, reading
+from app.books import router as books
+from app.routers import auth, imports, lists, reading
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
 

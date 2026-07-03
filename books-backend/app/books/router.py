@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
-from app.book_queries import get_book_by_id, get_user_book
-from app.book_service import BookService
+from app.books.queries import get_book_by_id, get_user_book
+from app.books.service import BookService
 from app.database import get_db
 from app.google_books import (
     GoogleBooksRateLimitError,

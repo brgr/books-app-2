@@ -12,7 +12,7 @@ from app.book_lists import (
     get_or_create_default_lists,
     list_name_for_status,
 )
-from app.book_queries import get_user_book
+from app.books.queries import get_user_book
 from app.cover_upgrade import CoverUpgradeJob, start_job
 from app.image_utils import download_cover_image
 from app.models import Book, User, UserBook

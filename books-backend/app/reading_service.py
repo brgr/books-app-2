@@ -17,7 +17,7 @@ from app.book_lists import (
     get_or_create_default_lists,
     list_name_for_status,
 )
-from app.book_queries import get_user_book
+from app.books.queries import get_user_book
 from app.models import (
     BookEvent,
     BookEventCode,
