@@ -38,6 +38,7 @@ class ReadingService:
 
     @property
     def _user_id(self) -> int:
+        # noinspection PyTypeChecker
         return self.user.id
 
     def set_status(self, book_id: int, status_data: UserBookStatusUpdate) -> UserBook:

@@ -28,6 +28,7 @@ class BookService:
 
     @property
     def _user_id(self) -> int:
+        # noinspection PyTypeChecker
         return self.user.id
 
     async def create(self, book_data: BookCreate) -> Book:
