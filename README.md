@@ -87,10 +87,10 @@ Once the backend is running, visit `http://localhost:8000/docs` for interactive 
 This repo includes a versioned pre-commit hook that runs backend type checking, linting, and tests plus frontend type
 checking.
 
-To enable it on your machine:
+To enable it on your machine, point git at the versioned hooks directory (run once per clone):
 
 ```bash
-cp .githooks/pre-commit .git/hooks/pre-commit
+git config core.hooksPath .githooks
 ```
 
 ### Backend Development
