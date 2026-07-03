@@ -214,11 +214,6 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
               <div v-if="book.user_status.finished_at" class="date-item">
                 <strong>Finished:</strong> {{ formatShortDate(book.user_status.finished_at) }}
               </div>
-              <div v-if="book.user_status.current_page !== null" class="date-item">
-                <strong>Current page:</strong>
-                {{ book.user_status.current_page }}
-                <span v-if="book.page_count">/ {{ book.page_count }}</span>
-              </div>
             </div>
           </div>
         </div>
@@ -266,11 +261,6 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
               </div>
               <div class="metadata-item">
                 <strong>Added:</strong> {{ formatShortDate(book.created_at) }}
-              </div>
-              <div v-if="book.user_status && book.user_status.current_page !== null" class="metadata-item">
-                <strong>Current page:</strong>
-                {{ book.user_status.current_page }}
-                <span v-if="book.page_count">/ {{ book.page_count }}</span>
               </div>
             </div>
           </div>
