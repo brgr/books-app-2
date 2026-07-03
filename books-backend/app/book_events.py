@@ -66,6 +66,7 @@ def record_added_to_library(
     """
     user_book = _ensure_user_book(session, user_id=user_id, book_id=book_id)
 
+    # noinspection PyTypeChecker
     existing_add = _latest_event(session, user_book.id, BookEventCode.ADDED_TO_LIBRARY)
     if existing_add:
         raise ValueError("Book already added to library for this user")
@@ -91,6 +92,7 @@ def _ensure_user_book(session: Session, user_id: int, book_id: int) -> UserBook:
         .filter(UserBook.user_id == user_id, UserBook.book_id == book_id)
         .first()
     )
+
     if user_book is not None:
         return user_book
 
@@ -99,6 +101,8 @@ def _ensure_user_book(session: Session, user_id: int, book_id: int) -> UserBook:
     )
     session.add(user_book)
     session.flush()
+
+    # noinspection PyTypeChecker
     return user_book
 
 
@@ -130,6 +134,7 @@ def ensure_added_event(
             raise ValueError("Failed to create user_book for add event")
         return user_book
 
+    # noinspection PyTypeChecker
     existing_add = _latest_event(session, user_book.id, BookEventCode.ADDED_TO_LIBRARY)
     if not existing_add:
         record_added_to_library(
