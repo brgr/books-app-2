@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {computed, ref} from 'vue'
 import {useRouter, useRoute} from 'vue-router'
-import {createBook, getBook, setReadingStatus, getBookEvents, addBookProgress} from '../api/books'
+import {getBook, setReadingStatus, getBookEvents, addBookProgress} from '../api/books'
 import {getMediaUrl} from '../api/client'
 import BookNotes from '../components/book/BookNotes.vue'
 import BookSearchModal from '../components/modals/BookSearchModal.vue'
@@ -9,10 +9,11 @@ import BookStatusPill from '../components/book/BookStatusPill.vue'
 import BookReadingCard from '../components/book/BookReadingCard.vue'
 import NavigationBar from '../components/ui/NavigationBar.vue'
 import EventTimeline from '../components/book/EventTimeline.vue'
-import {ReadingStatus, type Book, type GoogleBookResult, type BookEvent} from '../api/types'
+import {ReadingStatus, type Book, type BookEvent} from '../api/types'
 import {formatShortDate} from '../utils/date'
 import {useCachedQuery} from '../composables/useCachedQuery'
 import {useClampToggle} from '../composables/useClampToggle'
+import {useAddBook} from '../composables/useAddBook'
 import {cacheKeys} from '../cache/keys'
 import {cacheDel, cacheInvalidateByPrefix} from '../cache/store'
 
@@ -52,8 +53,6 @@ const error = computed(() => {
 const updatingStatus = ref(false)
 const notesSaving = ref(false)
 const progressSaving = ref(false)
-const showSearchModal = ref(false)
-const addingBook = ref(false)
 const descriptionRef = ref<HTMLElement | null>(null)
 const {
   expanded: descriptionExpanded,
@@ -126,44 +125,15 @@ function handleEdit() {
   router.push({name: 'book-edit', params: {id: book.value.id}})
 }
 
-function handleAddBook() {
-  showSearchModal.value = true
-}
-
-function handleSearchModalClose() {
-  if (addingBook.value) return
-  showSearchModal.value = false
-}
-
-async function handleBookSelected(selectedBook: GoogleBookResult) {
-  if (addingBook.value) return
-  addingBook.value = true
-  try {
-    await createBook({
-      title: selectedBook.title,
-      author: selectedBook.author,
-      isbn: selectedBook.isbn || undefined,
-      description: selectedBook.description || undefined,
-      published_date: selectedBook.published_date || undefined,
-      page_count: selectedBook.page_count ?? undefined,
-      cover_image_url: selectedBook.thumbnail || undefined,
-    })
-    await cacheInvalidateByPrefix('lists:')
-    showSearchModal.value = false
-    await router.push({name: 'books'})
-  } catch (err: any) {
-    console.error('Failed to add book:', err)
-    alert(err.response?.data?.detail || 'Failed to add book. Please try again.')
-  } finally {
-    addingBook.value = false
-  }
-}
+const {showSearchModal, openSearch, closeSearch, selectBook} = useAddBook(() =>
+  router.push({name: 'books'}),
+)
 
 </script>
 
 <template>
   <div class="book-detail-page">
-    <NavigationBar @add-book="handleAddBook"/>
+    <NavigationBar @add-book="openSearch"/>
 
     <div class="container">
       <div v-if="!book && !error" class="loading">
@@ -285,8 +255,8 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
 
     <BookSearchModal
         v-if="showSearchModal"
-        @close="handleSearchModalClose"
-        @select="handleBookSelected"
+        @close="closeSearch"
+        @select="selectBook"
     />
 
   </div>

@@ -2,18 +2,18 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import draggable from 'vuedraggable'
 import { useRouter } from 'vue-router'
-import { createBook, getListBooks, getLists, reorderListItem } from '../api/books'
+import { getListBooks, getLists, reorderListItem } from '../api/books'
 import BookCard from '../components/book/BookCard/BookCard.vue'
 import BookCoverTile from '../components/book/BookCoverTile.vue'
 import BookContextMenu from '../components/book/BookContextMenu.vue'
 import BookSearchModal from '../components/modals/BookSearchModal.vue'
 import BooksSearchHeader from '../components/ui/BooksSearchHeader.vue'
 import NavigationBar from '../components/ui/NavigationBar.vue'
-import { ReadingStatus, type PaginatedBooks, type GoogleBookResult, type Book, type BookList } from '../api/types'
+import { ReadingStatus, type PaginatedBooks, type Book, type BookList } from '../api/types'
 import { getStatusLabel } from '../book/status'
 import { useCachedQuery } from '../composables/useCachedQuery'
+import { useAddBook } from '../composables/useAddBook'
 import { cacheKeys } from '../cache/keys'
-import { cacheInvalidateByPrefix } from '../cache/store'
 
 const currentPage = ref(1)
 const pageSize = ref(30)
@@ -21,8 +21,6 @@ const router = useRouter()
 const accumulatedBooks = ref<Book[]>([])
 const isLoadingMore = ref(false)
 
-const showSearchModal = ref(false)
-const addingBook = ref(false)
 
 const filterStatus = ref<ReadingStatus | ''>('')
 const searchQuery = ref('')
@@ -193,39 +191,10 @@ onBeforeUnmount(() => {
   sentinelObserver = null
 })
 
-function handleAddBook() {
-  showSearchModal.value = true
-}
-
-function handleSearchModalClose() {
-  if (addingBook.value) return
-  showSearchModal.value = false
-}
-
-async function handleBookSelected(book: GoogleBookResult) {
-  if (addingBook.value) return
-  addingBook.value = true
-  try {
-    await createBook({
-      title: book.title,
-      author: book.author,
-      isbn: book.isbn || undefined,
-      description: book.description || undefined,
-      published_date: book.published_date || undefined,
-      page_count: book.page_count ?? undefined,
-      cover_image_url: book.thumbnail || undefined,
-    })
-    await cacheInvalidateByPrefix('lists:')
-    resetPagination()
-    await refreshBooks()
-    showSearchModal.value = false
-  } catch (err: any) {
-    console.error('Failed to add book:', err)
-    alert(err.response?.data?.detail || 'Failed to add book. Please try again.')
-  } finally {
-    addingBook.value = false
-  }
-}
+const {showSearchModal, openSearch, closeSearch, selectBook} = useAddBook(async () => {
+  resetPagination()
+  await refreshBooks()
+})
 
 const shelfLabel = computed(() => (shelfFilter.value === 'to-read' ? 'To Read' : 'Finished'))
 
@@ -331,7 +300,7 @@ const dragOpts = computed(() => ({
 
 <template>
   <div class="books-view">
-    <NavigationBar @add-book="handleAddBook" />
+    <NavigationBar @add-book="openSearch" />
 
     <div class="container">
 
@@ -450,8 +419,8 @@ const dragOpts = computed(() => ({
 
     <BookSearchModal
       v-if="showSearchModal"
-      @close="handleSearchModalClose"
-      @select="handleBookSelected"
+      @close="closeSearch"
+      @select="selectBook"
     />
 
     <BookContextMenu
