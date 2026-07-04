@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import {computed, ref, watch} from 'vue'
 import BookStatusButton from './BookStatusButton.vue'
-import BookProgressBar from './BookProgressBar.vue'
-import {ReadingStatus, type BookProgressUpdate} from '../../api/types'
+import {type BookProgressUpdate, ReadingStatus} from '../../api/types'
 import {formatShortDate} from '../../utils/date'
 
 type ProgressUnit = 'page' | 'percent'
@@ -24,17 +23,30 @@ const emit = defineEmits<{
 }>()
 
 const hasPage = computed(
-  () => props.currentPage !== null && props.currentPage !== undefined,
+    () => props.currentPage !== null && props.currentPage !== undefined,
 )
 const hasPercent = computed(
-  () => props.currentPercent !== null && props.currentPercent !== undefined,
+    () => props.currentPercent !== null && props.currentPercent !== undefined,
 )
+
+// A percentage to show alongside the page: taken directly when the user tracks
+// by percent, otherwise derived from the page and the book's length. Null when
+// we can't express one (page tracked but unknown length).
+const displayPercent = computed<number | null>(() => {
+  if (hasPercent.value) {
+    return Math.min(100, Math.max(0, Math.round(props.currentPercent as number)))
+  }
+  if (hasPage.value && props.pageCount) {
+    return Math.min(100, Math.round(((props.currentPage as number) / props.pageCount) * 100))
+  }
+  return null
+})
 
 // While actively reading, show the start date beside the pill ("since …")
 // rather than in the bottom dates row, so the status and its timeline read
 // together. Finished books keep their dates in the bottom row.
 const showStartedInHeader = computed(
-  () => props.status === ReadingStatus.STARTED && !!props.startedAt,
+    () => props.status === ReadingStatus.STARTED && !!props.startedAt,
 )
 
 // The unit the user last tracked in, so re-opening the editor defaults to it.
@@ -50,10 +62,10 @@ function currentValueFor(unit: ProgressUnit): string {
 }
 
 watch(
-  () => [props.currentPage, props.currentPercent],
-  () => {
-    editingProgress.value = false
-  },
+    () => [props.currentPage, props.currentPercent],
+    () => {
+      editingProgress.value = false
+    },
 )
 
 function selectUnit(unit: ProgressUnit) {
@@ -109,89 +121,84 @@ function cancelEditingProgress() {
       <span v-if="showStartedInHeader" class="since">since {{ formatShortDate(startedAt ?? null) }}</span>
     </div>
 
-    <div class="bar-row">
-      <BookProgressBar
-        :current-page="currentPage"
-        :current-percent="currentPercent"
-        :page-count="pageCount"
-      />
-      <button
-        v-if="!editingProgress"
-        class="btn-link"
-        type="button"
-        data-test="edit-progress"
-        @click="startEditingProgress"
-      >
-        Update
-      </button>
-    </div>
-
     <div v-if="editingProgress" class="progress-line">
       <span class="progress-edit">
         <span class="unit-toggle" role="group" aria-label="Progress unit">
           <button
-            type="button"
-            class="unit-btn"
-            :class="{active: progressUnit === 'page'}"
-            data-test="unit-page"
-            :disabled="progressSaving"
-            @click="selectUnit('page')"
+              type="button"
+              class="unit-btn"
+              :class="{active: progressUnit === 'page'}"
+              data-test="unit-page"
+              :disabled="progressSaving"
+              @click="selectUnit('page')"
           >
             Page
           </button>
           <button
-            type="button"
-            class="unit-btn"
-            :class="{active: progressUnit === 'percent'}"
-            data-test="unit-percent"
-            :disabled="progressSaving"
-            @click="selectUnit('percent')"
+              type="button"
+              class="unit-btn"
+              :class="{active: progressUnit === 'percent'}"
+              data-test="unit-percent"
+              :disabled="progressSaving"
+              @click="selectUnit('percent')"
           >
             %
           </button>
         </span>
         <input
-          v-model="progressDraft"
-          type="number"
-          min="0"
-          :max="progressUnit === 'percent' ? 100 : undefined"
-          :step="progressUnit === 'percent' ? 'any' : 1"
-          inputmode="decimal"
-          class="progress-input"
-          data-test="progress-input"
-          :disabled="progressSaving"
-          :placeholder="progressUnit === 'percent' ? '%' : 'Page'"
-          @focus="handleProgressFocus"
+            v-model="progressDraft"
+            type="number"
+            min="0"
+            :max="progressUnit === 'percent' ? 100 : undefined"
+            :step="progressUnit === 'percent' ? 'any' : 1"
+            inputmode="decimal"
+            class="progress-input"
+            data-test="progress-input"
+            :disabled="progressSaving"
+            :placeholder="progressUnit === 'percent' ? '%' : 'Page'"
+            @focus="handleProgressFocus"
         />
         <span class="muted progress-suffix">
           <template v-if="progressUnit === 'page' && pageCount">of {{ pageCount }}</template>
           <template v-else-if="progressUnit === 'percent'">%</template>
         </span>
         <button
-          class="btn-link"
-          type="button"
-          data-test="save-progress"
-          :disabled="progressSaving"
-          @click="handleSaveProgress"
+            class="btn-link"
+            type="button"
+            data-test="save-progress"
+            :disabled="progressSaving"
+            @click="handleSaveProgress"
         >
           {{ progressSaving ? 'Saving…' : 'Save' }}
         </button>
         <button
-          class="btn-link btn-link-cancel"
-          type="button"
-          data-test="cancel-progress"
-          :disabled="progressSaving"
-          @click="cancelEditingProgress"
+            class="btn-link btn-link-cancel"
+            type="button"
+            data-test="cancel-progress"
+            :disabled="progressSaving"
+            @click="cancelEditingProgress"
         >
           Cancel
         </button>
       </span>
     </div>
-    <div v-else-if="hasPage || !hasPercent" class="progress-line">
+    <div v-else class="progress-display">
       <span class="muted">
-        <template v-if="hasPage">Page {{ currentPage }}<span v-if="pageCount"> of {{ pageCount }}</span></template>
+        <template v-if="hasPage">
+          Page {{ currentPage }}<span v-if="pageCount"> of {{ pageCount }}</span
+          ><template v-if="displayPercent !== null"><span class="sep">·</span>{{ displayPercent }}%</template>
+        </template>
+        <template v-else-if="hasPercent">{{ displayPercent }}%</template>
         <template v-else>No progress yet</template>
       </span>
+      <button
+          class="btn-link"
+          type="button"
+          data-test="edit-progress"
+          @click="startEditingProgress"
+      >
+        Update
+      </button>
     </div>
 
     <div v-if="(startedAt && !showStartedInHeader) || finishedAt" class="dates">
@@ -200,7 +207,7 @@ function cancelEditingProgress() {
     </div>
 
     <div class="status-actions">
-      <BookStatusButton :status="status" :updating="updating ?? false" @change="emit('change', $event)" />
+      <BookStatusButton :status="status" :updating="updating ?? false" @change="emit('change', $event)"/>
     </div>
   </div>
 </template>
@@ -240,11 +247,17 @@ function cancelEditingProgress() {
   margin-top: var(--spacing-xs);
 }
 
-.bar-row {
+.progress-display {
   display: flex;
-  align-items: center;
+  align-items: baseline;
+  justify-content: space-between;
   gap: var(--spacing-md);
-  flex-wrap: wrap;
+  font-size: 0.9rem;
+}
+
+/* Space the separator dot away from both the page and the derived percentage. */
+.sep {
+  margin: 0 var(--spacing-sm);
 }
 
 .progress-line,

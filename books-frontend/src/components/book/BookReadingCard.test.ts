@@ -46,15 +46,16 @@ describe('BookReadingCard', () => {
     expect(wrapper.text()).not.toContain('Page')
   })
 
-  it('renders the progress bar percentage from current page and page count', () => {
+  it('shows the page alongside a percentage derived from page count', () => {
     const wrapper = mount(BookReadingCard, {props: makeProps({currentPage: 50, pageCount: 200})})
+    expect(wrapper.text()).toContain('Page 50 of 200')
     expect(wrapper.text()).toContain('25%')
-    expect(wrapper.find('.bar-fill').attributes('style')).toContain('width: 25%')
   })
 
-  it('shows a dash for the percentage when page count is missing', () => {
+  it('omits the percentage when page count is missing', () => {
     const wrapper = mount(BookReadingCard, {props: makeProps({currentPage: 50, pageCount: null})})
-    expect(wrapper.find('.bar-percent').text()).toBe('—')
+    expect(wrapper.text()).toContain('Page 50')
+    expect(wrapper.text()).not.toContain('%')
   })
 
   it('hides progress input until Update is clicked', async () => {
