@@ -8,11 +8,11 @@ import BookSearchModal from '../components/modals/BookSearchModal.vue'
 import BookStatusPill from '../components/book/BookStatusPill.vue'
 import BookReadingCard from '../components/book/BookReadingCard.vue'
 import NavigationBar from '../components/ui/NavigationBar.vue'
+import CollapsibleText from '../components/ui/CollapsibleText.vue'
 import EventTimeline from '../components/book/EventTimeline.vue'
 import {ReadingStatus, type Book, type BookEvent} from '../api/types'
 import {formatShortDate} from '../utils/date'
 import {useCachedQuery} from '../composables/useCachedQuery'
-import {useClampToggle} from '../composables/useClampToggle'
 import {useAddBook} from '../composables/useAddBook'
 import {cacheKeys} from '../cache/keys'
 import {cacheDel, cacheInvalidateByPrefix} from '../cache/store'
@@ -53,13 +53,6 @@ const error = computed(() => {
 const updatingStatus = ref(false)
 const notesSaving = ref(false)
 const progressSaving = ref(false)
-const descriptionRef = ref<HTMLElement | null>(null)
-const {
-  expanded: descriptionExpanded,
-  showToggle: showDescriptionToggle,
-  maxHeight: descriptionMaxHeight,
-  toggle: toggleDescription,
-} = useClampToggle(descriptionRef, {source: computed(() => book.value?.description)})
 
 async function loadBook() {
   await cacheDel(cacheKeys.book(bookId.value))
@@ -198,24 +191,7 @@ const {showSearchModal, openSearch, closeSearch, selectBook} = useAddBook(() =>
         <div class="book-body">
           <div v-if="book.description" class="book-description">
             <h2>Description</h2>
-            <p
-              ref="descriptionRef"
-              class="description-text"
-              :class="{
-                clamped: showDescriptionToggle && !descriptionExpanded,
-              }"
-              :style="{maxHeight: descriptionMaxHeight}"
-            >
-              {{ book.description }}
-            </p>
-            <button
-              v-if="showDescriptionToggle"
-              type="button"
-              class="description-toggle"
-              @click="toggleDescription"
-            >
-              {{ descriptionExpanded ? 'Read less' : 'Read more...' }}
-            </button>
+            <CollapsibleText :text="book.description" />
           </div>
 
           <BookNotes
@@ -391,73 +367,11 @@ const {showSearchModal, openSearch, closeSearch, selectBook} = useAddBook(() =>
 
 .book-description {
   margin-bottom: var(--spacing-xl);
-  position: relative;
 }
 
 .book-description h2 {
   margin: 0 0 var(--spacing-md) 0;
   font-size: 1.25rem;
-}
-
-.book-description .description-text {
-  line-height: 1.6;
-  color: var(--color-text);
-  white-space: pre-wrap;
-  word-break: break-word;
-  overflow-wrap: anywhere;
-  overflow: hidden;
-  position: relative;
-  max-height: none;
-  transition: max-height 240ms ease;
-  will-change: max-height;
-}
-
-.book-description .description-text.clamped {
-  opacity: 1;
-}
-
-.book-description .description-text.clamped::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 1.8rem;
-  pointer-events: none;
-  background: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0),
-    var(--color-bg)
-  );
-}
-
-@supports (mask-image: linear-gradient(#000, transparent)) {
-  .book-description .description-text.clamped {
-    mask-image: linear-gradient(180deg, #000 0%, #000 70%, transparent 100%);
-    -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 70%, transparent 100%);
-    mask-size: 100% 100%;
-    -webkit-mask-size: 100% 100%;
-    mask-repeat: no-repeat;
-    -webkit-mask-repeat: no-repeat;
-  }
-
-  .book-description .description-text.clamped::after {
-    content: none;
-  }
-}
-
-.description-toggle {
-  margin-top: var(--spacing-xs);
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--color-primary);
-  font-size: 0.95rem;
-  cursor: pointer;
-}
-
-.description-toggle:hover {
-  text-decoration: underline;
 }
 
 .book-metadata h2 {
