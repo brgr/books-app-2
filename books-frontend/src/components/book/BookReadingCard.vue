@@ -30,6 +30,13 @@ const hasPercent = computed(
   () => props.currentPercent !== null && props.currentPercent !== undefined,
 )
 
+// While actively reading, show the start date beside the pill ("since …")
+// rather than in the bottom dates row, so the status and its timeline read
+// together. Finished books keep their dates in the bottom row.
+const showStartedInHeader = computed(
+  () => props.status === ReadingStatus.STARTED && !!props.startedAt,
+)
+
 // The unit the user last tracked in, so re-opening the editor defaults to it.
 const lastUnit = computed<ProgressUnit>(() => (hasPercent.value ? 'percent' : 'page'))
 
@@ -97,7 +104,10 @@ function cancelEditingProgress() {
 
 <template>
   <div class="status-card" data-test="status-card">
-    <BookStatusPill :status="status" :updating="updating ?? false" @change="emit('change', $event)" />
+    <div class="status-header">
+      <BookStatusPill :status="status" :updating="updating ?? false" @change="emit('change', $event)" />
+      <span v-if="showStartedInHeader" class="since">since {{ formatShortDate(startedAt ?? null) }}</span>
+    </div>
 
     <BookProgressBar
       :current-page="currentPage"
@@ -182,8 +192,8 @@ function cancelEditingProgress() {
       </template>
     </div>
 
-    <div v-if="startedAt || finishedAt" class="dates">
-      <span v-if="startedAt">Started {{ formatShortDate(startedAt) }}</span>
+    <div v-if="(startedAt && !showStartedInHeader) || finishedAt" class="dates">
+      <span v-if="startedAt && !showStartedInHeader">Started {{ formatShortDate(startedAt) }}</span>
       <span v-if="finishedAt">· Finished {{ formatShortDate(finishedAt) }}</span>
     </div>
   </div>
@@ -201,6 +211,18 @@ function cancelEditingProgress() {
   gap: var(--spacing-md);
   width: fit-content;
   max-width: 100%;
+}
+
+.status-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.since {
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
 }
 
 .progress-line,

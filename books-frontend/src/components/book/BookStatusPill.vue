@@ -19,7 +19,7 @@ const currentStatus = computed(() => props.status ?? ReadingStatus.WANT_TO_READ)
 type Option = {value: ReadingStatus; label: string}
 const options: readonly [Option, Option, Option] = [
   {value: ReadingStatus.WANT_TO_READ, label: 'Want to read'},
-  {value: ReadingStatus.STARTED, label: 'Reading'},
+  {value: ReadingStatus.STARTED, label: 'Currently Reading'},
   {value: ReadingStatus.FINISHED, label: 'Finished'},
 ]
 

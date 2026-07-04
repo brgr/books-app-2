@@ -117,8 +117,8 @@ describe('BookReadingCard', () => {
     const wrapper = mount(BookReadingCard, {
       props: makeProps({startedAt: '2026-01-02', finishedAt: '2026-02-03'}),
     })
+    expect(wrapper.text()).toContain('since')
     expect(wrapper.find('.dates').exists()).toBe(true)
-    expect(wrapper.text()).toContain('Started')
     expect(wrapper.text()).toContain('Finished')
   })
 
