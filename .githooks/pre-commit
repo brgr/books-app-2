@@ -32,3 +32,9 @@ echo "Running frontend typecheck..."
   cd "$repo_root/books-frontend"
   npm run typecheck
 )
+
+echo "Running frontend tests (vitest)..."
+(
+  cd "$repo_root/books-frontend"
+  npm run test:run
+)
