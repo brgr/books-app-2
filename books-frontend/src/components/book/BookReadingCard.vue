@@ -109,14 +109,25 @@ function cancelEditingProgress() {
       <span v-if="showStartedInHeader" class="since">since {{ formatShortDate(startedAt ?? null) }}</span>
     </div>
 
-    <BookProgressBar
-      :current-page="currentPage"
-      :current-percent="currentPercent"
-      :page-count="pageCount"
-    />
+    <div class="bar-row">
+      <BookProgressBar
+        :current-page="currentPage"
+        :current-percent="currentPercent"
+        :page-count="pageCount"
+      />
+      <button
+        v-if="!editingProgress"
+        class="btn-link"
+        type="button"
+        data-test="edit-progress"
+        @click="startEditingProgress"
+      >
+        Update
+      </button>
+    </div>
 
-    <div class="progress-line">
-      <span v-if="editingProgress" class="progress-edit">
+    <div v-if="editingProgress" class="progress-line">
+      <span class="progress-edit">
         <span class="unit-toggle" role="group" aria-label="Progress unit">
           <button
             type="button"
@@ -175,21 +186,12 @@ function cancelEditingProgress() {
           Cancel
         </button>
       </span>
-      <template v-else>
-        <span class="muted">
-          <template v-if="hasPercent">{{ currentPercent }}%</template>
-          <template v-else-if="hasPage">Page {{ currentPage }}<span v-if="pageCount"> of {{ pageCount }}</span></template>
-          <template v-else>No progress yet</template>
-        </span>
-        <button
-          class="btn-link"
-          type="button"
-          data-test="edit-progress"
-          @click="startEditingProgress"
-        >
-          Update
-        </button>
-      </template>
+    </div>
+    <div v-else-if="hasPage || !hasPercent" class="progress-line">
+      <span class="muted">
+        <template v-if="hasPage">Page {{ currentPage }}<span v-if="pageCount"> of {{ pageCount }}</span></template>
+        <template v-else>No progress yet</template>
+      </span>
     </div>
 
     <div v-if="(startedAt && !showStartedInHeader) || finishedAt" class="dates">
@@ -238,6 +240,13 @@ function cancelEditingProgress() {
   margin-top: var(--spacing-xs);
 }
 
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
 .progress-line,
 .progress-edit {
   display: flex;
@@ -245,10 +254,6 @@ function cancelEditingProgress() {
   gap: var(--spacing-md);
   flex-wrap: wrap;
   font-size: 0.9rem;
-}
-
-.progress-line > .btn-link {
-  margin-left: auto;
 }
 
 .dates {
