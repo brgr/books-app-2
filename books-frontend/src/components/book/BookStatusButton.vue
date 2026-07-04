@@ -48,6 +48,7 @@ function activate() {
 .status-button {
   display: inline-flex;
   align-items: center;
+  align-self: flex-start;
   padding: 8px 16px;
   border-radius: 999px;
   border: 1px solid var(--color-primary);
