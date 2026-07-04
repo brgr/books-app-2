@@ -5,7 +5,7 @@ import {getBook, setReadingStatus, getBookEvents, addBookProgress} from '../api/
 import {getMediaUrl} from '../api/client'
 import BookNotes from '../components/book/BookNotes.vue'
 import BookSearchModal from '../components/modals/BookSearchModal.vue'
-import BookStatusPill from '../components/book/BookStatusPill.vue'
+import BookStatusButton from '../components/book/BookStatusButton.vue'
 import BookReadingCard from '../components/book/BookReadingCard.vue'
 import NavigationBar from '../components/ui/NavigationBar.vue'
 import CollapsibleText from '../components/ui/CollapsibleText.vue'
@@ -157,7 +157,7 @@ const {showSearchModal, openSearch, closeSearch, selectBook} = useAddBook(() =>
             <p class="book-author">by {{ book.author }}</p>
 
             <div class="book-status-section">
-              <BookStatusPill
+              <BookStatusButton
                 v-if="!canUpdateProgress"
                 :status="book.user_status?.status ?? null"
                 :updating="updatingStatus"

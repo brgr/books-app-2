@@ -107,10 +107,15 @@ describe('BookReadingCard', () => {
     expect(wrapper.find('[data-test="progress-input"]').exists()).toBe(false)
   })
 
-  it('re-emits "change" from the status pill', () => {
+  it('re-emits "change" from the status button', () => {
     const wrapper = mount(BookReadingCard, {props: makeProps()})
-    wrapper.findComponent({name: 'BookStatusPill'}).vm.$emit('change', ReadingStatus.FINISHED)
+    wrapper.findComponent({name: 'BookStatusButton'}).vm.$emit('change', ReadingStatus.FINISHED)
     expect(wrapper.emitted('change')?.[0]?.[0]).toBe(ReadingStatus.FINISHED)
+  })
+
+  it('shows a "Finish" action while reading', () => {
+    const wrapper = mount(BookReadingCard, {props: makeProps({status: ReadingStatus.STARTED})})
+    expect(wrapper.find('[data-test="status-button"]').text()).toBe('Finish')
   })
 
   it('shows started and finished dates when provided', () => {

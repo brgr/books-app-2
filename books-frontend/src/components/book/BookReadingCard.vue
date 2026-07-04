@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {computed, ref, watch} from 'vue'
-import BookStatusPill from './BookStatusPill.vue'
+import BookStatusButton from './BookStatusButton.vue'
 import BookProgressBar from './BookProgressBar.vue'
 import {ReadingStatus, type BookProgressUpdate} from '../../api/types'
 import {formatShortDate} from '../../utils/date'
@@ -105,7 +105,7 @@ function cancelEditingProgress() {
 <template>
   <div class="status-card" data-test="status-card">
     <div class="status-header">
-      <BookStatusPill :status="status" :updating="updating ?? false" @change="emit('change', $event)" />
+      <span class="status-label">Currently Reading</span>
       <span v-if="showStartedInHeader" class="since">since {{ formatShortDate(startedAt ?? null) }}</span>
     </div>
 
@@ -196,6 +196,10 @@ function cancelEditingProgress() {
       <span v-if="startedAt && !showStartedInHeader">Started {{ formatShortDate(startedAt) }}</span>
       <span v-if="finishedAt">· Finished {{ formatShortDate(finishedAt) }}</span>
     </div>
+
+    <div class="status-actions">
+      <BookStatusButton :status="status" :updating="updating ?? false" @change="emit('change', $event)" />
+    </div>
   </div>
 </template>
 
@@ -220,9 +224,18 @@ function cancelEditingProgress() {
   flex-wrap: wrap;
 }
 
+.status-label {
+  font-weight: 600;
+}
+
 .since {
   color: var(--color-text-secondary);
   font-size: 0.8rem;
+}
+
+.status-actions {
+  display: flex;
+  margin-top: var(--spacing-xs);
 }
 
 .progress-line,
