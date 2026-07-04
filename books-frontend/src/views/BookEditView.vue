@@ -1,87 +1,88 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getBook, updateBook, deleteBook } from '../api/books'
-import type { Book, BookUpdate } from '../api/types'
-import NavigationBar from '../components/ui/NavigationBar.vue'
-import CoverPickerModal from '../components/modals/CoverPickerModal.vue'
-import CoverUpgradeModal from '../components/modals/CoverUpgradeModal.vue'
-import { useCachedQuery } from '../composables/useCachedQuery'
-import { cacheKeys } from '../cache/keys'
-import { cacheDel, cacheInvalidateByPrefix } from '../cache/store'
+import { ref, computed, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { getBook, updateBook, deleteBook } from "../api/books";
+import type { Book, BookUpdate } from "../api/types";
+import NavigationBar from "../components/ui/NavigationBar.vue";
+import CoverPickerModal from "../components/modals/CoverPickerModal.vue";
+import CoverUpgradeModal from "../components/modals/CoverUpgradeModal.vue";
+import { useCachedQuery } from "../composables/useCachedQuery";
+import { cacheKeys } from "../cache/keys";
+import { cacheDel, cacheInvalidateByPrefix } from "../cache/store";
 
-const route = useRoute()
-const router = useRouter()
+const route = useRoute();
+const router = useRouter();
 
 const bookId = computed(() => {
-  const id = parseInt(route.params.id as string)
-  return isNaN(id) ? 0 : id
-})
+  const id = parseInt(route.params.id as string);
+  return isNaN(id) ? 0 : id;
+});
 
-const {
-  data: book,
-  error: bookError,
-} = useCachedQuery<Book>(
-  computed(() => bookId.value ? cacheKeys.book(bookId.value) : ''),
+const { data: book, error: bookError } = useCachedQuery<Book>(
+  computed(() => (bookId.value ? cacheKeys.book(bookId.value) : "")),
   () => getBook(bookId.value),
-  { enabled: computed(() => bookId.value > 0) }
-)
+  { enabled: computed(() => bookId.value > 0) },
+);
 
 const formData = ref({
-  title: '',
-  author: '',
-  isbn: '',
-  description: '',
-  published_date: '',
-  page_count: '',
-  cover_image_url: '',
-})
+  title: "",
+  author: "",
+  isbn: "",
+  description: "",
+  published_date: "",
+  page_count: "",
+  cover_image_url: "",
+});
 
-const loading = ref(false)
-const error = ref('')
-const showCoverPicker = ref(false)
-const showCoverUpgrade = ref(false)
+const loading = ref(false);
+const error = ref("");
+const showCoverPicker = ref(false);
+const showCoverUpgrade = ref(false);
 
 const canUpgradeCover = computed(() => {
-  const url = book.value?.cover_image_url
-  return !!url && !url.startsWith('http')
-})
+  const url = book.value?.cover_image_url;
+  return !!url && !url.startsWith("http");
+});
 
 const loadError = computed(() => {
-  const e = bookError.value
-  if (!e) return ''
-  if (e instanceof Error) return e.message
-  return 'Failed to load book.'
-})
+  const e = bookError.value;
+  if (!e) return "";
+  if (e instanceof Error) return e.message;
+  return "Failed to load book.";
+});
 
-watch(book, (b) => {
-  if (b) {
-    formData.value = {
-      title: b.title,
-      author: b.author,
-      isbn: b.isbn || '',
-      description: b.description || '',
-      published_date: (b.published_date ? b.published_date.split('T')[0] : '') || '',
-      page_count: b.page_count ? b.page_count.toString() : '',
-      cover_image_url: b.cover_image_url || '',
+watch(
+  book,
+  (b) => {
+    if (b) {
+      formData.value = {
+        title: b.title,
+        author: b.author,
+        isbn: b.isbn || "",
+        description: b.description || "",
+        published_date: (b.published_date ? b.published_date.split("T")[0] : "") || "",
+        page_count: b.page_count ? b.page_count.toString() : "",
+        cover_image_url: b.cover_image_url || "",
+      };
     }
-  }
-}, { immediate: true })
+  },
+  { immediate: true },
+);
 
 function handleCoverSelected(imageUrl: string) {
-  formData.value.cover_image_url = imageUrl
-  showCoverPicker.value = false
+  formData.value.cover_image_url = imageUrl;
+  showCoverPicker.value = false;
 }
 
 function handleUpgradeSelected(imageUrl: string) {
-  formData.value.cover_image_url = imageUrl
-  showCoverUpgrade.value = false
+  formData.value.cover_image_url = imageUrl;
+  showCoverUpgrade.value = false;
 }
 
 async function handleSubmit() {
-  if (!book.value) return
-  error.value = ''
-  loading.value = true
+  if (!book.value) return;
+  error.value = "";
+  loading.value = true;
 
   try {
     const bookData: BookUpdate = {
@@ -92,43 +93,43 @@ async function handleSubmit() {
       published_date: formData.value.published_date || undefined,
       page_count: formData.value.page_count ? parseInt(formData.value.page_count) : undefined,
       cover_image_url: formData.value.cover_image_url || undefined,
-    }
+    };
 
-    await updateBook(book.value.id, bookData)
-    await cacheDel(cacheKeys.book(book.value.id))
-    await cacheInvalidateByPrefix('lists:')
-    router.push({ name: 'book-detail', params: { id: book.value.id } })
+    await updateBook(book.value.id, bookData);
+    await cacheDel(cacheKeys.book(book.value.id));
+    await cacheInvalidateByPrefix("lists:");
+    router.push({ name: "book-detail", params: { id: book.value.id } });
   } catch (err: any) {
-    console.error('Failed to save book:', err)
-    error.value = err.response?.data?.detail || 'Failed to save book. Please try again.'
+    console.error("Failed to save book:", err);
+    error.value = err.response?.data?.detail || "Failed to save book. Please try again.";
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 function handleCancel() {
-  if (loading.value) return
+  if (loading.value) return;
   if (book.value) {
-    router.push({ name: 'book-detail', params: { id: book.value.id } })
+    router.push({ name: "book-detail", params: { id: book.value.id } });
   } else {
-    router.push({ name: 'books' })
+    router.push({ name: "books" });
   }
 }
 
 async function handleDelete() {
-  if (!book.value || loading.value) return
-  if (!confirm(`Are you sure you want to delete "${book.value.title}"?`)) return
+  if (!book.value || loading.value) return;
+  if (!confirm(`Are you sure you want to delete "${book.value.title}"?`)) return;
 
-  loading.value = true
+  loading.value = true;
   try {
-    await deleteBook(book.value.id)
-    await cacheInvalidateByPrefix(`books:${book.value.id}`)
-    await cacheInvalidateByPrefix('lists:')
-    router.push({ name: 'books' })
+    await deleteBook(book.value.id);
+    await cacheInvalidateByPrefix(`books:${book.value.id}`);
+    await cacheInvalidateByPrefix("lists:");
+    router.push({ name: "books" });
   } catch (err: any) {
-    console.error('Failed to delete book:', err)
-    error.value = 'Failed to delete book. Please try again.'
-    loading.value = false
+    console.error("Failed to delete book:", err);
+    error.value = "Failed to delete book. Please try again.";
+    loading.value = false;
   }
 }
 </script>
@@ -141,11 +142,7 @@ async function handleDelete() {
       <div class="breadcrumb">
         <router-link to="/" class="breadcrumb-link">Books</router-link>
         <span class="breadcrumb-separator">/</span>
-        <router-link
-          v-if="book"
-          :to="{ name: 'book-detail', params: { id: book.id } }"
-          class="breadcrumb-link"
-        >
+        <router-link v-if="book" :to="{ name: 'book-detail', params: { id: book.id } }" class="breadcrumb-link">
           {{ book.title }}
         </router-link>
         <span v-else class="breadcrumb-current">Book</span>
@@ -157,9 +154,7 @@ async function handleDelete() {
         {{ loadError }}
       </div>
 
-      <div v-else-if="!book" class="loading">
-        Loading book...
-      </div>
+      <div v-else-if="!book" class="loading">Loading book...</div>
 
       <div v-else class="edit-content">
         <h1>Edit Book</h1>
@@ -196,13 +191,7 @@ async function handleDelete() {
           <div class="form-row">
             <div class="form-group">
               <label for="isbn">ISBN</label>
-              <input
-                id="isbn"
-                v-model="formData.isbn"
-                type="text"
-                placeholder="Enter ISBN"
-                :disabled="loading"
-              />
+              <input id="isbn" v-model="formData.isbn" type="text" placeholder="Enter ISBN" :disabled="loading" />
             </div>
 
             <div class="form-group">
@@ -220,12 +209,7 @@ async function handleDelete() {
 
           <div class="form-group">
             <label for="published_date">Published Date</label>
-            <input
-              id="published_date"
-              v-model="formData.published_date"
-              type="date"
-              :disabled="loading"
-            />
+            <input id="published_date" v-model="formData.published_date" type="date" :disabled="loading" />
           </div>
 
           <div class="form-group">
@@ -243,11 +227,7 @@ async function handleDelete() {
             <label>Cover</label>
             <div class="cover-row">
               <div class="cover-preview" :class="{ empty: !formData.cover_image_url }">
-                <img
-                  v-if="formData.cover_image_url"
-                  :src="formData.cover_image_url"
-                  alt="Cover preview"
-                />
+                <img v-if="formData.cover_image_url" :src="formData.cover_image_url" alt="Cover preview" />
                 <span v-else>No cover</span>
               </div>
               <div class="cover-actions">
@@ -258,15 +238,8 @@ async function handleDelete() {
                   :disabled="loading"
                 />
                 <div class="cover-buttons">
-                  <button type="button" @click="showCoverPicker = true" :disabled="loading">
-                    Find cover
-                  </button>
-                  <button
-                    type="button"
-                    v-if="canUpgradeCover"
-                    @click="showCoverUpgrade = true"
-                    :disabled="loading"
-                  >
+                  <button type="button" @click="showCoverPicker = true" :disabled="loading">Find cover</button>
+                  <button type="button" v-if="canUpgradeCover" @click="showCoverUpgrade = true" :disabled="loading">
                     Upgrade cover
                   </button>
                   <button
@@ -287,11 +260,9 @@ async function handleDelete() {
             <button type="button" @click="handleDelete" :disabled="loading" class="btn-danger delete-action">
               Delete Book
             </button>
-            <button type="button" @click="handleCancel" :disabled="loading">
-              Cancel
-            </button>
+            <button type="button" @click="handleCancel" :disabled="loading">Cancel</button>
             <button type="submit" class="btn-primary" :disabled="loading">
-              {{ loading ? 'Saving...' : 'Save Book' }}
+              {{ loading ? "Saving..." : "Save Book" }}
             </button>
           </div>
         </form>

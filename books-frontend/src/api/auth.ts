@@ -1,31 +1,31 @@
-import { apiClient, isAuthenticated, setAuthenticated } from './client'
-import type { User } from './types'
+import { apiClient, isAuthenticated, setAuthenticated } from "./client";
+import type { User } from "./types";
 
-export { isAuthenticated }
+export { isAuthenticated };
 
 export async function getCurrentUser(): Promise<User> {
-  const response = await apiClient.get<User>('/users/me')
-  return response.data
+  const response = await apiClient.get<User>("/users/me");
+  return response.data;
 }
 
 export async function login(username: string, password: string): Promise<void> {
-  const payload = new URLSearchParams()
-  payload.append('username', username)
-  payload.append('password', password)
+  const payload = new URLSearchParams();
+  payload.append("username", username);
+  payload.append("password", password);
 
   // Server sets HttpOnly cookies on successful login
-  await apiClient.post('/token', payload, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  })
-  setAuthenticated(true)
+  await apiClient.post("/token", payload, {
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+  });
+  setAuthenticated(true);
 }
 
 export async function logout(): Promise<void> {
   try {
     // Server clears HttpOnly cookies
-    await apiClient.post('/auth/logout')
+    await apiClient.post("/auth/logout");
   } finally {
-    setAuthenticated(false)
+    setAuthenticated(false);
   }
 }
 
@@ -36,11 +36,11 @@ export async function checkAuthStatus(): Promise<boolean> {
    * Used on app startup to restore authentication state.
    */
   try {
-    await apiClient.get('/users/me')
-    setAuthenticated(true)
-    return true
+    await apiClient.get("/users/me");
+    setAuthenticated(true);
+    return true;
   } catch {
-    setAuthenticated(false)
-    return false
+    setAuthenticated(false);
+    return false;
   }
 }

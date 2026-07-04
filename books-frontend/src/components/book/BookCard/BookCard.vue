@@ -1,26 +1,26 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { type Book } from '../../../api/types'
-import { getMediaUrl } from '../../../api/client'
-import KebabButton from '../../ui/KebabButton.vue'
-import BookCardMeta from './BookCardMeta.vue'
-import BookCardStatus from './BookCardStatus.vue'
+import { computed } from "vue";
+import { type Book } from "../../../api/types";
+import { getMediaUrl } from "../../../api/client";
+import KebabButton from "../../ui/KebabButton.vue";
+import BookCardMeta from "./BookCardMeta.vue";
+import BookCardStatus from "./BookCardStatus.vue";
 
 const props = defineProps<{
-  book: Book
-}>()
+  book: Book;
+}>();
 
 const emit = defineEmits<{
-  (e: 'menu', payload: { bookId: number; x: number; y: number }): void
-}>()
+  (e: "menu", payload: { bookId: number; x: number; y: number }): void;
+}>();
 
 function openMenu(e: MouseEvent) {
-  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-  emit('menu', { bookId: props.book.id, x: rect.left, y: rect.bottom + 4 })
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+  emit("menu", { bookId: props.book.id, x: rect.left, y: rect.bottom + 4 });
 }
 
-const detailRoute = computed(() => ({ name: 'book-detail', params: { id: props.book.id } }))
-const coverUrl = computed(() => props.book.cover_thumbnail_url || props.book.cover_image_url)
+const detailRoute = computed(() => ({ name: "book-detail", params: { id: props.book.id } }));
+const coverUrl = computed(() => props.book.cover_thumbnail_url || props.book.cover_image_url);
 </script>
 
 <template>
@@ -28,15 +28,8 @@ const coverUrl = computed(() => props.book.cover_thumbnail_url || props.book.cov
     <KebabButton class="card-menu-button" aria-label="Book actions" @click="openMenu" />
     <div class="book-content">
       <router-link :to="detailRoute" class="book-cover-link">
-        <img
-          v-if="coverUrl"
-          :src="getMediaUrl(coverUrl)"
-          :alt="book.title"
-          class="book-cover book-cover-clickable"
-        />
-        <div class="book-cover-placeholder book-cover-clickable" v-else>
-          No Cover
-        </div>
+        <img v-if="coverUrl" :src="getMediaUrl(coverUrl)" :alt="book.title" class="book-cover book-cover-clickable" />
+        <div class="book-cover-placeholder book-cover-clickable" v-else>No Cover</div>
       </router-link>
 
       <div class="book-details">
@@ -123,7 +116,9 @@ const coverUrl = computed(() => props.book.cover_thumbnail_url || props.book.cov
 
 .book-cover-clickable {
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .book-cover-clickable:hover {

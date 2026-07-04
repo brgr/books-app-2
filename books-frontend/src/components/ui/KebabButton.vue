@@ -21,7 +21,9 @@
   border-radius: 2px;
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .kebab-button:hover,

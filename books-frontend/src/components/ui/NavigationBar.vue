@@ -1,29 +1,29 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { isAuthenticated, logout } from '../../api/auth'
+import { ref } from "vue";
+import { useRouter } from "vue-router";
+import { isAuthenticated, logout } from "../../api/auth";
 
 const emit = defineEmits<{
-  addBook: []
-}>()
+  addBook: [];
+}>();
 
-const router = useRouter()
-const showMenu = ref(isAuthenticated())
-const isMenuOpen = ref(false)
+const router = useRouter();
+const showMenu = ref(isAuthenticated());
+const isMenuOpen = ref(false);
 
 async function handleLogout() {
-  showMenu.value = false
-  isMenuOpen.value = false
-  await logout()
-  router.push('/login')
+  showMenu.value = false;
+  isMenuOpen.value = false;
+  await logout();
+  router.push("/login");
 }
 
 function toggleMenu() {
-  isMenuOpen.value = !isMenuOpen.value
+  isMenuOpen.value = !isMenuOpen.value;
 }
 
 function closeMenu() {
-  isMenuOpen.value = false
+  isMenuOpen.value = false;
 }
 </script>
 
@@ -32,7 +32,17 @@ function closeMenu() {
     <div class="navbar-content">
       <div class="navbar-left">
         <router-link to="/" class="navbar-brand">
-          <svg class="navbar-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg
+            class="navbar-icon"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
           </svg>
@@ -41,11 +51,15 @@ function closeMenu() {
       </div>
 
       <div class="navbar-right">
-        <button @click="emit('addBook')" class="btn-primary btn-add">
-          Add book
-        </button>
+        <button @click="emit('addBook')" class="btn-primary btn-add">Add book</button>
         <div v-if="showMenu" class="navbar-user">
-          <button class="menu-toggle" type="button" @click="toggleMenu" :aria-expanded="isMenuOpen" aria-label="Open user menu">
+          <button
+            class="menu-toggle"
+            type="button"
+            @click="toggleMenu"
+            :aria-expanded="isMenuOpen"
+            aria-label="Open user menu"
+          >
             <span></span>
             <span></span>
             <span></span>

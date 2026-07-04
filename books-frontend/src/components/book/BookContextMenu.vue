@@ -1,61 +1,57 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
 
 const props = defineProps<{
-  x: number
-  y: number
-}>()
+  x: number;
+  y: number;
+}>();
 
 const emit = defineEmits<{
-  (e: 'view'): void
-  (e: 'close'): void
-}>()
+  (e: "view"): void;
+  (e: "close"): void;
+}>();
 
-const menuEl = ref<HTMLElement | null>(null)
-const pos = ref({ top: props.y, left: props.x })
+const menuEl = ref<HTMLElement | null>(null);
+const pos = ref({ top: props.y, left: props.x });
 
 function clamp() {
-  const el = menuEl.value
-  if (!el) return
-  const rect = el.getBoundingClientRect()
-  const margin = 8
-  let left = props.x
-  let top = props.y
+  const el = menuEl.value;
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  const margin = 8;
+  let left = props.x;
+  let top = props.y;
   if (left + rect.width + margin > window.innerWidth) {
-    left = window.innerWidth - rect.width - margin
+    left = window.innerWidth - rect.width - margin;
   }
   if (top + rect.height + margin > window.innerHeight) {
-    top = window.innerHeight - rect.height - margin
+    top = window.innerHeight - rect.height - margin;
   }
-  pos.value = { top: Math.max(margin, top), left: Math.max(margin, left) }
+  pos.value = { top: Math.max(margin, top), left: Math.max(margin, left) };
 }
 
 function onKey(e: KeyboardEvent) {
-  if (e.key === 'Escape') emit('close')
+  if (e.key === "Escape") emit("close");
 }
 
 watch(
   () => [props.x, props.y],
-  () => nextTick(clamp)
-)
+  () => nextTick(clamp),
+);
 
 onMounted(() => {
-  nextTick(clamp)
-  document.addEventListener('keydown', onKey)
-})
+  nextTick(clamp);
+  document.addEventListener("keydown", onKey);
+});
 
 onBeforeUnmount(() => {
-  document.removeEventListener('keydown', onKey)
-})
+  document.removeEventListener("keydown", onKey);
+});
 </script>
 
 <template>
   <teleport to="body">
-    <div
-      class="ctx-backdrop"
-      @click="emit('close')"
-      @contextmenu.prevent="emit('close')"
-    >
+    <div class="ctx-backdrop" @click="emit('close')" @contextmenu.prevent="emit('close')">
       <div
         ref="menuEl"
         class="ctx-menu"
@@ -63,14 +59,7 @@ onBeforeUnmount(() => {
         :style="{ top: pos.top + 'px', left: pos.left + 'px' }"
         @click.stop
       >
-        <button
-          type="button"
-          class="ctx-item"
-          role="menuitem"
-          @click="emit('view')"
-        >
-          View Book
-        </button>
+        <button type="button" class="ctx-item" role="menuitem" @click="emit('view')">View Book</button>
       </div>
     </div>
   </teleport>

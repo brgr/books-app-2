@@ -1,66 +1,66 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { searchBookCovers } from '../../api/books'
-import type { CoverSearchResult } from '../../api/types'
+import { ref, watch } from "vue";
+import { searchBookCovers } from "../../api/books";
+import type { CoverSearchResult } from "../../api/types";
 
 const props = defineProps<{
-  initialTitle?: string
-  initialAuthor?: string
-  initialIsbn?: string
-}>()
+  initialTitle?: string;
+  initialAuthor?: string;
+  initialIsbn?: string;
+}>();
 
 const emit = defineEmits<{
-  close: []
-  select: [imageUrl: string]
-}>()
+  close: [];
+  select: [imageUrl: string];
+}>();
 
-const title = ref(props.initialTitle ?? '')
-const author = ref(props.initialAuthor ?? '')
-const isbn = ref(props.initialIsbn ?? '')
-const results = ref<CoverSearchResult[]>([])
-const loading = ref(false)
-const error = ref('')
-const hasSearched = ref(false)
+const title = ref(props.initialTitle ?? "");
+const author = ref(props.initialAuthor ?? "");
+const isbn = ref(props.initialIsbn ?? "");
+const results = ref<CoverSearchResult[]>([]);
+const loading = ref(false);
+const error = ref("");
+const hasSearched = ref(false);
 
 async function handleSearch() {
   if (!title.value.trim() && !author.value.trim() && !isbn.value.trim()) {
-    error.value = 'Enter a title, author, or ISBN'
-    return
+    error.value = "Enter a title, author, or ISBN";
+    return;
   }
-  error.value = ''
-  loading.value = true
-  hasSearched.value = true
+  error.value = "";
+  loading.value = true;
+  hasSearched.value = true;
   try {
     results.value = await searchBookCovers({
       title: title.value.trim() || undefined,
       author: author.value.trim() || undefined,
       isbn: isbn.value.trim() || undefined,
-    })
+    });
   } catch (err: any) {
-    console.error('Cover search failed:', err)
-    error.value = err.response?.data?.detail || 'Failed to search covers.'
+    console.error("Cover search failed:", err);
+    error.value = err.response?.data?.detail || "Failed to search covers.";
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 function handleSelect(result: CoverSearchResult) {
-  emit('select', result.image_url)
+  emit("select", result.image_url);
 }
 
 function handleClose() {
-  emit('close')
+  emit("close");
 }
 
 watch(
   () => [props.initialTitle, props.initialAuthor, props.initialIsbn],
   () => {
     if (!hasSearched.value && (props.initialTitle || props.initialAuthor || props.initialIsbn)) {
-      handleSearch()
+      handleSearch();
     }
   },
   { immediate: true },
-)
+);
 </script>
 
 <template>
@@ -75,9 +75,15 @@ watch(
         <div class="search-fields">
           <input v-model="title" type="text" placeholder="Title" :disabled="loading" @keyup.enter="handleSearch" />
           <input v-model="author" type="text" placeholder="Author" :disabled="loading" @keyup.enter="handleSearch" />
-          <input v-model="isbn" type="text" placeholder="ISBN (overrides title/author)" :disabled="loading" @keyup.enter="handleSearch" />
+          <input
+            v-model="isbn"
+            type="text"
+            placeholder="ISBN (overrides title/author)"
+            :disabled="loading"
+            @keyup.enter="handleSearch"
+          />
           <button @click="handleSearch" class="btn-primary" :disabled="loading">
-            {{ loading ? 'Searching...' : 'Search' }}
+            {{ loading ? "Searching..." : "Search" }}
           </button>
         </div>
 
@@ -140,7 +146,9 @@ watch(
   border-radius: var(--border-radius);
   cursor: pointer;
   text-align: left;
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
 }
 
 .cover-tile:hover {

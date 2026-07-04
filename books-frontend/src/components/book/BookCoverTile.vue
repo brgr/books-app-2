@@ -1,110 +1,103 @@
 <script setup lang="ts">
-import {computed, onBeforeUnmount} from 'vue'
-import {ReadingStatus, type Book} from '../../api/types'
-import {getMediaUrl} from '../../api/client'
+import { computed, onBeforeUnmount } from "vue";
+import { ReadingStatus, type Book } from "../../api/types";
+import { getMediaUrl } from "../../api/client";
 
 const props = withDefaults(
   defineProps<{
-    book: Book
-    showProgress?: boolean
+    book: Book;
+    showProgress?: boolean;
   }>(),
-  {showProgress: false}
-)
+  { showProgress: false },
+);
 
 const emit = defineEmits<{
-  (e: 'click', bookId: number): void
-  (e: 'menu', payload: { bookId: number; x: number; y: number }): void
-}>()
+  (e: "click", bookId: number): void;
+  (e: "menu", payload: { bookId: number; x: number; y: number }): void;
+}>();
 
-const LONG_PRESS_MS = 500
-const MOVE_THRESHOLD = 10
-let pressTimer: ReturnType<typeof setTimeout> | null = null
-let longPressed = false
-let startX = 0
-let startY = 0
+const LONG_PRESS_MS = 500;
+const MOVE_THRESHOLD = 10;
+let pressTimer: ReturnType<typeof setTimeout> | null = null;
+let longPressed = false;
+let startX = 0;
+let startY = 0;
 
 function clearPressTimer() {
   if (pressTimer !== null) {
-    clearTimeout(pressTimer)
-    pressTimer = null
+    clearTimeout(pressTimer);
+    pressTimer = null;
   }
 }
 
 function onContextMenu(e: MouseEvent) {
-  e.preventDefault()
-  emit('menu', { bookId: props.book.id, x: e.clientX, y: e.clientY })
+  e.preventDefault();
+  emit("menu", { bookId: props.book.id, x: e.clientX, y: e.clientY });
 }
 
 function onTouchStart(e: TouchEvent) {
-  longPressed = false
-  const touch = e.touches[0]
-  if (!touch) return
-  startX = touch.clientX
-  startY = touch.clientY
-  clearPressTimer()
+  longPressed = false;
+  const touch = e.touches[0];
+  if (!touch) return;
+  startX = touch.clientX;
+  startY = touch.clientY;
+  clearPressTimer();
   pressTimer = setTimeout(() => {
-    longPressed = true
-    emit('menu', { bookId: props.book.id, x: startX, y: startY })
-  }, LONG_PRESS_MS)
+    longPressed = true;
+    emit("menu", { bookId: props.book.id, x: startX, y: startY });
+  }, LONG_PRESS_MS);
 }
 
 function onTouchMove(e: TouchEvent) {
-  const touch = e.touches[0]
-  if (!touch) return
-  if (
-    Math.abs(touch.clientX - startX) > MOVE_THRESHOLD ||
-    Math.abs(touch.clientY - startY) > MOVE_THRESHOLD
-  ) {
-    clearPressTimer()
+  const touch = e.touches[0];
+  if (!touch) return;
+  if (Math.abs(touch.clientX - startX) > MOVE_THRESHOLD || Math.abs(touch.clientY - startY) > MOVE_THRESHOLD) {
+    clearPressTimer();
   }
 }
 
 function onTouchEnd() {
-  clearPressTimer()
+  clearPressTimer();
 }
 
 function onClick() {
   if (longPressed) {
-    longPressed = false
-    return
+    longPressed = false;
+    return;
   }
-  emit('click', props.book.id)
+  emit("click", props.book.id);
 }
 
-onBeforeUnmount(clearPressTimer)
+onBeforeUnmount(clearPressTimer);
 
-const coverUrl = computed(() =>
-  getMediaUrl(props.book.cover_thumbnail_url || props.book.cover_image_url)
-)
+const coverUrl = computed(() => getMediaUrl(props.book.cover_thumbnail_url || props.book.cover_image_url));
 
 const hasPercent = computed(() => {
-  const value = props.book.user_status?.current_percent
-  return value !== null && value !== undefined
-})
+  const value = props.book.user_status?.current_percent;
+  return value !== null && value !== undefined;
+});
 
 const showBadge = computed(() => {
-  if (!props.showProgress) return false
-  const status = props.book.user_status
-  if (status?.status !== ReadingStatus.STARTED) return false
+  if (!props.showProgress) return false;
+  const status = props.book.user_status;
+  if (status?.status !== ReadingStatus.STARTED) return false;
   // A percent-tracked book carries progress even without a page count.
   return (
     hasPercent.value ||
-    (Boolean(props.book.page_count) &&
-      status?.current_page !== null &&
-      status?.current_page !== undefined)
-  )
-})
+    (Boolean(props.book.page_count) && status?.current_page !== null && status?.current_page !== undefined)
+  );
+});
 
 const progressPercent = computed(() => {
   if (hasPercent.value) {
-    return Math.min(100, Math.max(0, Math.round(props.book.user_status!.current_percent as number)))
+    return Math.min(100, Math.max(0, Math.round(props.book.user_status!.current_percent as number)));
   }
-  const pageCount = props.book.page_count ?? 0
-  const currentPage = props.book.user_status?.current_page ?? 0
-  if (pageCount <= 0) return 0
-  const percent = Math.round((currentPage / pageCount) * 100)
-  return Math.min(100, Math.max(0, percent))
-})
+  const pageCount = props.book.page_count ?? 0;
+  const currentPage = props.book.user_status?.current_page ?? 0;
+  if (pageCount <= 0) return 0;
+  const percent = Math.round((currentPage / pageCount) * 100);
+  return Math.min(100, Math.max(0, percent));
+});
 </script>
 
 <template>
@@ -119,9 +112,7 @@ const progressPercent = computed(() => {
       @touchend="onTouchEnd"
       @touchcancel="onTouchEnd"
     >
-      <span v-if="showBadge" class="grid-progress-badge">
-        {{ progressPercent }}%
-      </span>
+      <span v-if="showBadge" class="grid-progress-badge"> {{ progressPercent }}% </span>
       <img
         v-if="coverUrl"
         :src="coverUrl"
@@ -129,11 +120,7 @@ const progressPercent = computed(() => {
         :title="book.title + ' by ' + book.author"
         class="grid-cover"
       />
-      <div
-        v-else
-        class="grid-cover-placeholder"
-        :title="book.title + ' by ' + book.author"
-      >
+      <div v-else class="grid-cover-placeholder" :title="book.title + ' by ' + book.author">
         <div class="grid-no-cover-text">{{ book.title }}</div>
       </div>
     </button>
@@ -235,7 +222,9 @@ const progressPercent = computed(() => {
   letter-spacing: 0.02em;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
   pointer-events: none;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .grid-cover-link:hover .grid-progress-badge {

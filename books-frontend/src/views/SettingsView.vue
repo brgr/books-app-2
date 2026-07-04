@@ -1,76 +1,76 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import NavigationBar from '../components/ui/NavigationBar.vue'
-import { deleteAllBooks, getImports, importReadingList } from '../api/books'
-import type { ImportRecord } from '../api/types'
+import { onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
+import NavigationBar from "../components/ui/NavigationBar.vue";
+import { deleteAllBooks, getImports, importReadingList } from "../api/books";
+import type { ImportRecord } from "../api/types";
 
-const router = useRouter()
-const showConfirm = ref(false)
-const isDeleting = ref(false)
+const router = useRouter();
+const showConfirm = ref(false);
+const isDeleting = ref(false);
 
-const importFile = ref<File | null>(null)
-const isImporting = ref(false)
-const importResult = ref<{ imported: number } | null>(null)
-const importError = ref<string | null>(null)
+const importFile = ref<File | null>(null);
+const isImporting = ref(false);
+const importResult = ref<{ imported: number } | null>(null);
+const importError = ref<string | null>(null);
 
-const imports = ref<ImportRecord[]>([])
-const importsError = ref<string | null>(null)
+const imports = ref<ImportRecord[]>([]);
+const importsError = ref<string | null>(null);
 
 async function loadImports() {
-  importsError.value = null
+  importsError.value = null;
   try {
-    imports.value = await getImports()
+    imports.value = await getImports();
   } catch (e: any) {
-    importsError.value = e.response?.data?.detail ?? 'Failed to load imports'
+    importsError.value = e.response?.data?.detail ?? "Failed to load imports";
   }
 }
 
-onMounted(loadImports)
+onMounted(loadImports);
 
 function formatTimestamp(iso: string): string {
-  const d = new Date(iso)
-  return `${d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })} at ${d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`
+  const d = new Date(iso);
+  return `${d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })} at ${d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}`;
 }
 
 function handleDeleteAll() {
-  showConfirm.value = true
+  showConfirm.value = true;
 }
 
 function cancelDelete() {
-  showConfirm.value = false
+  showConfirm.value = false;
 }
 
 async function confirmDelete() {
-  isDeleting.value = true
+  isDeleting.value = true;
   try {
-    await deleteAllBooks()
-    router.push('/')
+    await deleteAllBooks();
+    router.push("/");
   } finally {
-    isDeleting.value = false
-    showConfirm.value = false
+    isDeleting.value = false;
+    showConfirm.value = false;
   }
 }
 
 function onFileSelected(event: Event) {
-  const input = event.target as HTMLInputElement
-  importFile.value = input.files?.[0] ?? null
-  importResult.value = null
-  importError.value = null
+  const input = event.target as HTMLInputElement;
+  importFile.value = input.files?.[0] ?? null;
+  importResult.value = null;
+  importError.value = null;
 }
 
 async function handleImport() {
-  if (!importFile.value) return
-  isImporting.value = true
-  importResult.value = null
-  importError.value = null
+  if (!importFile.value) return;
+  isImporting.value = true;
+  importResult.value = null;
+  importError.value = null;
   try {
-    importResult.value = await importReadingList(importFile.value)
-    await loadImports()
+    importResult.value = await importReadingList(importFile.value);
+    await loadImports();
   } catch (e: any) {
-    importError.value = e.response?.data?.detail ?? 'Import failed'
+    importError.value = e.response?.data?.detail ?? "Import failed";
   } finally {
-    isImporting.value = false
+    isImporting.value = false;
   }
 }
 </script>
@@ -91,12 +91,10 @@ async function handleImport() {
           <div class="import-controls">
             <input type="file" accept=".zip" @change="onFileSelected" :disabled="isImporting" />
             <button class="btn-primary" @click="handleImport" :disabled="!importFile || isImporting">
-              {{ isImporting ? 'Importing...' : 'Import' }}
+              {{ isImporting ? "Importing..." : "Import" }}
             </button>
           </div>
-          <p v-if="importResult" class="import-success">
-            Successfully imported {{ importResult.imported }} books.
-          </p>
+          <p v-if="importResult" class="import-success">Successfully imported {{ importResult.imported }} books.</p>
           <p v-if="importError" class="import-error">{{ importError }}</p>
         </div>
 
@@ -106,11 +104,13 @@ async function handleImport() {
           <ul v-if="imports.length > 0" class="imports-list">
             <li v-for="imp in imports" :key="imp.id" class="imports-item">
               <div class="imports-item-main">
-                <strong>{{ imp.filename ?? 'Unnamed import' }}</strong>
+                <strong>{{ imp.filename ?? "Unnamed import" }}</strong>
                 <span class="imports-item-date">{{ formatTimestamp(imp.occurred_at) }}</span>
               </div>
               <div class="imports-item-counts text-muted">
-                {{ imp.imported_count }} imported<span v-if="imp.skipped_count > 0">, {{ imp.skipped_count }} skipped</span>
+                {{ imp.imported_count }} imported<span v-if="imp.skipped_count > 0"
+                  >, {{ imp.skipped_count }} skipped</span
+                >
               </div>
             </li>
           </ul>
@@ -138,12 +138,14 @@ async function handleImport() {
             <h3>Are you sure?</h3>
           </div>
           <div class="modal-body">
-            <p>This will permanently delete <strong>all books</strong> from your library. This action cannot be undone.</p>
+            <p>
+              This will permanently delete <strong>all books</strong> from your library. This action cannot be undone.
+            </p>
           </div>
           <div class="modal-footer">
             <button @click="cancelDelete" :disabled="isDeleting">Cancel</button>
             <button class="btn-danger" @click="confirmDelete" :disabled="isDeleting">
-              {{ isDeleting ? 'Deleting...' : 'Delete All' }}
+              {{ isDeleting ? "Deleting..." : "Delete All" }}
             </button>
           </div>
         </div>

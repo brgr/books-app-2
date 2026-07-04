@@ -5,11 +5,13 @@ A Vue 3 frontend for managing your book collection.
 ## Setup
 
 1. Install dependencies:
+
    ```bash
    npm install
    ```
 
 2. Create a `.env` file (copy from `.env.example`):
+
    ```bash
    cp .env.example .env
    ```

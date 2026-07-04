@@ -1,46 +1,36 @@
 <script setup lang="ts">
-import {computed, ref, toRef} from 'vue'
-import {useClampToggle} from '../../composables/useClampToggle'
+import { computed, ref, toRef } from "vue";
+import { useClampToggle } from "../../composables/useClampToggle";
 
 const props = withDefaults(
   defineProps<{
-    text: string
-    lines?: number
-    moreLabel?: string
-    lessLabel?: string
+    text: string;
+    lines?: number;
+    moreLabel?: string;
+    lessLabel?: string;
   }>(),
   {
     lines: 3,
-    moreLabel: 'Read more...',
-    lessLabel: 'Read less',
+    moreLabel: "Read more...",
+    lessLabel: "Read less",
   },
-)
+);
 
-const textRef = ref<HTMLElement | null>(null)
-const {expanded, showToggle, maxHeight, toggle} = useClampToggle(textRef, {
+const textRef = ref<HTMLElement | null>(null);
+const { expanded, showToggle, maxHeight, toggle } = useClampToggle(textRef, {
   lines: props.lines,
-  source: toRef(props, 'text'),
-})
+  source: toRef(props, "text"),
+});
 
-const clamped = computed(() => showToggle.value && !expanded.value)
+const clamped = computed(() => showToggle.value && !expanded.value);
 </script>
 
 <template>
   <div class="collapsible-text">
-    <p
-      ref="textRef"
-      class="collapsible-text__body"
-      :class="{clamped}"
-      :style="{maxHeight}"
-    >
+    <p ref="textRef" class="collapsible-text__body" :class="{ clamped }" :style="{ maxHeight }">
       {{ text }}
     </p>
-    <button
-      v-if="showToggle"
-      type="button"
-      class="collapsible-text__toggle"
-      @click="toggle"
-    >
+    <button v-if="showToggle" type="button" class="collapsible-text__toggle" @click="toggle">
       {{ expanded ? lessLabel : moreLabel }}
     </button>
   </div>
@@ -69,18 +59,14 @@ const clamped = computed(() => showToggle.value && !expanded.value)
 }
 
 .collapsible-text__body.clamped::after {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
   height: 1.8rem;
   pointer-events: none;
-  background: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0),
-    var(--color-bg)
-  );
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0), var(--color-bg));
 }
 
 @supports (mask-image: linear-gradient(#000, transparent)) {

@@ -1,16 +1,16 @@
 const DATE_FORMATTER = new Intl.DateTimeFormat(undefined, {
-  year: 'numeric',
-  month: 'short',
-  day: 'numeric',
-})
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+});
 
 export function formatShortDate(dateStr: string | null): string {
-  if (!dateStr) return 'N/A'
+  if (!dateStr) return "N/A";
 
-  const parsedDate = new Date(dateStr)
+  const parsedDate = new Date(dateStr);
   if (Number.isNaN(parsedDate.getTime())) {
-    return dateStr
+    return dateStr;
   }
 
-  return DATE_FORMATTER.format(parsedDate)
+  return DATE_FORMATTER.format(parsedDate);
 }

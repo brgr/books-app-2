@@ -1,80 +1,80 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
-import { startCoverUpgradeSearch, getCoverUpgradeSearch } from '../../api/books'
-import type { CoverUpgradeCandidate } from '../../api/types'
-import { getMediaUrl } from '../../api/client'
+import { ref, onMounted, onBeforeUnmount } from "vue";
+import { startCoverUpgradeSearch, getCoverUpgradeSearch } from "../../api/books";
+import type { CoverUpgradeCandidate } from "../../api/types";
+import { getMediaUrl } from "../../api/client";
 
 const props = defineProps<{
-  bookId: number
-}>()
+  bookId: number;
+}>();
 
 const emit = defineEmits<{
-  close: []
-  select: [imageUrl: string]
-}>()
+  close: [];
+  select: [imageUrl: string];
+}>();
 
-const status = ref<'starting' | 'running' | 'done' | 'failed' | 'empty'>('starting')
-const results = ref<CoverUpgradeCandidate[]>([])
-const errorMsg = ref('')
+const status = ref<"starting" | "running" | "done" | "failed" | "empty">("starting");
+const results = ref<CoverUpgradeCandidate[]>([]);
+const errorMsg = ref("");
 
-let jobId: string | null = null
-let pollTimer: number | null = null
-let cancelled = false
+let jobId: string | null = null;
+let pollTimer: number | null = null;
+let cancelled = false;
 
-const POLL_INTERVAL_MS = 1500
+const POLL_INTERVAL_MS = 1500;
 
 async function poll() {
-  if (cancelled || !jobId) return
+  if (cancelled || !jobId) return;
   try {
-    const job = await getCoverUpgradeSearch(props.bookId, jobId)
-    if (cancelled) return
-    if (job.status === 'done') {
-      results.value = job.results
-      status.value = job.results.length > 0 ? 'done' : 'empty'
-      return
+    const job = await getCoverUpgradeSearch(props.bookId, jobId);
+    if (cancelled) return;
+    if (job.status === "done") {
+      results.value = job.results;
+      status.value = job.results.length > 0 ? "done" : "empty";
+      return;
     }
-    if (job.status === 'failed') {
-      status.value = 'failed'
-      errorMsg.value = job.error || 'Upgrade search failed.'
-      return
+    if (job.status === "failed") {
+      status.value = "failed";
+      errorMsg.value = job.error || "Upgrade search failed.";
+      return;
     }
-    pollTimer = window.setTimeout(poll, POLL_INTERVAL_MS)
+    pollTimer = window.setTimeout(poll, POLL_INTERVAL_MS);
   } catch (err: any) {
-    if (cancelled) return
-    console.error('Cover upgrade poll failed:', err)
-    status.value = 'failed'
-    errorMsg.value = err.response?.data?.detail || 'Failed to check upgrade job.'
+    if (cancelled) return;
+    console.error("Cover upgrade poll failed:", err);
+    status.value = "failed";
+    errorMsg.value = err.response?.data?.detail || "Failed to check upgrade job.";
   }
 }
 
 onMounted(async () => {
   try {
-    const job = await startCoverUpgradeSearch(props.bookId)
-    if (cancelled) return
-    jobId = job.job_id
-    status.value = 'running'
-    pollTimer = window.setTimeout(poll, POLL_INTERVAL_MS)
+    const job = await startCoverUpgradeSearch(props.bookId);
+    if (cancelled) return;
+    jobId = job.job_id;
+    status.value = "running";
+    pollTimer = window.setTimeout(poll, POLL_INTERVAL_MS);
   } catch (err: any) {
-    console.error('Failed to start cover upgrade:', err)
-    status.value = 'failed'
-    errorMsg.value = err.response?.data?.detail || 'Failed to start upgrade search.'
+    console.error("Failed to start cover upgrade:", err);
+    status.value = "failed";
+    errorMsg.value = err.response?.data?.detail || "Failed to start upgrade search.";
   }
-})
+});
 
 onBeforeUnmount(() => {
-  cancelled = true
+  cancelled = true;
   if (pollTimer !== null) {
-    clearTimeout(pollTimer)
-    pollTimer = null
+    clearTimeout(pollTimer);
+    pollTimer = null;
   }
-})
+});
 
 function handleSelect(c: CoverUpgradeCandidate) {
-  emit('select', c.image_url)
+  emit("select", c.image_url);
 }
 
 function handleClose() {
-  emit('close')
+  emit("close");
 }
 </script>
 
@@ -140,7 +140,9 @@ function handleClose() {
   border-radius: var(--border-radius);
   cursor: pointer;
   text-align: left;
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
 }
 
 .cover-tile:hover {

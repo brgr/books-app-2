@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { type Book } from '../../../api/types'
-import { formatShortDate } from '../../../utils/date'
-import { getStatusColor, getStatusLabel } from '../../../book/status'
+import { computed } from "vue";
+import { type Book } from "../../../api/types";
+import { formatShortDate } from "../../../utils/date";
+import { getStatusColor, getStatusLabel } from "../../../book/status";
 
 const props = defineProps<{
-  book: Book
-}>()
+  book: Book;
+}>();
 
-const readingStatus = computed(() => props.book.user_status?.status || null)
+const readingStatus = computed(() => props.book.user_status?.status || null);
 </script>
 
 <template>
@@ -23,15 +23,9 @@ const readingStatus = computed(() => props.book.user_status?.status || null)
   </div>
 
   <div v-if="book.user_status" class="book-dates text-small text-muted">
-    <div v-if="book.user_status.started_at">
-      Started: {{ formatShortDate(book.user_status.started_at) }}
-    </div>
-    <div v-if="book.user_status.finished_at">
-      Finished: {{ formatShortDate(book.user_status.finished_at) }}
-    </div>
-    <div v-if="book.user_status.current_percent !== null">
-      Progress: {{ book.user_status.current_percent }}%
-    </div>
+    <div v-if="book.user_status.started_at">Started: {{ formatShortDate(book.user_status.started_at) }}</div>
+    <div v-if="book.user_status.finished_at">Finished: {{ formatShortDate(book.user_status.finished_at) }}</div>
+    <div v-if="book.user_status.current_percent !== null">Progress: {{ book.user_status.current_percent }}%</div>
     <div v-else-if="book.user_status.current_page !== null">
       Progress: {{ book.user_status.current_page }}
       <span v-if="book.page_count">/ {{ book.page_count }}</span>

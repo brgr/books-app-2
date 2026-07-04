@@ -1,57 +1,51 @@
 <script setup lang="ts">
-import {BookEventType, type BookEvent} from '../../api/types'
+import { BookEventType, type BookEvent } from "../../api/types";
 
 defineProps<{
-  events: BookEvent[]
-}>()
+  events: BookEvent[];
+}>();
 
 function formatEventType(event: BookEvent): string {
   switch (event.event_type) {
     case BookEventType.ADDED_TO_LIBRARY:
-      return event.import_id != null ? 'Imported to library' : 'Added to library'
+      return event.import_id != null ? "Imported to library" : "Added to library";
     case BookEventType.STARTED_READING:
-      return 'Started reading'
+      return "Started reading";
     case BookEventType.FINISHED_READING:
-      return 'Finished reading'
+      return "Finished reading";
     case BookEventType.NOTE_SET:
-      return event.note ? 'Note updated' : 'Note cleared'
+      return event.note ? "Note updated" : "Note cleared";
     case BookEventType.PROGRESS_SET:
-      return 'Progress updated'
+      return "Progress updated";
     default:
-      return event.event_type
+      return event.event_type;
   }
 }
 
 function formatDate(dateStr: string): string {
-  const date = new Date(dateStr)
+  const date = new Date(dateStr);
   return date.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function formatTime(dateStr: string): string {
-  const date = new Date(dateStr)
+  const date = new Date(dateStr);
   return date.toLocaleTimeString(undefined, {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 </script>
 
 <template>
   <div class="event-timeline">
     <h3>Activity</h3>
-    <div v-if="events.length === 0" class="no-events">
-      No activity yet
-    </div>
+    <div v-if="events.length === 0" class="no-events">No activity yet</div>
     <div v-else class="timeline">
-      <div
-          v-for="event in events"
-          :key="event.id"
-          class="timeline-item"
-      >
+      <div v-for="event in events" :key="event.id" class="timeline-item">
         <div class="timeline-dot"></div>
         <div class="timeline-content">
           <div class="event-label">{{ formatEventType(event) }}</div>
@@ -59,7 +53,10 @@ function formatTime(dateStr: string): string {
           <div v-if="event.event_type === BookEventType.NOTE_SET && event.note" class="event-note">
             {{ event.note }}
           </div>
-          <div v-if="event.event_type === BookEventType.PROGRESS_SET && event.page !== null && event.page !== undefined" class="event-note">
+          <div
+            v-if="event.event_type === BookEventType.PROGRESS_SET && event.page !== null && event.page !== undefined"
+            class="event-note"
+          >
             Page {{ event.page }}
           </div>
         </div>
@@ -94,7 +91,7 @@ function formatTime(dateStr: string): string {
 }
 
 .timeline-item::before {
-  content: '';
+  content: "";
   position: absolute;
   left: calc(-1 * var(--spacing-lg) + 5px);
   top: 14px;

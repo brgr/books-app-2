@@ -1,45 +1,45 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import draggable from 'vuedraggable'
-import { useRouter } from 'vue-router'
-import { getListBooks, getLists, reorderListItem } from '../api/books'
-import BookCard from '../components/book/BookCard/BookCard.vue'
-import BookCoverTile from '../components/book/BookCoverTile.vue'
-import BookContextMenu from '../components/book/BookContextMenu.vue'
-import BookSearchModal from '../components/modals/BookSearchModal.vue'
-import BooksSearchHeader from '../components/ui/BooksSearchHeader.vue'
-import NavigationBar from '../components/ui/NavigationBar.vue'
-import { ReadingStatus, type PaginatedBooks, type Book, type BookList } from '../api/types'
-import { getStatusLabel } from '../book/status'
-import { useCachedQuery } from '../composables/useCachedQuery'
-import { useAddBook } from '../composables/useAddBook'
-import { cacheKeys } from '../cache/keys'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
+import draggable from "vuedraggable";
+import { useRouter } from "vue-router";
+import { getListBooks, getLists, reorderListItem } from "../api/books";
+import BookCard from "../components/book/BookCard/BookCard.vue";
+import BookCoverTile from "../components/book/BookCoverTile.vue";
+import BookContextMenu from "../components/book/BookContextMenu.vue";
+import BookSearchModal from "../components/modals/BookSearchModal.vue";
+import BooksSearchHeader from "../components/ui/BooksSearchHeader.vue";
+import NavigationBar from "../components/ui/NavigationBar.vue";
+import { ReadingStatus, type PaginatedBooks, type Book, type BookList } from "../api/types";
+import { getStatusLabel } from "../book/status";
+import { useCachedQuery } from "../composables/useCachedQuery";
+import { useAddBook } from "../composables/useAddBook";
+import { cacheKeys } from "../cache/keys";
 
-const currentPage = ref(1)
-const pageSize = ref(30)
-const router = useRouter()
-const accumulatedBooks = ref<Book[]>([])
-const isLoadingMore = ref(false)
+const currentPage = ref(1);
+const pageSize = ref(30);
+const router = useRouter();
+const accumulatedBooks = ref<Book[]>([]);
+const isLoadingMore = ref(false);
 
+const filterStatus = ref<ReadingStatus | "">("");
+const searchQuery = ref("");
+const shelfFilter = ref<"to-read" | "finished">("to-read");
+const showShelfMenu = ref(false);
+const activeListId = ref<number | null>(null);
 
-const filterStatus = ref<ReadingStatus | ''>('')
-const searchQuery = ref('')
-const shelfFilter = ref<'to-read' | 'finished'>('to-read')
-const showShelfMenu = ref(false)
-const activeListId = ref<number | null>(null)
+const { data: listsData } = useCachedQuery<BookList[]>(cacheKeys.lists(), () => getLists());
 
-const { data: listsData } = useCachedQuery<BookList[]>(
-  cacheKeys.lists(),
-  () => getLists()
-)
+const lists = computed(() => listsData.value ?? []);
 
-const lists = computed(() => listsData.value ?? [])
-
-watch(lists, (newLists) => {
-  if (newLists.length && !activeListId.value) {
-    setActiveListForShelf()
-  }
-}, { immediate: true })
+watch(
+  lists,
+  (newLists) => {
+    if (newLists.length && !activeListId.value) {
+      setActiveListForShelf();
+    }
+  },
+  { immediate: true },
+);
 
 const {
   data: booksData,
@@ -47,220 +47,211 @@ const {
   refresh: refreshBooks,
 } = useCachedQuery<PaginatedBooks>(
   computed(() =>
-    activeListId.value
-      ? cacheKeys.listBooks(activeListId.value, currentPage.value, pageSize.value)
-      : ''
+    activeListId.value ? cacheKeys.listBooks(activeListId.value, currentPage.value, pageSize.value) : "",
   ),
   () => getListBooks(activeListId.value!, currentPage.value, pageSize.value),
-  { enabled: computed(() => activeListId.value !== null) }
-)
+  { enabled: computed(() => activeListId.value !== null) },
+);
 
 const error = computed(() => {
-  const e = booksError.value
-  if (!e) return ''
-  if (e instanceof Error) return e.message
-  return 'Failed to load books. Please try again.'
-})
+  const e = booksError.value;
+  if (!e) return "";
+  if (e instanceof Error) return e.message;
+  return "Failed to load books. Please try again.";
+});
 
 // Load saved view mode from localStorage, default to 'list'
-const savedViewMode = localStorage.getItem('booksViewMode') as 'list' | 'grid' | null
-const viewMode = ref<'list' | 'grid'>(savedViewMode || 'list')
+const savedViewMode = localStorage.getItem("booksViewMode") as "list" | "grid" | null;
+const viewMode = ref<"list" | "grid">(savedViewMode || "list");
 
 // Watch viewMode and save to localStorage whenever it changes
 watch(viewMode, (newMode) => {
-  localStorage.setItem('booksViewMode', newMode)
-})
+  localStorage.setItem("booksViewMode", newMode);
+});
 
 watch(booksData, (next) => {
-  if (!next) return
+  if (!next) return;
   if (next.page === 1) {
-    accumulatedBooks.value = [...next.items]
+    accumulatedBooks.value = [...next.items];
   } else {
-    const seen = new Set(accumulatedBooks.value.map(b => b.id))
-    const additions = next.items.filter(b => !seen.has(b.id))
-    accumulatedBooks.value = [...accumulatedBooks.value, ...additions]
+    const seen = new Set(accumulatedBooks.value.map((b) => b.id));
+    const additions = next.items.filter((b) => !seen.has(b.id));
+    accumulatedBooks.value = [...accumulatedBooks.value, ...additions];
   }
-  isLoadingMore.value = false
+  isLoadingMore.value = false;
   nextTick(() => {
     if (sentinelObserver && sentinelEl.value) {
-      sentinelObserver.unobserve(sentinelEl.value)
-      sentinelObserver.observe(sentinelEl.value)
+      sentinelObserver.unobserve(sentinelEl.value);
+      sentinelObserver.observe(sentinelEl.value);
     }
-  })
-})
+  });
+});
 
-const hasMore = computed(() =>
-  Boolean(booksData.value) && currentPage.value < (booksData.value?.pages ?? 1)
-)
+const hasMore = computed(() => Boolean(booksData.value) && currentPage.value < (booksData.value?.pages ?? 1));
 
 const filteredBooks = computed(() => {
-  if (!booksData.value && accumulatedBooks.value.length === 0) return []
+  if (!booksData.value && accumulatedBooks.value.length === 0) return [];
 
-  let books = accumulatedBooks.value
+  let books = accumulatedBooks.value;
 
   // Filter by status
   if (filterStatus.value) {
-    books = books.filter(book => book.user_status?.status === filterStatus.value)
+    books = books.filter((book) => book.user_status?.status === filterStatus.value);
   }
 
   // Filter by search query
   if (searchQuery.value.trim()) {
-    const query = searchQuery.value.toLowerCase().trim()
-    books = books.filter(book =>
-      book.title.toLowerCase().includes(query) ||
-      book.author.toLowerCase().includes(query)
-    )
+    const query = searchQuery.value.toLowerCase().trim();
+    books = books.filter(
+      (book) => book.title.toLowerCase().includes(query) || book.author.toLowerCase().includes(query),
+    );
   }
 
-  return books
-})
+  return books;
+});
 
 const currentlyReadingBooks = computed(() =>
-  filteredBooks.value.filter(book => book.user_status?.status === ReadingStatus.STARTED)
-)
+  filteredBooks.value.filter((book) => book.user_status?.status === ReadingStatus.STARTED),
+);
 const toReadBooks = computed(() =>
-  filteredBooks.value.filter(book => book.user_status?.status !== ReadingStatus.STARTED)
-)
+  filteredBooks.value.filter((book) => book.user_status?.status !== ReadingStatus.STARTED),
+);
 
-const gridBooks = ref<Book[]>([])
-const gridCurrentlyReading = ref<Book[]>([])
-const gridToRead = ref<Book[]>([])
-const isDragging = ref(false)
-const lastDragTime = ref(0)
+const gridBooks = ref<Book[]>([]);
+const gridCurrentlyReading = ref<Book[]>([]);
+const gridToRead = ref<Book[]>([]);
+const isDragging = ref(false);
+const lastDragTime = ref(0);
 watch(
   filteredBooks,
   (next) => {
-    gridBooks.value = [...next]
-    gridCurrentlyReading.value = next.filter(
-      book => book.user_status?.status === ReadingStatus.STARTED
-    )
-    gridToRead.value = next.filter(book => book.user_status?.status !== ReadingStatus.STARTED)
+    gridBooks.value = [...next];
+    gridCurrentlyReading.value = next.filter((book) => book.user_status?.status === ReadingStatus.STARTED);
+    gridToRead.value = next.filter((book) => book.user_status?.status !== ReadingStatus.STARTED);
   },
-  { immediate: true }
-)
+  { immediate: true },
+);
 
 function getShelfListName(): string {
-  return shelfFilter.value === 'to-read' ? 'To Read' : 'Finished'
+  return shelfFilter.value === "to-read" ? "To Read" : "Finished";
 }
 
 function setActiveListForShelf() {
-  const targetName = getShelfListName()
-  const match = lists.value.find(list => list.name === targetName) || null
-  activeListId.value = match ? match.id : null
+  const targetName = getShelfListName();
+  const match = lists.value.find((list) => list.name === targetName) || null;
+  activeListId.value = match ? match.id : null;
 }
 
 async function loadBooks() {
-  await refreshBooks()
+  await refreshBooks();
 }
 
 function resetPagination() {
-  currentPage.value = 1
-  accumulatedBooks.value = []
+  currentPage.value = 1;
+  accumulatedBooks.value = [];
 }
 
 async function loadMore() {
-  if (isLoadingMore.value || !hasMore.value) return
-  isLoadingMore.value = true
-  currentPage.value += 1
+  if (isLoadingMore.value || !hasMore.value) return;
+  isLoadingMore.value = true;
+  currentPage.value += 1;
 }
 
-let sentinelObserver: IntersectionObserver | null = null
-const sentinelEl = ref<HTMLElement | null>(null)
+let sentinelObserver: IntersectionObserver | null = null;
+const sentinelEl = ref<HTMLElement | null>(null);
 
 function setupObserver() {
-  if (sentinelObserver || !sentinelEl.value) return
-  sentinelObserver = new IntersectionObserver((entries) => {
-    for (const entry of entries) {
-      if (entry.isIntersecting) loadMore()
-    }
-  }, { rootMargin: '400px 0px' })
-  sentinelObserver.observe(sentinelEl.value)
+  if (sentinelObserver || !sentinelEl.value) return;
+  sentinelObserver = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) loadMore();
+      }
+    },
+    { rootMargin: "400px 0px" },
+  );
+  sentinelObserver.observe(sentinelEl.value);
 }
 
 watch(sentinelEl, () => {
   if (sentinelObserver) {
-    sentinelObserver.disconnect()
-    sentinelObserver = null
+    sentinelObserver.disconnect();
+    sentinelObserver = null;
   }
-  nextTick(() => setupObserver())
-})
+  nextTick(() => setupObserver());
+});
 
-onMounted(() => nextTick(() => setupObserver()))
+onMounted(() => nextTick(() => setupObserver()));
 onBeforeUnmount(() => {
-  sentinelObserver?.disconnect()
-  sentinelObserver = null
-})
+  sentinelObserver?.disconnect();
+  sentinelObserver = null;
+});
 
-const {showSearchModal, openSearch, closeSearch, selectBook} = useAddBook(async () => {
-  resetPagination()
-  await refreshBooks()
-})
+const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(async () => {
+  resetPagination();
+  await refreshBooks();
+});
 
-const shelfLabel = computed(() => (shelfFilter.value === 'to-read' ? 'To Read' : 'Finished'))
+const shelfLabel = computed(() => (shelfFilter.value === "to-read" ? "To Read" : "Finished"));
 
 function toggleShelfMenu() {
-  showShelfMenu.value = !showShelfMenu.value
+  showShelfMenu.value = !showShelfMenu.value;
 }
 
-function setShelfFilter(next: 'to-read' | 'finished') {
-  shelfFilter.value = next
+function setShelfFilter(next: "to-read" | "finished") {
+  shelfFilter.value = next;
   if (filterStatus.value) {
-    filterStatus.value = ''
+    filterStatus.value = "";
   }
-  showShelfMenu.value = false
-  resetPagination()
-  setActiveListForShelf()
-  loadBooks()
+  showShelfMenu.value = false;
+  resetPagination();
+  setActiveListForShelf();
+  loadBooks();
 }
 
 function handleDragStart() {
-  isDragging.value = true
+  isDragging.value = true;
 }
 
-async function handleDragEndForList(
-  list: Book[],
-  event: { newIndex?: number; oldIndex?: number } | null
-) {
-  isDragging.value = false
-  lastDragTime.value = Date.now()
+async function handleDragEndForList(list: Book[], event: { newIndex?: number; oldIndex?: number } | null) {
+  isDragging.value = false;
+  lastDragTime.value = Date.now();
 
   if (!event || event.newIndex === undefined || event.oldIndex === undefined) {
-    return
+    return;
   }
   if (event.newIndex === event.oldIndex) {
-    return
+    return;
   }
   if (!activeListId.value) {
-    return
+    return;
   }
   if (searchQuery.value.trim() || filterStatus.value) {
-    return
+    return;
   }
 
-  const movedBook = list[event.newIndex]
-  if (!movedBook) return
-  const beforeBook = event.newIndex > 0 ? list[event.newIndex - 1] : null
-  const afterBook = event.newIndex < list.length - 1 ? list[event.newIndex + 1] : null
+  const movedBook = list[event.newIndex];
+  if (!movedBook) return;
+  const beforeBook = event.newIndex > 0 ? list[event.newIndex - 1] : null;
+  const afterBook = event.newIndex < list.length - 1 ? list[event.newIndex + 1] : null;
 
   try {
     await reorderListItem(activeListId.value, {
       moved_book_id: movedBook.id,
       before_book_id: beforeBook?.id ?? null,
       after_book_id: afterBook?.id ?? null,
-    })
+    });
     accumulatedBooks.value =
-      shelfFilter.value === 'to-read'
-        ? [...gridCurrentlyReading.value, ...gridToRead.value]
-        : [...gridBooks.value]
+      shelfFilter.value === "to-read" ? [...gridCurrentlyReading.value, ...gridToRead.value] : [...gridBooks.value];
   } catch (err: any) {
-    console.error('Failed to reorder books:', err)
+    console.error("Failed to reorder books:", err);
   }
 }
 
 function handleCoverClick(bookId: number) {
-  if (isDragging.value) return
-  if (Date.now() - lastDragTime.value < 200) return
-  router.push({ name: 'book-detail', params: { id: bookId } })
+  if (isDragging.value) return;
+  if (Date.now() - lastDragTime.value < 200) return;
+  router.push({ name: "book-detail", params: { id: bookId } });
 }
 
 const contextMenu = ref<{ visible: boolean; x: number; y: number; bookId: number | null }>({
@@ -268,34 +259,33 @@ const contextMenu = ref<{ visible: boolean; x: number; y: number; bookId: number
   x: 0,
   y: 0,
   bookId: null,
-})
+});
 
 function openContextMenu(payload: { bookId: number; x: number; y: number }) {
-  contextMenu.value = { visible: true, x: payload.x, y: payload.y, bookId: payload.bookId }
+  contextMenu.value = { visible: true, x: payload.x, y: payload.y, bookId: payload.bookId };
 }
 
 function closeContextMenu() {
-  contextMenu.value.visible = false
-  contextMenu.value.bookId = null
+  contextMenu.value.visible = false;
+  contextMenu.value.bookId = null;
 }
 
 function handleContextView() {
-  const bookId = contextMenu.value.bookId
-  closeContextMenu()
-  if (bookId !== null) router.push({ name: 'book-detail', params: { id: bookId } })
+  const bookId = contextMenu.value.bookId;
+  closeContextMenu();
+  if (bookId !== null) router.push({ name: "book-detail", params: { id: bookId } });
 }
 
 const dragOpts = computed(() => ({
-  'item-key': 'id',
+  "item-key": "id",
   animation: 150,
   delay: 120,
-  'delay-on-touch-only': true,
+  "delay-on-touch-only": true,
   disabled: Boolean(searchQuery.value.trim()) || Boolean(filterStatus.value),
-  'ghost-class': 'grid-ghost',
-  'drag-class': 'grid-drag',
-  'chosen-class': 'grid-chosen',
-}))
-
+  "ghost-class": "grid-ghost",
+  "drag-class": "grid-drag",
+  "chosen-class": "grid-chosen",
+}));
 </script>
 
 <template>
@@ -303,7 +293,6 @@ const dragOpts = computed(() => ({
     <NavigationBar @add-book="openSearch" />
 
     <div class="container">
-
       <div v-if="error" class="error">
         {{ error }}
       </div>
@@ -338,12 +327,7 @@ const dragOpts = computed(() => ({
               @end="handleDragEndForList(gridCurrentlyReading, $event)"
             >
               <template #item="{ element: book }">
-                <BookCoverTile
-                  :book="book"
-                  show-progress
-                  @click="handleCoverClick"
-                  @menu="openContextMenu"
-                />
+                <BookCoverTile :book="book" show-progress @click="handleCoverClick" @menu="openContextMenu" />
               </template>
             </draggable>
           </section>
@@ -382,46 +366,28 @@ const dragOpts = computed(() => ({
         <template v-if="shelfFilter === 'to-read'">
           <section v-if="currentlyReadingBooks.length" class="shelf-section">
             <h2 class="shelf-section-title">Currently Reading</h2>
-            <div
-              v-for="book in currentlyReadingBooks"
-              :key="book.id"
-            >
+            <div v-for="book in currentlyReadingBooks" :key="book.id">
               <BookCard :book="book" @menu="openContextMenu" />
             </div>
           </section>
           <section v-if="toReadBooks.length" class="shelf-section">
             <h2 class="shelf-section-title">To Read</h2>
-            <div
-              v-for="book in toReadBooks"
-              :key="book.id"
-            >
+            <div v-for="book in toReadBooks" :key="book.id">
               <BookCard :book="book" @menu="openContextMenu" />
             </div>
           </section>
         </template>
-        <div
-          v-else
-          v-for="book in filteredBooks"
-          :key="book.id"
-        >
+        <div v-else v-for="book in filteredBooks" :key="book.id">
           <BookCard :book="book" @menu="openContextMenu" />
         </div>
       </div>
 
-      <div
-        v-if="hasMore || isLoadingMore"
-        ref="sentinelEl"
-        class="infinite-sentinel"
-      >
+      <div v-if="hasMore || isLoadingMore" ref="sentinelEl" class="infinite-sentinel">
         <span v-if="isLoadingMore" class="infinite-loading">Loading more…</span>
       </div>
     </div>
 
-    <BookSearchModal
-      v-if="showSearchModal"
-      @close="closeSearch"
-      @select="selectBook"
-    />
+    <BookSearchModal v-if="showSearchModal" @close="closeSearch" @select="selectBook" />
 
     <BookContextMenu
       v-if="contextMenu.visible && contextMenu.bookId !== null"
@@ -453,16 +419,11 @@ const dragOpts = computed(() => ({
         </button>
       </div>
 
-      <button
-        type="button"
-        class="bottom-bar-button"
-        @click="toggleShelfMenu"
-        :aria-expanded="showShelfMenu"
-      >
+      <button type="button" class="bottom-bar-button" @click="toggleShelfMenu" :aria-expanded="showShelfMenu">
         <span class="bar-text">{{ shelfLabel }}</span>
         <span class="bar-arrow" aria-hidden="true">
           <svg viewBox="0 0 24 24" role="presentation" focusable="false">
-            <path d="M12 5l6.5 7.2a1.1 1.1 0 0 1-1.7 1.3L12 8.9l-4.8 4.6a1.1 1.1 0 0 1-1.6-1.5L12 5z"/>
+            <path d="M12 5l6.5 7.2a1.1 1.1 0 0 1-1.7 1.3L12 8.9l-4.8 4.6a1.1 1.1 0 0 1-1.6-1.5L12 5z" />
           </svg>
         </span>
       </button>
@@ -504,14 +465,16 @@ const dragOpts = computed(() => ({
   border: 2px solid #1b2639;
   border-radius: 999px;
   box-shadow: 0 10px 26px rgba(27, 38, 57, 0.18);
-  font-family: 'Inter', 'Segoe UI', sans-serif;
+  font-family: "Inter", "Segoe UI", sans-serif;
   font-size: 1.2rem;
   font-weight: 700;
   color: #1b2639;
   gap: 10px;
   padding: 0 22px;
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
@@ -553,7 +516,9 @@ const dragOpts = computed(() => ({
   padding: 10px 12px;
   border-radius: 999px;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;

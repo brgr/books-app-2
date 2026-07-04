@@ -1,41 +1,41 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { login, getCurrentUser } from '../api/auth'
+import { ref } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { login, getCurrentUser } from "../api/auth";
 
-const router = useRouter()
-const route = useRoute()
+const router = useRouter();
+const route = useRoute();
 
-const username = ref('')
-const password = ref('')
-const error = ref('')
-const loading = ref(false)
+const username = ref("");
+const password = ref("");
+const error = ref("");
+const loading = ref(false);
 
 async function handleSubmit() {
-  error.value = ''
-  loading.value = true
+  error.value = "";
+  loading.value = true;
 
   try {
-    await login(username.value, password.value)
+    await login(username.value, password.value);
 
     // Verify login worked
-    await getCurrentUser()
+    await getCurrentUser();
 
     // Redirect to original page or books list
-    const redirect = route.query.redirect as string
-    router.push(redirect || '/')
+    const redirect = route.query.redirect as string;
+    router.push(redirect || "/");
   } catch (err: any) {
-    console.error('Authentication error:', err)
-    error.value = err.response?.data?.detail || 'Authentication failed. Please try again.'
+    console.error("Authentication error:", err);
+    error.value = err.response?.data?.detail || "Authentication failed. Please try again.";
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 </script>
 
 <template>
   <div class="container-narrow">
-    <div class="card" style="margin-top: 4rem;">
+    <div class="card" style="margin-top: 4rem">
       <h2 class="text-center">Login</h2>
 
       <div v-if="error" class="error">
@@ -69,8 +69,8 @@ async function handleSubmit() {
           />
         </div>
 
-        <button type="submit" class="btn-primary" style="width: 100%;" :disabled="loading">
-          {{ loading ? 'Please wait...' : 'Login' }}
+        <button type="submit" class="btn-primary" style="width: 100%" :disabled="loading">
+          {{ loading ? "Please wait..." : "Login" }}
         </button>
       </form>
 

@@ -1,28 +1,22 @@
 <script setup lang="ts">
-import type {Book} from '../../api/types'
-import {formatShortDate} from '../../utils/date'
+import type { Book } from "../../api/types";
+import { formatShortDate } from "../../utils/date";
 
 defineProps<{
-  book: Book
-}>()
+  book: Book;
+}>();
 </script>
 
 <template>
   <div class="book-metadata">
     <h2>Book Details</h2>
     <div class="metadata-grid">
-      <div v-if="book.isbn" class="metadata-item">
-        <strong>ISBN:</strong> {{ book.isbn }}
-      </div>
-      <div v-if="book.page_count" class="metadata-item">
-        <strong>Pages:</strong> {{ book.page_count }}
-      </div>
+      <div v-if="book.isbn" class="metadata-item"><strong>ISBN:</strong> {{ book.isbn }}</div>
+      <div v-if="book.page_count" class="metadata-item"><strong>Pages:</strong> {{ book.page_count }}</div>
       <div v-if="book.published_date" class="metadata-item">
         <strong>Published:</strong> {{ formatShortDate(book.published_date) }}
       </div>
-      <div class="metadata-item">
-        <strong>Added:</strong> {{ formatShortDate(book.created_at) }}
-      </div>
+      <div class="metadata-item"><strong>Added:</strong> {{ formatShortDate(book.created_at) }}</div>
     </div>
   </div>
 </template>

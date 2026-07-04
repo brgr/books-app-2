@@ -1,39 +1,52 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { ReadingStatus } from '../../api/types'
-import { getStatusLabel } from '../../book/status'
+import { ref } from "vue";
+import { ReadingStatus } from "../../api/types";
+import { getStatusLabel } from "../../book/status";
 
-const searchQuery = defineModel<string>('searchQuery', { required: true })
-const filterStatus = defineModel<ReadingStatus | ''>('filterStatus', { required: true })
-const viewMode = defineModel<'list' | 'grid'>('viewMode', { required: true })
+const searchQuery = defineModel<string>("searchQuery", { required: true });
+const filterStatus = defineModel<ReadingStatus | "">("filterStatus", { required: true });
+const viewMode = defineModel<"list" | "grid">("viewMode", { required: true });
 
-const showFilterDropdown = ref(false)
+const showFilterDropdown = ref(false);
 
 function toggleFilterDropdown() {
-  showFilterDropdown.value = !showFilterDropdown.value
+  showFilterDropdown.value = !showFilterDropdown.value;
 }
-
 </script>
 
 <template>
   <div class="search-header">
     <div class="search-bar">
-      <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg
+        class="search-icon"
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
         <circle cx="11" cy="11" r="8"></circle>
         <path d="m21 21-4.35-4.35"></path>
       </svg>
-      <input
-        v-model="searchQuery"
-        type="text"
-        placeholder="Search for words or #tags"
-        class="search-input"
-      />
+      <input v-model="searchQuery" type="text" placeholder="Search for words or #tags" class="search-input" />
     </div>
 
     <div class="search-actions">
       <div class="filter-dropdown-wrapper">
         <button @click="toggleFilterDropdown" class="filter-btn" title="Filter options">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
           </svg>
         </button>
@@ -61,12 +74,17 @@ function toggleFilterDropdown() {
       </div>
 
       <div class="view-toggle">
-        <button
-          @click="viewMode = 'list'"
-          :class="['view-btn', { active: viewMode === 'list' }]"
-          title="List view"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button @click="viewMode = 'list'" :class="['view-btn', { active: viewMode === 'list' }]" title="List view">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <line x1="8" y1="6" x2="21" y2="6"></line>
             <line x1="8" y1="12" x2="21" y2="12"></line>
             <line x1="8" y1="18" x2="21" y2="18"></line>
@@ -76,12 +94,17 @@ function toggleFilterDropdown() {
           </svg>
         </button>
 
-        <button
-          @click="viewMode = 'grid'"
-          :class="['view-btn', { active: viewMode === 'grid' }]"
-          title="Grid view"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button @click="viewMode = 'grid'" :class="['view-btn', { active: viewMode === 'grid' }]" title="Grid view">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <rect x="3" y="3" width="7" height="7"></rect>
             <rect x="14" y="3" width="7" height="7"></rect>
             <rect x="14" y="14" width="7" height="7"></rect>
@@ -117,7 +140,9 @@ function toggleFilterDropdown() {
   background-color: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .search-bar:hover {
@@ -204,7 +229,7 @@ function toggleFilterDropdown() {
 }
 
 .view-btn:not(:last-child)::after {
-  content: '';
+  content: "";
   position: absolute;
   right: 0;
   top: 50%;

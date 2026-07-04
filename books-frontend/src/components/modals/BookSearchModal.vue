@@ -1,52 +1,52 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { searchGoogleBooks } from '../../api/books'
-import type { GoogleBookResult } from '../../api/types'
+import { ref } from "vue";
+import { searchGoogleBooks } from "../../api/books";
+import type { GoogleBookResult } from "../../api/types";
 
 const emit = defineEmits<{
-  close: []
-  select: [book: GoogleBookResult]
-}>()
+  close: [];
+  select: [book: GoogleBookResult];
+}>();
 
-const searchQuery = ref('')
-const searchResults = ref<GoogleBookResult[]>([])
-const loading = ref(false)
-const error = ref('')
-const hasSearched = ref(false)
+const searchQuery = ref("");
+const searchResults = ref<GoogleBookResult[]>([]);
+const loading = ref(false);
+const error = ref("");
+const hasSearched = ref(false);
 
 async function handleSearch() {
   if (!searchQuery.value.trim()) {
-    error.value = 'Please enter a search query'
-    return
+    error.value = "Please enter a search query";
+    return;
   }
 
-  error.value = ''
-  loading.value = true
-  hasSearched.value = true
+  error.value = "";
+  loading.value = true;
+  hasSearched.value = true;
 
   try {
-    searchResults.value = await searchGoogleBooks(searchQuery.value)
+    searchResults.value = await searchGoogleBooks(searchQuery.value);
   } catch (err: any) {
-    console.error('Failed to search books:', err)
-    error.value = err.response?.data?.detail || 'Failed to search books. Please try again.'
+    console.error("Failed to search books:", err);
+    error.value = err.response?.data?.detail || "Failed to search books. Please try again.";
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 function handleSelectBook(book: GoogleBookResult) {
-  emit('select', book)
+  emit("select", book);
 }
 
 function handleClose() {
   if (!loading.value) {
-    emit('close')
+    emit("close");
   }
 }
 
 function handleKeyPress(event: KeyboardEvent) {
-  if (event.key === 'Enter') {
-    handleSearch()
+  if (event.key === "Enter") {
+    handleSearch();
   }
 }
 </script>
@@ -56,16 +56,12 @@ function handleKeyPress(event: KeyboardEvent) {
     <div class="modal">
       <div class="modal-header">
         <h3>Search for a Book</h3>
-        <button @click="handleClose" :disabled="loading" class="btn-small">
-          Close
-        </button>
+        <button @click="handleClose" :disabled="loading" class="btn-small">Close</button>
       </div>
 
       <div class="modal-body">
         <div class="search-section">
-          <p class="search-description">
-            Search Google Books to quickly add book details
-          </p>
+          <p class="search-description">Search Google Books to quickly add book details</p>
 
           <div class="search-input-group">
             <input
@@ -77,19 +73,16 @@ function handleKeyPress(event: KeyboardEvent) {
               @keypress="handleKeyPress"
             />
             <button @click="handleSearch" class="btn-primary" :disabled="loading || !searchQuery.trim()">
-              {{ loading ? 'Searching...' : 'Search' }}
+              {{ loading ? "Searching..." : "Search" }}
             </button>
           </div>
-
         </div>
 
         <div v-if="error" class="error">
           {{ error }}
         </div>
 
-        <div v-if="loading" class="loading">
-          Searching books...
-        </div>
+        <div v-if="loading" class="loading">Searching books...</div>
 
         <div v-else-if="hasSearched && searchResults.length === 0" class="empty-state">
           <p>No books found. Try a different search term.</p>
@@ -98,21 +91,10 @@ function handleKeyPress(event: KeyboardEvent) {
         <div v-else-if="searchResults.length > 0" class="results-section">
           <h4>Search Results</h4>
           <div class="results-list">
-            <div
-              v-for="(book, index) in searchResults"
-              :key="book.google_books_id || index"
-              class="result-item"
-            >
+            <div v-for="(book, index) in searchResults" :key="book.google_books_id || index" class="result-item">
               <div class="result-content">
-                <img
-                  v-if="book.thumbnail"
-                  :src="book.thumbnail"
-                  :alt="book.title"
-                  class="book-thumbnail"
-                />
-                <div class="book-thumbnail-placeholder" v-else>
-                  No Image
-                </div>
+                <img v-if="book.thumbnail" :src="book.thumbnail" :alt="book.title" class="book-thumbnail" />
+                <div class="book-thumbnail-placeholder" v-else>No Image</div>
                 <div class="book-info">
                   <h5 class="book-title">{{ book.title }}</h5>
                   <p class="book-author">{{ book.author }}</p>
@@ -120,21 +102,15 @@ function handleKeyPress(event: KeyboardEvent) {
                     <span v-if="book.published_date" class="detail">
                       {{ book.published_date }}
                     </span>
-                    <span v-if="book.page_count" class="detail">
-                      {{ book.page_count }} pages
-                    </span>
-                    <span v-if="book.isbn" class="detail">
-                      ISBN: {{ book.isbn }}
-                    </span>
+                    <span v-if="book.page_count" class="detail"> {{ book.page_count }} pages </span>
+                    <span v-if="book.isbn" class="detail"> ISBN: {{ book.isbn }} </span>
                   </div>
                   <p v-if="book.description" class="book-description">
-                    {{ book.description.substring(0, 150) }}{{ book.description.length > 150 ? '...' : '' }}
+                    {{ book.description.substring(0, 150) }}{{ book.description.length > 150 ? "..." : "" }}
                   </p>
                 </div>
               </div>
-              <button @click="handleSelectBook(book)" class="btn-select">
-                Select
-              </button>
+              <button @click="handleSelectBook(book)" class="btn-select">Select</button>
             </div>
           </div>
         </div>

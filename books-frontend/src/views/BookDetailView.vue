@@ -1,138 +1,130 @@
 <script setup lang="ts">
-import {computed, ref} from 'vue'
-import {useRouter, useRoute} from 'vue-router'
-import {getBook, setReadingStatus, getBookEvents, addBookProgress} from '../api/books'
-import {getMediaUrl} from '../api/client'
-import BookNotes from '../components/book/BookNotes.vue'
-import BookSearchModal from '../components/modals/BookSearchModal.vue'
-import BookStatusButton from '../components/book/BookStatusButton.vue'
-import BookReadingCard from '../components/book/BookReadingCard.vue'
-import NavigationBar from '../components/ui/NavigationBar.vue'
-import CollapsibleText from '../components/ui/CollapsibleText.vue'
-import BookMetadata from '../components/book/BookMetadata.vue'
-import EventTimeline from '../components/book/EventTimeline.vue'
-import {ReadingStatus, type Book, type BookEvent, type BookProgressUpdate} from '../api/types'
-import {formatShortDate} from '../utils/date'
-import {useCachedQuery} from '../composables/useCachedQuery'
-import {useAddBook} from '../composables/useAddBook'
-import {cacheKeys} from '../cache/keys'
-import {cacheDel, cacheInvalidateByPrefix} from '../cache/store'
+import { computed, ref } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { getBook, setReadingStatus, getBookEvents, addBookProgress } from "../api/books";
+import { getMediaUrl } from "../api/client";
+import BookNotes from "../components/book/BookNotes.vue";
+import BookSearchModal from "../components/modals/BookSearchModal.vue";
+import BookStatusButton from "../components/book/BookStatusButton.vue";
+import BookReadingCard from "../components/book/BookReadingCard.vue";
+import NavigationBar from "../components/ui/NavigationBar.vue";
+import CollapsibleText from "../components/ui/CollapsibleText.vue";
+import BookMetadata from "../components/book/BookMetadata.vue";
+import EventTimeline from "../components/book/EventTimeline.vue";
+import { ReadingStatus, type Book, type BookEvent, type BookProgressUpdate } from "../api/types";
+import { formatShortDate } from "../utils/date";
+import { useCachedQuery } from "../composables/useCachedQuery";
+import { useAddBook } from "../composables/useAddBook";
+import { cacheKeys } from "../cache/keys";
+import { cacheDel, cacheInvalidateByPrefix } from "../cache/store";
 
-const router = useRouter()
-const route = useRoute()
+const router = useRouter();
+const route = useRoute();
 
 const bookId = computed(() => {
-  const id = parseInt(route.params.id as string)
-  return isNaN(id) ? 0 : id
-})
+  const id = parseInt(route.params.id as string);
+  return isNaN(id) ? 0 : id;
+});
 
 const {
   data: book,
   error: bookError,
   refresh: refreshBook,
 } = useCachedQuery<Book>(
-  computed(() => bookId.value ? cacheKeys.book(bookId.value) : ''),
+  computed(() => (bookId.value ? cacheKeys.book(bookId.value) : "")),
   () => getBook(bookId.value),
-  { enabled: computed(() => bookId.value > 0) }
-)
+  { enabled: computed(() => bookId.value > 0) },
+);
 
-const {
-  data: events,
-  refresh: refreshEvents,
-} = useCachedQuery<BookEvent[]>(
-  computed(() => bookId.value ? cacheKeys.bookEvents(bookId.value) : ''),
+const { data: events, refresh: refreshEvents } = useCachedQuery<BookEvent[]>(
+  computed(() => (bookId.value ? cacheKeys.bookEvents(bookId.value) : "")),
   () => getBookEvents(bookId.value),
-  { enabled: computed(() => bookId.value > 0) }
-)
+  { enabled: computed(() => bookId.value > 0) },
+);
 
 const error = computed(() => {
-  const e = bookError.value
-  if (!e) return ''
-  if (e instanceof Error) return e.message
-  return 'Failed to load book. Please try again.'
-})
-const updatingStatus = ref(false)
-const notesSaving = ref(false)
-const progressSaving = ref(false)
+  const e = bookError.value;
+  if (!e) return "";
+  if (e instanceof Error) return e.message;
+  return "Failed to load book. Please try again.";
+});
+const updatingStatus = ref(false);
+const notesSaving = ref(false);
+const progressSaving = ref(false);
 
 async function loadBook() {
-  await cacheDel(cacheKeys.book(bookId.value))
-  await cacheDel(cacheKeys.bookEvents(bookId.value))
-  await refreshBook()
-  await refreshEvents()
+  await cacheDel(cacheKeys.book(bookId.value));
+  await cacheDel(cacheKeys.bookEvents(bookId.value));
+  await refreshBook();
+  await refreshEvents();
 }
 
-const canUpdateProgress = computed(() => book.value?.user_status?.status === ReadingStatus.STARTED)
+const canUpdateProgress = computed(() => book.value?.user_status?.status === ReadingStatus.STARTED);
 
 async function changeStatus(status: ReadingStatus, occurredAt?: string) {
-  if (!book.value) return
-  updatingStatus.value = true
+  if (!book.value) return;
+  updatingStatus.value = true;
   try {
-    await setReadingStatus(book.value.id, {status, occurred_at: occurredAt})
-    await cacheInvalidateByPrefix('lists:')
-    await loadBook()
+    await setReadingStatus(book.value.id, { status, occurred_at: occurredAt });
+    await cacheInvalidateByPrefix("lists:");
+    await loadBook();
   } catch (err) {
-    console.error('Failed to update reading status:', err)
-    alert('Failed to update reading status')
+    console.error("Failed to update reading status:", err);
+    alert("Failed to update reading status");
   } finally {
-    updatingStatus.value = false
+    updatingStatus.value = false;
   }
 }
 
 function handleStatusChange(status: ReadingStatus) {
-  return changeStatus(status)
+  return changeStatus(status);
 }
 
 async function handleSaveNotes(notes: string) {
-  if (!book.value) return
-  notesSaving.value = true
+  if (!book.value) return;
+  notesSaving.value = true;
   try {
-    const status = book.value.user_status?.status ?? ReadingStatus.WANT_TO_READ
-    book.value.user_status = await setReadingStatus(book.value.id, {status, notes})
-    await cacheDel(cacheKeys.bookEvents(book.value.id))
-    await refreshEvents()
+    const status = book.value.user_status?.status ?? ReadingStatus.WANT_TO_READ;
+    book.value.user_status = await setReadingStatus(book.value.id, { status, notes });
+    await cacheDel(cacheKeys.bookEvents(book.value.id));
+    await refreshEvents();
   } catch (error) {
-    console.error('Failed to save notes:', error)
-    alert('Failed to save notes')
+    console.error("Failed to save notes:", error);
+    alert("Failed to save notes");
   } finally {
-    notesSaving.value = false
+    notesSaving.value = false;
   }
 }
 
 async function handleSaveProgress(progress: BookProgressUpdate) {
-  if (!book.value || !canUpdateProgress.value) return
-  progressSaving.value = true
+  if (!book.value || !canUpdateProgress.value) return;
+  progressSaving.value = true;
   try {
-    book.value.user_status = await addBookProgress(book.value.id, progress)
-    await cacheDel(cacheKeys.bookEvents(book.value.id))
-    await refreshEvents()
+    book.value.user_status = await addBookProgress(book.value.id, progress);
+    await cacheDel(cacheKeys.bookEvents(book.value.id));
+    await refreshEvents();
   } catch (error) {
-    console.error('Failed to save progress:', error)
-    alert('Failed to save progress')
+    console.error("Failed to save progress:", error);
+    alert("Failed to save progress");
   } finally {
-    progressSaving.value = false
+    progressSaving.value = false;
   }
 }
 
 function handleEdit() {
-  if (!book.value) return
-  router.push({name: 'book-edit', params: {id: book.value.id}})
+  if (!book.value) return;
+  router.push({ name: "book-edit", params: { id: book.value.id } });
 }
 
-const {showSearchModal, openSearch, closeSearch, selectBook} = useAddBook(() =>
-  router.push({name: 'books'}),
-)
-
+const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(() => router.push({ name: "books" }));
 </script>
 
 <template>
   <div class="book-detail-page">
-    <NavigationBar @add-book="openSearch"/>
+    <NavigationBar @add-book="openSearch" />
 
     <div class="container">
-      <div v-if="!book && !error" class="loading">
-        Loading book...
-      </div>
+      <div v-if="!book && !error" class="loading">Loading book...</div>
 
       <div v-else-if="error && !book" class="error">
         {{ error }}
@@ -141,15 +133,13 @@ const {showSearchModal, openSearch, closeSearch, selectBook} = useAddBook(() =>
       <div v-else-if="book" class="book-detail">
         <div class="book-header">
           <div class="book-cover-section">
-              <img
-                v-if="book.cover_image_url || book.cover_thumbnail_url"
-                :src="getMediaUrl(book.cover_image_url || book.cover_thumbnail_url)"
-                :alt="book.title"
-                class="book-cover-large"
-              />
-            <div v-else class="book-cover-large book-cover-placeholder">
-              No Cover
-            </div>
+            <img
+              v-if="book.cover_image_url || book.cover_thumbnail_url"
+              :src="getMediaUrl(book.cover_image_url || book.cover_thumbnail_url)"
+              :alt="book.title"
+              class="book-cover-large"
+            />
+            <div v-else class="book-cover-large book-cover-placeholder">No Cover</div>
           </div>
 
           <div class="book-info">
@@ -196,31 +186,20 @@ const {showSearchModal, openSearch, closeSearch, selectBook} = useAddBook(() =>
             <CollapsibleText :text="book.description" />
           </div>
 
-          <BookNotes
-            :notes="book.user_status?.notes ?? ''"
-            :saving="notesSaving"
-            @save="handleSaveNotes"
-          />
+          <BookNotes :notes="book.user_status?.notes ?? ''" :saving="notesSaving" @save="handleSaveNotes" />
 
           <BookMetadata :book="book" />
 
           <EventTimeline :events="events ?? []" />
 
           <div class="book-actions">
-            <button @click="handleEdit" class="btn-primary">
-              Edit Book
-            </button>
+            <button @click="handleEdit" class="btn-primary">Edit Book</button>
           </div>
         </div>
       </div>
     </div>
 
-    <BookSearchModal
-        v-if="showSearchModal"
-        @close="closeSearch"
-        @select="selectBook"
-    />
-
+    <BookSearchModal v-if="showSearchModal" @close="closeSearch" @select="selectBook" />
   </div>
 </template>
 
@@ -402,7 +381,7 @@ const {showSearchModal, openSearch, closeSearch, selectBook} = useAddBook(() =>
     width: 100%;
   }
 
-.book-actions {
+  .book-actions {
     flex-direction: column;
   }
 
