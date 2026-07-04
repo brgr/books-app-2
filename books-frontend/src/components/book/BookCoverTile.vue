@@ -77,18 +77,28 @@ const coverUrl = computed(() =>
   getMediaUrl(props.book.cover_thumbnail_url || props.book.cover_image_url)
 )
 
+const hasPercent = computed(() => {
+  const value = props.book.user_status?.current_percent
+  return value !== null && value !== undefined
+})
+
 const showBadge = computed(() => {
   if (!props.showProgress) return false
   const status = props.book.user_status
+  if (status?.status !== ReadingStatus.STARTED) return false
+  // A percent-tracked book carries progress even without a page count.
   return (
-    status?.status === ReadingStatus.STARTED &&
-    Boolean(props.book.page_count) &&
-    status?.current_page !== null &&
-    status?.current_page !== undefined
+    hasPercent.value ||
+    (Boolean(props.book.page_count) &&
+      status?.current_page !== null &&
+      status?.current_page !== undefined)
   )
 })
 
 const progressPercent = computed(() => {
+  if (hasPercent.value) {
+    return Math.min(100, Math.max(0, Math.round(props.book.user_status!.current_percent as number)))
+  }
   const pageCount = props.book.page_count ?? 0
   const currentPage = props.book.user_status?.current_page ?? 0
   if (pageCount <= 0) return 0

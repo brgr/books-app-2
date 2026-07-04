@@ -7,6 +7,7 @@ function makeProps(overrides: Partial<{
   status: ReadingStatus | null
   updating: boolean
   currentPage: number | null
+  currentPercent: number | null
   pageCount: number | null
   startedAt: string | null
   finishedAt: string | null
@@ -16,6 +17,7 @@ function makeProps(overrides: Partial<{
     status: ReadingStatus.STARTED,
     updating: false,
     currentPage: 10,
+    currentPercent: null,
     pageCount: 200,
     startedAt: null,
     finishedAt: null,
@@ -36,6 +38,14 @@ describe('BookReadingCard', () => {
     expect(wrapper.text()).toContain('No progress yet')
   })
 
+  it('shows the percentage summary when progress was last set as a percent', () => {
+    const wrapper = mount(BookReadingCard, {
+      props: makeProps({currentPage: null, currentPercent: 42}),
+    })
+    expect(wrapper.text()).toContain('42%')
+    expect(wrapper.text()).not.toContain('Page')
+  })
+
   it('renders the progress bar percentage from current page and page count', () => {
     const wrapper = mount(BookReadingCard, {props: makeProps({currentPage: 50, pageCount: 200})})
     expect(wrapper.text()).toContain('25%')
@@ -54,11 +64,11 @@ describe('BookReadingCard', () => {
     expect(wrapper.find('[data-test="progress-input"]').exists()).toBe(true)
   })
 
-  it('emits "update-progress" with parsed page number when Save is clicked', async () => {
+  it('emits "update-progress" with the current page when Save is clicked', async () => {
     const wrapper = mount(BookReadingCard, {props: makeProps()})
     await wrapper.find('[data-test="edit-progress"]').trigger('click')
     await wrapper.find('[data-test="save-progress"]').trigger('click')
-    expect(wrapper.emitted('update-progress')?.[0]?.[0]).toBe(10)
+    expect(wrapper.emitted('update-progress')?.[0]?.[0]).toEqual({page: 10})
   })
 
   it('emits "update-progress" with new page after editing the input', async () => {
@@ -66,7 +76,26 @@ describe('BookReadingCard', () => {
     await wrapper.find('[data-test="edit-progress"]').trigger('click')
     await wrapper.find('[data-test="progress-input"]').setValue('42')
     await wrapper.find('[data-test="save-progress"]').trigger('click')
-    expect(wrapper.emitted('update-progress')?.[0]?.[0]).toBe(42)
+    expect(wrapper.emitted('update-progress')?.[0]?.[0]).toEqual({page: 42})
+  })
+
+  it('emits a percent payload when the percent unit is selected', async () => {
+    const wrapper = mount(BookReadingCard, {props: makeProps()})
+    await wrapper.find('[data-test="edit-progress"]').trigger('click')
+    await wrapper.find('[data-test="unit-percent"]').trigger('click')
+    await wrapper.find('[data-test="progress-input"]').setValue('75')
+    await wrapper.find('[data-test="save-progress"]').trigger('click')
+    expect(wrapper.emitted('update-progress')?.[0]?.[0]).toEqual({percent: 75})
+  })
+
+  it('defaults the editor to the percent unit when progress was last a percent', async () => {
+    const wrapper = mount(BookReadingCard, {
+      props: makeProps({currentPage: null, currentPercent: 30}),
+    })
+    await wrapper.find('[data-test="edit-progress"]').trigger('click')
+    expect((wrapper.find('[data-test="progress-input"]').element as HTMLInputElement).value).toBe('30')
+    await wrapper.find('[data-test="save-progress"]').trigger('click')
+    expect(wrapper.emitted('update-progress')?.[0]?.[0]).toEqual({percent: 30})
   })
 
   it('Cancel exits edit mode without emitting', async () => {

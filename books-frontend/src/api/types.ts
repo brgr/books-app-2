@@ -22,6 +22,7 @@ export interface UserBook {
   finished_at: string | null
   notes: string | null
   current_page: number | null
+  current_percent: number | null
   created_at: string
   updated_at: string
 }
@@ -117,7 +118,8 @@ export interface BookEvent {
 }
 
 export interface BookProgressUpdate {
-  page: number
+  page?: number
+  percent?: number
 }
 
 export interface ImportRecord {

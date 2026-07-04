@@ -29,7 +29,10 @@ const readingStatus = computed(() => props.book.user_status?.status || null)
     <div v-if="book.user_status.finished_at">
       Finished: {{ formatShortDate(book.user_status.finished_at) }}
     </div>
-    <div v-if="book.user_status.current_page !== null">
+    <div v-if="book.user_status.current_percent !== null">
+      Progress: {{ book.user_status.current_percent }}%
+    </div>
+    <div v-else-if="book.user_status.current_page !== null">
       Progress: {{ book.user_status.current_page }}
       <span v-if="book.page_count">/ {{ book.page_count }}</span>
     </div>

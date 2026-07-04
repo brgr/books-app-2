@@ -26,4 +26,10 @@ describe('BookProgressBar', () => {
     expect(wrapper.find('.bar-percent').text()).toBe('0%')
     expect(wrapper.find('.bar-fill').attributes('style')).toContain('width: 0%')
   })
+
+  it('uses currentPercent directly, ignoring page and page count', () => {
+    const wrapper = mount(BookProgressBar, {props: {currentPage: null, currentPercent: 60, pageCount: null}})
+    expect(wrapper.find('.bar-percent').text()).toBe('60%')
+    expect(wrapper.find('.bar-fill').attributes('style')).toContain('width: 60%')
+  })
 })

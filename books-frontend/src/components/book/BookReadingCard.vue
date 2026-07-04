@@ -2,13 +2,16 @@
 import {computed, ref, watch} from 'vue'
 import BookStatusPill from './BookStatusPill.vue'
 import BookProgressBar from './BookProgressBar.vue'
-import {ReadingStatus} from '../../api/types'
+import {ReadingStatus, type BookProgressUpdate} from '../../api/types'
 import {formatShortDate} from '../../utils/date'
+
+type ProgressUnit = 'page' | 'percent'
 
 const props = defineProps<{
   status: ReadingStatus | null
   updating?: boolean
   currentPage?: number | null
+  currentPercent?: number | null
   pageCount?: number | null
   startedAt?: string | null
   finishedAt?: string | null
@@ -17,29 +20,55 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   change: [status: ReadingStatus]
-  'update-progress': [page: number]
+  'update-progress': [progress: BookProgressUpdate]
 }>()
 
-const progressDraft = ref<string>(props.currentPage?.toString() ?? '')
+const hasPage = computed(
+  () => props.currentPage !== null && props.currentPage !== undefined,
+)
+const hasPercent = computed(
+  () => props.currentPercent !== null && props.currentPercent !== undefined,
+)
+
+// The unit the user last tracked in, so re-opening the editor defaults to it.
+const lastUnit = computed<ProgressUnit>(() => (hasPercent.value ? 'percent' : 'page'))
+
+const progressUnit = ref<ProgressUnit>(lastUnit.value)
+const progressDraft = ref<string>('')
 const editingProgress = ref(false)
 
+function currentValueFor(unit: ProgressUnit): string {
+  const value = unit === 'percent' ? props.currentPercent : props.currentPage
+  return value !== null && value !== undefined ? value.toString() : ''
+}
+
 watch(
-  () => props.currentPage,
-  (val) => {
-    progressDraft.value = val?.toString() ?? ''
+  () => [props.currentPage, props.currentPercent],
+  () => {
     editingProgress.value = false
   },
 )
 
-const hasProgress = computed(
-  () => props.currentPage !== null && props.currentPage !== undefined,
-)
+function selectUnit(unit: ProgressUnit) {
+  if (unit === progressUnit.value) return
+  progressUnit.value = unit
+  progressDraft.value = currentValueFor(unit)
+}
 
 function handleSaveProgress() {
   if (props.progressSaving) return
   const trimmed = String(progressDraft.value ?? '').trim()
   if (!trimmed) {
-    alert('Please enter a page number.')
+    alert(progressUnit.value === 'percent' ? 'Please enter a percentage.' : 'Please enter a page number.')
+    return
+  }
+  if (progressUnit.value === 'percent') {
+    const percent = Number.parseFloat(trimmed)
+    if (Number.isNaN(percent) || percent < 0 || percent > 100) {
+      alert('Please enter a percentage between 0 and 100.')
+      return
+    }
+    emit('update-progress', {percent})
     return
   }
   const page = Number.parseInt(trimmed, 10)
@@ -47,7 +76,7 @@ function handleSaveProgress() {
     alert('Please enter a valid page number.')
     return
   }
-  emit('update-progress', page)
+  emit('update-progress', {page})
 }
 
 function handleProgressFocus(event: FocusEvent) {
@@ -56,12 +85,12 @@ function handleProgressFocus(event: FocusEvent) {
 }
 
 function startEditingProgress() {
-  progressDraft.value = props.currentPage?.toString() ?? ''
+  progressUnit.value = lastUnit.value
+  progressDraft.value = currentValueFor(progressUnit.value)
   editingProgress.value = true
 }
 
 function cancelEditingProgress() {
-  progressDraft.value = props.currentPage?.toString() ?? ''
   editingProgress.value = false
 }
 </script>
@@ -70,23 +99,53 @@ function cancelEditingProgress() {
   <div class="status-card" data-test="status-card">
     <BookStatusPill :status="status" :updating="updating ?? false" @change="emit('change', $event)" />
 
-    <BookProgressBar :current-page="currentPage" :page-count="pageCount" />
+    <BookProgressBar
+      :current-page="currentPage"
+      :current-percent="currentPercent"
+      :page-count="pageCount"
+    />
 
     <div class="progress-line">
       <span v-if="editingProgress" class="progress-edit">
+        <span class="unit-toggle" role="group" aria-label="Progress unit">
+          <button
+            type="button"
+            class="unit-btn"
+            :class="{active: progressUnit === 'page'}"
+            data-test="unit-page"
+            :disabled="progressSaving"
+            @click="selectUnit('page')"
+          >
+            Page
+          </button>
+          <button
+            type="button"
+            class="unit-btn"
+            :class="{active: progressUnit === 'percent'}"
+            data-test="unit-percent"
+            :disabled="progressSaving"
+            @click="selectUnit('percent')"
+          >
+            %
+          </button>
+        </span>
         <input
           v-model="progressDraft"
           type="number"
           min="0"
-          inputmode="numeric"
-          pattern="[0-9]*"
+          :max="progressUnit === 'percent' ? 100 : undefined"
+          :step="progressUnit === 'percent' ? 'any' : 1"
+          inputmode="decimal"
           class="progress-input"
           data-test="progress-input"
           :disabled="progressSaving"
-          placeholder="Page"
+          :placeholder="progressUnit === 'percent' ? '%' : 'Page'"
           @focus="handleProgressFocus"
         />
-        <span v-if="pageCount" class="muted">of {{ pageCount }}</span>
+        <span class="muted progress-suffix">
+          <template v-if="progressUnit === 'page' && pageCount">of {{ pageCount }}</template>
+          <template v-else-if="progressUnit === 'percent'">%</template>
+        </span>
         <button
           class="btn-link"
           type="button"
@@ -108,7 +167,8 @@ function cancelEditingProgress() {
       </span>
       <template v-else>
         <span class="muted">
-          <template v-if="hasProgress">Page {{ currentPage }}<span v-if="pageCount"> of {{ pageCount }}</span></template>
+          <template v-if="hasPercent">{{ currentPercent }}%</template>
+          <template v-else-if="hasPage">Page {{ currentPage }}<span v-if="pageCount"> of {{ pageCount }}</span></template>
           <template v-else>No progress yet</template>
         </span>
         <button
@@ -165,6 +225,43 @@ function cancelEditingProgress() {
 
 .muted {
   color: var(--color-text-secondary);
+}
+
+.unit-toggle {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+.unit-btn {
+  background: none;
+  border: none;
+  padding: 4px var(--spacing-sm);
+  color: var(--color-text-secondary);
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.unit-btn:not(:last-child) {
+  border-right: 1px solid var(--color-border);
+}
+
+.unit-btn.active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.unit-btn:disabled {
+  cursor: not-allowed;
+}
+
+/* Reserve a fixed width so switching between "of {pages}" and "%" doesn't
+   resize the fit-content card. */
+.progress-suffix {
+  min-width: 4rem;
+  text-align: left;
 }
 
 .progress-input {

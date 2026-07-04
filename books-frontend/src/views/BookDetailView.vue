@@ -11,7 +11,7 @@ import NavigationBar from '../components/ui/NavigationBar.vue'
 import CollapsibleText from '../components/ui/CollapsibleText.vue'
 import BookMetadata from '../components/book/BookMetadata.vue'
 import EventTimeline from '../components/book/EventTimeline.vue'
-import {ReadingStatus, type Book, type BookEvent} from '../api/types'
+import {ReadingStatus, type Book, type BookEvent, type BookProgressUpdate} from '../api/types'
 import {formatShortDate} from '../utils/date'
 import {useCachedQuery} from '../composables/useCachedQuery'
 import {useAddBook} from '../composables/useAddBook'
@@ -99,11 +99,11 @@ async function handleSaveNotes(notes: string) {
   }
 }
 
-async function handleSaveProgress(page: number) {
+async function handleSaveProgress(progress: BookProgressUpdate) {
   if (!book.value || !canUpdateProgress.value) return
   progressSaving.value = true
   try {
-    book.value.user_status = await addBookProgress(book.value.id, {page})
+    book.value.user_status = await addBookProgress(book.value.id, progress)
     await cacheDel(cacheKeys.bookEvents(book.value.id))
     await refreshEvents()
   } catch (error) {
@@ -169,6 +169,7 @@ const {showSearchModal, openSearch, closeSearch, selectBook} = useAddBook(() =>
                 :status="book.user_status?.status ?? null"
                 :updating="updatingStatus"
                 :current-page="book.user_status?.current_page ?? null"
+                :current-percent="book.user_status?.current_percent ?? null"
                 :page-count="book.page_count ?? null"
                 :started-at="book.user_status?.started_at ?? null"
                 :finished-at="book.user_status?.finished_at ?? null"
