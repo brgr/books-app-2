@@ -1,0 +1,7 @@
+# Reformatting-only commits to skip in `git blame`.
+# Configure locally with:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# GitHub applies this file automatically.
+
+# Apply prettier formatting across the frontend
+f585ce195f0a2148a8c220947def5ffc37c285da
