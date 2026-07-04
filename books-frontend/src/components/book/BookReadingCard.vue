@@ -1,13 +1,22 @@
 <script setup lang="ts">
-import {ref, watch} from 'vue'
+import {computed, ref, watch} from 'vue'
+import BookStatusPill from './BookStatusPill.vue'
+import BookProgressBar from './BookProgressBar.vue'
+import {ReadingStatus} from '../../api/types'
+import {formatShortDate} from '../../utils/date'
 
 const props = defineProps<{
+  status: ReadingStatus | null
+  updating?: boolean
   currentPage?: number | null
   pageCount?: number | null
+  startedAt?: string | null
+  finishedAt?: string | null
   progressSaving?: boolean
 }>()
 
 const emit = defineEmits<{
+  change: [status: ReadingStatus]
   'update-progress': [page: number]
 }>()
 
@@ -20,6 +29,10 @@ watch(
     progressDraft.value = val?.toString() ?? ''
     editingProgress.value = false
   },
+)
+
+const hasProgress = computed(
+  () => props.currentPage !== null && props.currentPage !== undefined,
 )
 
 function handleSaveProgress() {
@@ -55,14 +68,11 @@ function cancelEditingProgress() {
 
 <template>
   <div class="status-card" data-test="status-card">
-    <div class="status-row">
-      <span class="status-label">Progress</span>
-      <span class="status-subtitle">
-        <template v-if="currentPage !== null && currentPage !== undefined">
-          Page {{ currentPage }}<span v-if="pageCount"> of {{ pageCount }}</span>
-        </template>
-        <template v-else>No progress yet</template>
-      </span>
+    <BookStatusPill :status="status" :updating="updating ?? false" @change="emit('change', $event)" />
+
+    <BookProgressBar :current-page="currentPage" :page-count="pageCount" />
+
+    <div class="progress-line">
       <span v-if="editingProgress" class="progress-edit">
         <input
           v-model="progressDraft"
@@ -76,13 +86,13 @@ function cancelEditingProgress() {
           placeholder="Page"
           @focus="handleProgressFocus"
         />
-        <span v-if="pageCount" class="progress-total">of {{ pageCount }}</span>
+        <span v-if="pageCount" class="muted">of {{ pageCount }}</span>
         <button
           class="btn-link"
           type="button"
           data-test="save-progress"
-          @click="handleSaveProgress"
           :disabled="progressSaving"
+          @click="handleSaveProgress"
         >
           {{ progressSaving ? 'Saving…' : 'Save' }}
         </button>
@@ -90,21 +100,31 @@ function cancelEditingProgress() {
           class="btn-link btn-link-cancel"
           type="button"
           data-test="cancel-progress"
-          @click="cancelEditingProgress"
           :disabled="progressSaving"
+          @click="cancelEditingProgress"
         >
           Cancel
         </button>
       </span>
-      <button
-        v-else
-        class="btn-link"
-        type="button"
-        data-test="edit-progress"
-        @click="startEditingProgress"
-      >
-        Update
-      </button>
+      <template v-else>
+        <span class="muted">
+          <template v-if="hasProgress">Page {{ currentPage }}<span v-if="pageCount"> of {{ pageCount }}</span></template>
+          <template v-else>No progress yet</template>
+        </span>
+        <button
+          class="btn-link"
+          type="button"
+          data-test="edit-progress"
+          @click="startEditingProgress"
+        >
+          Update
+        </button>
+      </template>
+    </div>
+
+    <div v-if="startedAt || finishedAt" class="dates">
+      <span v-if="startedAt">Started {{ formatShortDate(startedAt) }}</span>
+      <span v-if="finishedAt">· Finished {{ formatShortDate(finishedAt) }}</span>
     </div>
   </div>
 </template>
@@ -123,29 +143,27 @@ function cancelEditingProgress() {
   max-width: 100%;
 }
 
-.status-row,
+.progress-line,
 .progress-edit {
   display: flex;
-  gap: var(--spacing-md);
   align-items: center;
+  gap: var(--spacing-md);
   flex-wrap: wrap;
   font-size: 0.9rem;
 }
 
-.status-row > .btn-link {
+.progress-line > .btn-link {
   margin-left: auto;
 }
 
-.status-row > .progress-edit {
-  flex-basis: 100%;
+.dates {
+  display: flex;
+  gap: var(--spacing-xs);
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
 }
 
-.status-label {
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.status-subtitle {
+.muted {
   color: var(--color-text-secondary);
 }
 
@@ -166,11 +184,6 @@ function cancelEditingProgress() {
 .progress-input::-webkit-inner-spin-button {
   margin: 0;
   -webkit-appearance: none;
-}
-
-.progress-total {
-  color: var(--color-text-secondary);
-  font-size: 0.9rem;
 }
 
 .btn-link {

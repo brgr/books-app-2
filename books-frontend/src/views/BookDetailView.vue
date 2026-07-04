@@ -5,8 +5,8 @@ import {createBook, getBook, setReadingStatus, getBookEvents, addBookProgress} f
 import {getMediaUrl} from '../api/client'
 import BookNotes from '../components/book/BookNotes.vue'
 import BookSearchModal from '../components/modals/BookSearchModal.vue'
-import BookStatusSheet from '../components/book/BookStatusSheet.vue'
 import BookStatusPill from '../components/book/BookStatusPill.vue'
+import BookReadingCard from '../components/book/BookReadingCard.vue'
 import NavigationBar from '../components/ui/NavigationBar.vue'
 import EventTimeline from '../components/book/EventTimeline.vue'
 import {ReadingStatus, type Book, type GoogleBookResult, type BookEvent} from '../api/types'
@@ -194,20 +194,27 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
 
             <div class="book-status-section">
               <BookStatusPill
+                v-if="!canUpdateProgress"
                 :status="book.user_status?.status ?? null"
                 :updating="updatingStatus"
                 @change="handleStatusChange"
               />
-              <BookStatusSheet
-                v-if="canUpdateProgress"
+
+              <BookReadingCard
+                v-else
+                :status="book.user_status?.status ?? null"
+                :updating="updatingStatus"
                 :current-page="book.user_status?.current_page ?? null"
                 :page-count="book.page_count ?? null"
+                :started-at="book.user_status?.started_at ?? null"
+                :finished-at="book.user_status?.finished_at ?? null"
                 :progress-saving="progressSaving"
+                @change="handleStatusChange"
                 @update-progress="handleSaveProgress"
               />
             </div>
 
-            <div v-if="book.user_status" class="book-dates">
+            <div v-if="book.user_status && !canUpdateProgress" class="book-dates">
               <div v-if="book.user_status.started_at" class="date-item">
                 <strong>Started:</strong> {{ formatShortDate(book.user_status.started_at) }}
               </div>
