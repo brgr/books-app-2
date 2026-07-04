@@ -27,6 +27,12 @@ echo "Running backend tests (pytest)..."
   uv run pytest -m "not external"
 )
 
+echo "Running frontend format check (prettier)..."
+(
+  cd "$repo_root/books-frontend"
+  npm run format:check
+)
+
 echo "Running frontend typecheck..."
 (
   cd "$repo_root/books-frontend"
