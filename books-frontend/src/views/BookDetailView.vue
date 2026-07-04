@@ -150,7 +150,7 @@ async function handleBookSelected(selectedBook: GoogleBookResult) {
     })
     await cacheInvalidateByPrefix('lists:')
     showSearchModal.value = false
-    router.push({name: 'books'})
+    await router.push({name: 'books'})
   } catch (err: any) {
     console.error('Failed to add book:', err)
     alert(err.response?.data?.detail || 'Failed to add book. Please try again.')
