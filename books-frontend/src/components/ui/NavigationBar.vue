@@ -48,6 +48,7 @@ function closeMenu() {
           </svg>
           BOOKS
         </router-link>
+        <slot name="nav"></slot>
       </div>
 
       <div class="navbar-right">
@@ -77,7 +78,8 @@ function closeMenu() {
 
 <style scoped>
 .navbar {
-  background-color: var(--color-bg-card);
+  background-color: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
   overflow: visible;
   width: 100%;
   position: relative;

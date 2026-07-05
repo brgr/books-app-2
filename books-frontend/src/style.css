@@ -25,15 +25,17 @@
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-text: #e8e8e8;
-    --color-text-secondary: #a0a0a0;
-    --color-border: #404040;
-    --color-bg: #1a1a1a;
-    --color-bg-card: #2a2a2a;
-    --color-error-bg: #3a1f1f;
-    --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --color-primary: #8f8cf2;
+    --color-primary-hover: #a9a6f7;
+    --color-text: #ece8f2;
+    --color-text-secondary: #9b93ab;
+    --color-border: #322e3c;
+    --color-bg: #141319;
+    --color-bg-card: #221f2a;
+    --color-error-bg: #3a1f2a;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
     --modal-overlay-bg: rgba(0, 0, 0, 0.7);
-    --modal-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    --modal-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
   }
 }
 

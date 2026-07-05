@@ -8,9 +8,9 @@ import BookCoverTile from "../components/book/BookCoverTile.vue";
 import BookContextMenu from "../components/book/BookContextMenu.vue";
 import BookSearchModal from "../components/modals/BookSearchModal.vue";
 import BooksSearchHeader from "../components/ui/BooksSearchHeader.vue";
+import LibraryNav from "../components/ui/LibraryNav.vue";
 import NavigationBar from "../components/ui/NavigationBar.vue";
 import { ReadingStatus, type PaginatedBooks, type Book, type BookList } from "../api/types";
-import { getStatusLabel } from "../book/status";
 import { useCachedQuery } from "../composables/useCachedQuery";
 import { useAddBook } from "../composables/useAddBook";
 import { cacheKeys } from "../cache/keys";
@@ -21,10 +21,8 @@ const router = useRouter();
 const accumulatedBooks = ref<Book[]>([]);
 const isLoadingMore = ref(false);
 
-const filterStatus = ref<ReadingStatus | "">("");
 const searchQuery = ref("");
 const shelfFilter = ref<"to-read" | "finished">("to-read");
-const showShelfMenu = ref(false);
 const activeListId = ref<number | null>(null);
 
 const { data: listsData } = useCachedQuery<BookList[]>(cacheKeys.lists(), () => getLists());
@@ -93,11 +91,6 @@ const filteredBooks = computed(() => {
   if (!booksData.value && accumulatedBooks.value.length === 0) return [];
 
   let books = accumulatedBooks.value;
-
-  // Filter by status
-  if (filterStatus.value) {
-    books = books.filter((book) => book.user_status?.status === filterStatus.value);
-  }
 
   // Filter by search query
   if (searchQuery.value.trim()) {
@@ -192,22 +185,12 @@ const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(asyn
   await refreshBooks();
 });
 
-const shelfLabel = computed(() => (shelfFilter.value === "to-read" ? "To Read" : "Finished"));
-
-function toggleShelfMenu() {
-  showShelfMenu.value = !showShelfMenu.value;
-}
-
-function setShelfFilter(next: "to-read" | "finished") {
-  shelfFilter.value = next;
-  if (filterStatus.value) {
-    filterStatus.value = "";
-  }
-  showShelfMenu.value = false;
+// Switching surfaces (To Read / Finished) loads the matching list from scratch.
+watch(shelfFilter, () => {
   resetPagination();
   setActiveListForShelf();
   loadBooks();
-}
+});
 
 function handleDragStart() {
   isDragging.value = true;
@@ -226,7 +209,7 @@ async function handleDragEndForList(list: Book[], event: { newIndex?: number; ol
   if (!activeListId.value) {
     return;
   }
-  if (searchQuery.value.trim() || filterStatus.value) {
+  if (searchQuery.value.trim()) {
     return;
   }
 
@@ -281,7 +264,7 @@ const dragOpts = computed(() => ({
   animation: 150,
   delay: 120,
   "delay-on-touch-only": true,
-  disabled: Boolean(searchQuery.value.trim()) || Boolean(filterStatus.value),
+  disabled: Boolean(searchQuery.value.trim()),
   "ghost-class": "grid-ghost",
   "drag-class": "grid-drag",
   "chosen-class": "grid-chosen",
@@ -290,37 +273,31 @@ const dragOpts = computed(() => ({
 
 <template>
   <div class="books-view">
-    <NavigationBar @add-book="openSearch" />
+    <NavigationBar @add-book="openSearch">
+      <template #nav>
+        <LibraryNav v-model="shelfFilter" />
+      </template>
+    </NavigationBar>
 
     <div class="container">
       <div v-if="error" class="error">
         {{ error }}
       </div>
 
-      <BooksSearchHeader
-        v-model:search-query="searchQuery"
-        v-model:filter-status="filterStatus"
-        v-model:view-mode="viewMode"
-      />
-
-      <div v-if="filterStatus" class="active-filters">
-        <div class="filter-tag">
-          Status: {{ getStatusLabel(filterStatus) }}
-          <button @click="filterStatus = ''" class="filter-tag-remove">×</button>
-        </div>
-      </div>
+      <BooksSearchHeader v-model:search-query="searchQuery" v-model:view-mode="viewMode" />
 
       <div v-if="booksData && filteredBooks.length === 0" class="empty-state">
-        <p v-if="searchQuery || filterStatus">No books match your filters.</p>
+        <p v-if="searchQuery">No books match your search.</p>
+        <p v-else-if="shelfFilter === 'finished'">No finished books yet.</p>
         <p v-else>No books yet. Add your first book to get started!</p>
       </div>
 
       <template v-if="viewMode === 'grid'">
         <template v-if="shelfFilter === 'to-read'">
           <section v-if="gridCurrentlyReading.length" class="shelf-section">
-            <h2 class="shelf-section-title">Currently Reading</h2>
+            <h2 class="shelf-section-title">Reading now</h2>
             <draggable
-              class="books-container books-grid sectioned"
+              class="books-container books-grid sectioned nightstand"
               :list="gridCurrentlyReading"
               v-bind="dragOpts"
               @start="handleDragStart"
@@ -333,7 +310,7 @@ const dragOpts = computed(() => ({
           </section>
 
           <section v-if="gridToRead.length" class="shelf-section">
-            <h2 class="shelf-section-title">To Read</h2>
+            <h2 class="shelf-section-title">Want to read</h2>
             <draggable
               class="books-container books-grid sectioned"
               :list="gridToRead"
@@ -365,13 +342,13 @@ const dragOpts = computed(() => ({
       <div v-else class="books-container books-list">
         <template v-if="shelfFilter === 'to-read'">
           <section v-if="currentlyReadingBooks.length" class="shelf-section">
-            <h2 class="shelf-section-title">Currently Reading</h2>
+            <h2 class="shelf-section-title">Reading now</h2>
             <div v-for="book in currentlyReadingBooks" :key="book.id">
               <BookCard :book="book" @menu="openContextMenu" />
             </div>
           </section>
           <section v-if="toReadBooks.length" class="shelf-section">
-            <h2 class="shelf-section-title">To Read</h2>
+            <h2 class="shelf-section-title">Want to read</h2>
             <div v-for="book in toReadBooks" :key="book.id">
               <BookCard :book="book" @menu="openContextMenu" />
             </div>
@@ -396,38 +373,6 @@ const dragOpts = computed(() => ({
       @view="handleContextView"
       @close="closeContextMenu"
     />
-
-    <div class="bottom-bar">
-      <div v-if="showShelfMenu" class="bottom-menu" role="menu">
-        <button
-          type="button"
-          role="menuitemradio"
-          :aria-checked="shelfFilter === 'to-read'"
-          :class="['bottom-menu-item', { active: shelfFilter === 'to-read' }]"
-          @click="setShelfFilter('to-read')"
-        >
-          To Read
-        </button>
-        <button
-          type="button"
-          role="menuitemradio"
-          :aria-checked="shelfFilter === 'finished'"
-          :class="['bottom-menu-item', { active: shelfFilter === 'finished' }]"
-          @click="setShelfFilter('finished')"
-        >
-          Finished
-        </button>
-      </div>
-
-      <button type="button" class="bottom-bar-button" @click="toggleShelfMenu" :aria-expanded="showShelfMenu">
-        <span class="bar-text">{{ shelfLabel }}</span>
-        <span class="bar-arrow" aria-hidden="true">
-          <svg viewBox="0 0 24 24" role="presentation" focusable="false">
-            <path d="M12 5l6.5 7.2a1.1 1.1 0 0 1-1.7 1.3L12 8.9l-4.8 4.6a1.1 1.1 0 0 1-1.6-1.5L12 5z" />
-          </svg>
-        </span>
-      </button>
-    </div>
   </div>
 </template>
 
@@ -441,153 +386,6 @@ const dragOpts = computed(() => ({
 
 .books-view :deep(.navbar) {
   z-index: 200;
-}
-
-.bottom-bar {
-  position: fixed;
-  left: 50%;
-  bottom: calc(14px + env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  width: min(92vw, 420px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 20;
-}
-
-.bottom-bar-button {
-  width: 100%;
-  height: 58px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #fff;
-  border: 2px solid #1b2639;
-  border-radius: 999px;
-  box-shadow: 0 10px 26px rgba(27, 38, 57, 0.18);
-  font-family: "Inter", "Segoe UI", sans-serif;
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #1b2639;
-  gap: 10px;
-  padding: 0 22px;
-  cursor: pointer;
-  transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-  touch-action: manipulation;
-}
-
-.bottom-bar-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 28px rgba(27, 38, 57, 0.24);
-}
-
-.bottom-bar-button:focus-visible {
-  outline: 2px solid #1b2639;
-  outline-offset: 3px;
-}
-
-.bottom-menu {
-  position: absolute;
-  bottom: calc(100% + 10px);
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(86vw, 360px);
-  background: #fff;
-  border: 2px solid #1b2639;
-  border-radius: 18px;
-  box-shadow: 0 12px 30px rgba(27, 38, 57, 0.2);
-  padding: 8px;
-  display: flex;
-  gap: 8px;
-}
-
-.bottom-menu-item {
-  flex: 1;
-  border: 1px solid #1b2639;
-  background: transparent;
-  color: #1b2639;
-  font-weight: 700;
-  font-size: 1rem;
-  padding: 10px 12px;
-  border-radius: 999px;
-  cursor: pointer;
-  transition:
-    background 0.15s ease,
-    color 0.15s ease;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-  touch-action: manipulation;
-}
-
-.bottom-menu-item.active {
-  background: #1b2639;
-  color: #fff;
-}
-
-.bar-text {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.12em;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-}
-
-.bar-arrow {
-  width: 20px;
-  height: 20px;
-  display: inline-flex;
-  align-items: center;
-}
-
-.bar-arrow svg {
-  width: 100%;
-  height: 100%;
-  fill: currentColor;
-}
-
-.active-filters {
-  display: flex;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-md);
-  flex-wrap: wrap;
-}
-
-.filter-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  background-color: var(--color-primary);
-  color: white;
-  border-radius: var(--border-radius);
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.filter-tag-remove {
-  background: none;
-  border: none;
-  color: white;
-  cursor: pointer;
-  padding: 0;
-  font-size: 20px;
-  line-height: 1;
-  font-weight: 300;
-  opacity: 0.8;
-  transition: opacity 0.15s ease;
-}
-
-.filter-tag-remove:hover {
-  opacity: 1;
 }
 
 .empty-state {
@@ -641,6 +439,11 @@ const dragOpts = computed(() => ({
   overflow-y: visible;
 }
 
+/* Reading now is the nightstand: fewer, larger covers than the queue below. */
+.books-grid.nightstand {
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+}
+
 /*noinspection CssUnusedSymbol*/
 .books-grid :deep(.sortable-ghost .grid-cover),
 .books-grid :deep(.sortable-ghost .grid-cover-placeholder),
@@ -677,11 +480,16 @@ const dragOpts = computed(() => ({
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.75rem;
   }
+
+  .books-grid.nightstand {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
-@media (min-width: 600px) {
+/* Desktop: LibraryNav is inline tabs, not a fixed bar — drop the reserved space. */
+@media (min-width: 769px) {
   .books-view {
-    padding-bottom: 120px;
+    padding-bottom: var(--spacing-xl);
   }
 }
 

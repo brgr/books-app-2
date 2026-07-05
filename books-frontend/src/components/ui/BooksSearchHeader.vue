@@ -1,17 +1,6 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import { ReadingStatus } from "../../api/types";
-import { getStatusLabel } from "../../book/status";
-
 const searchQuery = defineModel<string>("searchQuery", { required: true });
-const filterStatus = defineModel<ReadingStatus | "">("filterStatus", { required: true });
 const viewMode = defineModel<"list" | "grid">("viewMode", { required: true });
-
-const showFilterDropdown = ref(false);
-
-function toggleFilterDropdown() {
-  showFilterDropdown.value = !showFilterDropdown.value;
-}
 </script>
 
 <template>
@@ -35,44 +24,6 @@ function toggleFilterDropdown() {
     </div>
 
     <div class="search-actions">
-      <div class="filter-dropdown-wrapper">
-        <button @click="toggleFilterDropdown" class="filter-btn" title="Filter options">
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-          </svg>
-        </button>
-
-        <div v-if="showFilterDropdown" class="filter-dropdown">
-          <div class="filter-dropdown-section">
-            <label class="filter-dropdown-label">Status</label>
-            <select v-model="filterStatus" class="filter-dropdown-select" @change="showFilterDropdown = false">
-              <option value="">All books</option>
-              <option :value="ReadingStatus.WANT_TO_READ">
-                {{ getStatusLabel(ReadingStatus.WANT_TO_READ) }}
-              </option>
-              <option :value="ReadingStatus.STARTED">
-                {{ getStatusLabel(ReadingStatus.STARTED) }}
-              </option>
-              <option :value="ReadingStatus.FINISHED">
-                {{ getStatusLabel(ReadingStatus.FINISHED) }}
-              </option>
-              <option :value="ReadingStatus.ABANDONED">
-                {{ getStatusLabel(ReadingStatus.ABANDONED) }}
-              </option>
-            </select>
-          </div>
-        </div>
-      </div>
-
       <div class="view-toggle">
         <button @click="viewMode = 'list'" :class="['view-btn', { active: viewMode === 'list' }]" title="List view">
           <svg
@@ -179,31 +130,6 @@ function toggleFilterDropdown() {
   border: none;
 }
 
-.filter-dropdown-wrapper {
-  position: relative;
-}
-
-.filter-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--spacing-sm);
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  color: var(--color-text-secondary);
-  transition: all 0.15s ease;
-  min-width: 36px;
-  min-height: 36px;
-}
-
-.filter-btn:hover {
-  color: var(--color-text);
-  background-color: var(--color-bg);
-  border-color: var(--color-text-secondary);
-}
-
 .view-toggle {
   display: flex;
   gap: 0;
@@ -244,42 +170,6 @@ function toggleFilterDropdown() {
   background-color: var(--color-bg);
 }
 
-.filter-dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  background-color: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius);
-  box-shadow: var(--modal-shadow);
-  padding: var(--spacing-md);
-  min-width: 200px;
-  z-index: 100;
-}
-
-.filter-dropdown-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-}
-
-.filter-dropdown-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text);
-  margin-bottom: 0;
-}
-
-.filter-dropdown-select {
-  width: 100%;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  font-size: 14px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius);
-  background-color: var(--color-bg-card);
-  color: var(--color-text);
-}
-
 .view-btn.active {
   background-color: var(--color-primary);
   color: white;
@@ -308,10 +198,6 @@ function toggleFilterDropdown() {
   /* Prevent iOS Safari zooming inputs with font-size under 16px. */
   .search-input {
     font-size: 16px;
-  }
-
-  .filter-btn {
-    flex: 1;
   }
 
   .view-toggle {
