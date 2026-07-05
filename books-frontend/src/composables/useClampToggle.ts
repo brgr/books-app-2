@@ -61,8 +61,12 @@ export function useClampToggle(elementRef: Ref<HTMLElement | null>, options: Use
     expanded.value = false;
   }
 
-  onMounted(() => {
+  onMounted(async () => {
     window.addEventListener("resize", update);
+    // Measure once after the initial render so the toggle appears without
+    // needing a resize; nextTick() ensures the element is laid out first.
+    await nextTick();
+    update();
   });
 
   onBeforeUnmount(() => {
