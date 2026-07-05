@@ -105,9 +105,9 @@ class Book(Base):
         resolves any download/thumbnail side effects afterwards.
         """
         fields = data.model_fields_set
-        if "title" in fields:
+        if "title" in fields and data.title is not None:
             self.title = data.title
-        if "author" in fields:
+        if "author" in fields and data.author is not None:
             self.author = data.author
         if "isbn" in fields:
             self.isbn = data.isbn

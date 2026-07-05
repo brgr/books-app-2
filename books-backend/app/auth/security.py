@@ -69,12 +69,19 @@ def create_refresh_token(subject: str) -> str:
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
+def _resolve_samesite() -> Literal["lax", "strict", "none"]:
+    """Coerce the configured SameSite value to a valid cookie literal (default lax)."""
+    configured = settings.cookie_samesite.lower()
+    if configured == "strict":
+        return "strict"
+    if configured == "none":
+        return "none"
+    return "lax"
+
+
 def set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
     """Set HttpOnly authentication cookies on the response."""
-    # SameSite must be a valid literal type
-    samesite: Literal["lax", "strict", "none"] = "lax"
-    if settings.cookie_samesite.lower() in ("lax", "strict", "none"):
-        samesite = settings.cookie_samesite.lower()  # type: ignore[assignment]
+    samesite = _resolve_samesite()
 
     # Access token cookie
     response.set_cookie(
@@ -103,9 +110,7 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str) 
 
 def set_access_token_cookie(response: Response, access_token: str) -> None:
     """Set only the access token cookie (used during refresh)."""
-    samesite: Literal["lax", "strict", "none"] = "lax"
-    if settings.cookie_samesite.lower() in ("lax", "strict", "none"):
-        samesite = settings.cookie_samesite.lower()  # type: ignore[assignment]
+    samesite = _resolve_samesite()
 
     response.set_cookie(
         key=ACCESS_TOKEN_COOKIE,

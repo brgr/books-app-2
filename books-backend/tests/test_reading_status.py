@@ -381,7 +381,7 @@ def test_progress_requires_page_or_percent(client, auth_headers, created_book):
     _start_reading(client, auth_headers, book_id)
 
     response = client.post(f"/books/{book_id}/progress", json={}, headers=auth_headers)
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 def test_progress_percent_out_of_range(client, auth_headers, created_book):
@@ -392,4 +392,4 @@ def test_progress_percent_out_of_range(client, auth_headers, created_book):
     response = client.post(
         f"/books/{book_id}/progress", json={"percent": 150}, headers=auth_headers
     )
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT

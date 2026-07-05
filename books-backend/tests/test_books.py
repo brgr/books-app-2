@@ -208,7 +208,7 @@ def test_book_validation(client, auth_headers):
         },
         headers=auth_headers,
     )
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     # Invalid page count (negative)
     response = client.post(
@@ -216,4 +216,4 @@ def test_book_validation(client, auth_headers):
         json={"title": "Test Book", "author": "Test Author", "page_count": -10},
         headers=auth_headers,
     )
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
