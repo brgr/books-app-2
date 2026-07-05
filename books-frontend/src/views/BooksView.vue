@@ -297,7 +297,7 @@ const dragOpts = computed(() => ({
           <section v-if="gridCurrentlyReading.length" class="shelf-section">
             <h2 class="shelf-section-title">Reading now</h2>
             <draggable
-              class="books-container books-grid sectioned nightstand"
+              class="books-container books-grid sectioned"
               :list="gridCurrentlyReading"
               v-bind="dragOpts"
               @start="handleDragStart"
@@ -439,11 +439,6 @@ const dragOpts = computed(() => ({
   overflow-y: visible;
 }
 
-/* Reading now is the nightstand: fewer, larger covers than the queue below. */
-.books-grid.nightstand {
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-}
-
 /*noinspection CssUnusedSymbol*/
 .books-grid :deep(.sortable-ghost .grid-cover),
 .books-grid :deep(.sortable-ghost .grid-cover-placeholder),
@@ -479,10 +474,6 @@ const dragOpts = computed(() => ({
   .books-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.75rem;
-  }
-
-  .books-grid.nightstand {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
