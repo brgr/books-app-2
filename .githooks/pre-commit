@@ -3,44 +3,37 @@ set -euo pipefail
 
 repo_root=$(git rev-parse --show-toplevel)
 
-echo "Running backend typecheck (ty)..."
-(
-  cd "$repo_root/books-backend"
-  uv run ty check
-)
+# Only run a side's checks when files under it are staged. Most commits touch
+# either the backend or the frontend, so this skips all of the other side's work.
+staged=$(git diff --cached --name-only --diff-filter=d)
+backend_changed=$(echo "$staged" | grep -q '^books-backend/' && echo 1 || echo 0)
+frontend_changed=$(echo "$staged" | grep -q '^books-frontend/' && echo 1 || echo 0)
 
-echo "Running backend format check (ruff)..."
-(
-  cd "$repo_root/books-backend"
-  uv run ruff format --check
-)
+if [[ "$backend_changed" == 1 ]]; then
+  echo "Running backend typecheck (ty)..."
+  (cd "$repo_root/books-backend" && uv run ty check)
 
-echo "Running backend lint (ruff)..."
-(
-  cd "$repo_root/books-backend"
-  uv run ruff check
-)
+  echo "Running backend format check (ruff)..."
+  (cd "$repo_root/books-backend" && uv run ruff format --check)
 
-echo "Running backend tests (pytest)..."
-(
-  cd "$repo_root/books-backend"
-  uv run pytest -m "not external"
-)
+  echo "Running backend lint (ruff)..."
+  (cd "$repo_root/books-backend" && uv run ruff check)
 
-echo "Running frontend format check (prettier)..."
-(
-  cd "$repo_root/books-frontend"
-  npm run format:check
-)
+  echo "Running backend tests (pytest)..."
+  (cd "$repo_root/books-backend" && uv run pytest -m "not external" -n auto)
+else
+  echo "No backend changes staged, skipping backend checks."
+fi
 
-echo "Running frontend typecheck..."
-(
-  cd "$repo_root/books-frontend"
-  npm run typecheck
-)
+if [[ "$frontend_changed" == 1 ]]; then
+  echo "Running frontend format check (prettier)..."
+  (cd "$repo_root/books-frontend" && npm run format:check)
 
-echo "Running frontend tests (vitest)..."
-(
-  cd "$repo_root/books-frontend"
-  npm run test:run
-)
+  echo "Running frontend typecheck..."
+  (cd "$repo_root/books-frontend" && npm run typecheck)
+
+  echo "Running frontend tests (vitest)..."
+  (cd "$repo_root/books-frontend" && npm run test:run)
+else
+  echo "No frontend changes staged, skipping frontend checks."
+fi
