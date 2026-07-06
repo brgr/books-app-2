@@ -10,7 +10,6 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  close: [];
   select: [imageUrl: string];
 }>();
 
@@ -44,14 +43,6 @@ async function handleSearch() {
   }
 }
 
-function handleSelect(result: CoverSearchResult) {
-  emit("select", result.image_url);
-}
-
-function handleClose() {
-  emit("close");
-}
-
 watch(
   () => [props.initialTitle, props.initialAuthor, props.initialIsbn],
   () => {
@@ -64,54 +55,43 @@ watch(
 </script>
 
 <template>
-  <div class="modal-overlay" @click.self="handleClose">
-    <div class="modal">
-      <div class="modal-header">
-        <h3>Find a Cover</h3>
-        <button @click="handleClose" class="btn-small">Close</button>
-      </div>
+  <div class="search-fields">
+    <input v-model="title" type="text" placeholder="Title" :disabled="loading" @keyup.enter="handleSearch" />
+    <input v-model="author" type="text" placeholder="Author" :disabled="loading" @keyup.enter="handleSearch" />
+    <input
+      v-model="isbn"
+      type="text"
+      placeholder="ISBN (overrides title/author)"
+      :disabled="loading"
+      @keyup.enter="handleSearch"
+    />
+    <button @click="handleSearch" class="btn-primary" :disabled="loading">
+      {{ loading ? "Searching..." : "Search" }}
+    </button>
+  </div>
 
-      <div class="modal-body">
-        <div class="search-fields">
-          <input v-model="title" type="text" placeholder="Title" :disabled="loading" @keyup.enter="handleSearch" />
-          <input v-model="author" type="text" placeholder="Author" :disabled="loading" @keyup.enter="handleSearch" />
-          <input
-            v-model="isbn"
-            type="text"
-            placeholder="ISBN (overrides title/author)"
-            :disabled="loading"
-            @keyup.enter="handleSearch"
-          />
-          <button @click="handleSearch" class="btn-primary" :disabled="loading">
-            {{ loading ? "Searching..." : "Search" }}
-          </button>
-        </div>
+  <div v-if="error" class="error">{{ error }}</div>
 
-        <div v-if="error" class="error">{{ error }}</div>
+  <div v-if="loading" class="loading">Loading covers...</div>
 
-        <div v-if="loading" class="loading">Loading covers...</div>
+  <div v-else-if="hasSearched && results.length === 0" class="empty-state">
+    <p>No covers found. Try a different combination.</p>
+  </div>
 
-        <div v-else-if="hasSearched && results.length === 0" class="empty-state">
-          <p>No covers found. Try a different combination.</p>
-        </div>
-
-        <div v-else-if="results.length > 0" class="cover-grid">
-          <button
-            v-for="(result, index) in results"
-            :key="result.google_books_id || index"
-            class="cover-tile"
-            @click="handleSelect(result)"
-            :title="`${result.title}${result.author ? ' — ' + result.author : ''}`"
-          >
-            <img :src="result.thumbnail" :alt="result.title" loading="lazy" />
-            <div class="cover-caption">
-              <span class="cover-title">{{ result.title }}</span>
-              <span v-if="result.author" class="cover-author">{{ result.author }}</span>
-            </div>
-          </button>
-        </div>
-      </div>
-    </div>
+  <div v-else-if="results.length > 0" class="cover-grid">
+    <button
+      v-for="(result, index) in results"
+      :key="result.google_books_id || index"
+      class="cover-tile"
+      @click="emit('select', result.image_url)"
+      :title="`${result.title}${result.author ? ' — ' + result.author : ''}`"
+    >
+      <img :src="result.thumbnail" :alt="result.title" loading="lazy" />
+      <span class="cover-caption">
+        <span class="cover-title">{{ result.title }}</span>
+        <span v-if="result.author" class="cover-author">{{ result.author }}</span>
+      </span>
+    </button>
   </div>
 </template>
 

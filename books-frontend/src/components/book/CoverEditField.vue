@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { getMediaUrl } from "../../api/client";
-import CoverPickerModal from "../modals/CoverPickerModal.vue";
-import CoverUpgradeModal from "../modals/CoverUpgradeModal.vue";
+import CoverModal from "../modals/CoverModal.vue";
 
 const props = defineProps<{
   modelValue: string;
@@ -17,8 +16,7 @@ const emit = defineEmits<{
   (e: "update:modelValue", value: string): void;
 }>();
 
-const showCoverPicker = ref(false);
-const showCoverUpgrade = ref(false);
+const showCoverModal = ref(false);
 
 const previewUrl = computed(() => getMediaUrl(props.modelValue));
 
@@ -26,12 +24,7 @@ const canUpgrade = computed(() => !!props.modelValue && !props.modelValue.starts
 
 function handleCoverSelected(imageUrl: string) {
   emit("update:modelValue", imageUrl);
-  showCoverPicker.value = false;
-}
-
-function handleUpgradeSelected(imageUrl: string) {
-  emit("update:modelValue", imageUrl);
-  showCoverUpgrade.value = false;
+  showCoverModal.value = false;
 }
 </script>
 
@@ -46,9 +39,8 @@ function handleUpgradeSelected(imageUrl: string) {
       <div class="cover-actions">
         <span v-if="!modelValue" class="cover-status">No cover</span>
         <div class="cover-buttons">
-          <button type="button" @click="showCoverPicker = true" :disabled="disabled">Find cover</button>
-          <button type="button" v-if="canUpgrade" @click="showCoverUpgrade = true" :disabled="disabled">
-            Upgrade cover
+          <button type="button" @click="showCoverModal = true" :disabled="disabled">
+            {{ modelValue ? "Change cover" : "Find cover" }}
           </button>
           <button
             type="button"
@@ -63,20 +55,15 @@ function handleUpgradeSelected(imageUrl: string) {
       </div>
     </div>
 
-    <CoverPickerModal
-      v-if="showCoverPicker"
+    <CoverModal
+      v-if="showCoverModal"
       :initial-title="title"
       :initial-author="author"
       :initial-isbn="isbn"
-      @select="handleCoverSelected"
-      @close="showCoverPicker = false"
-    />
-
-    <CoverUpgradeModal
-      v-if="showCoverUpgrade && bookId"
       :book-id="bookId"
-      @select="handleUpgradeSelected"
-      @close="showCoverUpgrade = false"
+      :can-upgrade="canUpgrade"
+      @select="handleCoverSelected"
+      @close="showCoverModal = false"
     />
   </div>
 </template>

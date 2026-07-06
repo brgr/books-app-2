@@ -9,7 +9,6 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  close: [];
   select: [imageUrl: string];
 }>();
 
@@ -68,60 +67,49 @@ onBeforeUnmount(() => {
     pollTimer = null;
   }
 });
-
-function handleSelect(c: CoverUpgradeCandidate) {
-  emit("select", c.image_url);
-}
-
-function handleClose() {
-  emit("close");
-}
 </script>
 
 <template>
-  <div class="modal-overlay" @click.self="handleClose">
-    <div class="modal">
-      <div class="modal-header">
-        <h3>Upgrade Cover</h3>
-        <button @click="handleClose" class="btn-small">Close</button>
-      </div>
+  <p class="mode-hint">Looking for a higher-resolution copy of the current cover.</p>
 
-      <div class="modal-body">
-        <div v-if="status === 'starting' || status === 'running'" class="loading">
-          Looking for a higher-resolution cover...
-        </div>
+  <div v-if="status === 'starting' || status === 'running'" class="loading">
+    Looking for a higher-resolution cover...
+  </div>
 
-        <div v-else-if="status === 'failed'" class="error">{{ errorMsg }}</div>
+  <div v-else-if="status === 'failed'" class="error">{{ errorMsg }}</div>
 
-        <div v-else-if="status === 'empty'" class="empty-state">
-          <p>No better cover found. The current one looks like the best available.</p>
-        </div>
+  <div v-else-if="status === 'empty'" class="empty-state">
+    <p>No better cover found. The current one looks like the best available.</p>
+  </div>
 
-        <div v-else-if="status === 'done'" class="cover-grid">
-          <button
-            v-for="(c, index) in results"
-            :key="index"
-            class="cover-tile"
-            @click="handleSelect(c)"
-            :title="`${c.width}×${c.height} · ${c.source}`"
-          >
-            <img :src="getMediaUrl(c.thumbnail_url)" :alt="`Candidate ${index + 1}`" loading="lazy" />
-            <div class="cover-caption">
-              <span class="cover-size">{{ c.width }}&times;{{ c.height }}</span>
-              <span class="cover-meta">
-                {{ c.source }} &middot;
-                <span :class="['quality', c.match_quality]">{{ c.match_quality }}</span>
-                &middot; {{ c.size_ratio.toFixed(1) }}&times;
-              </span>
-            </div>
-          </button>
-        </div>
-      </div>
-    </div>
+  <div v-else-if="status === 'done'" class="cover-grid">
+    <button
+      v-for="(c, index) in results"
+      :key="index"
+      class="cover-tile"
+      @click="emit('select', c.image_url)"
+      :title="`${c.width}×${c.height} · ${c.source}`"
+    >
+      <img :src="getMediaUrl(c.thumbnail_url)" :alt="`Candidate ${index + 1}`" loading="lazy" />
+      <span class="cover-caption">
+        <span class="cover-size">{{ c.width }}&times;{{ c.height }}</span>
+        <span class="cover-meta">
+          {{ c.source }} &middot;
+          <span :class="['quality', c.match_quality]">{{ c.match_quality }}</span>
+          &middot; {{ c.size_ratio.toFixed(1) }}&times;
+        </span>
+      </span>
+    </button>
   </div>
 </template>
 
 <style scoped>
+.mode-hint {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: var(--spacing-md);
+}
+
 .cover-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
