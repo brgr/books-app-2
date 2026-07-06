@@ -194,6 +194,9 @@ watch(shelfFilter, () => {
 
 function handleDragStart() {
   isDragging.value = true;
+  // Starting a drag dismisses any open long-press menu, revealing the book being
+  // moved (the drag was already armed underneath the menu).
+  closeContextMenu();
 }
 
 async function handleDragEndForList(list: Book[], event: { newIndex?: number; oldIndex?: number } | null) {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount } from "vue";
-import { ReadingStatus, type Book } from "../../api/types";
+import { type Book, ReadingStatus } from "../../api/types";
 import { getMediaUrl } from "../../api/client";
 
 const props = withDefaults(
@@ -19,9 +19,10 @@ const emit = defineEmits<{
 const LONG_PRESS_MS = 500;
 const MOVE_THRESHOLD = 10;
 let pressTimer: ReturnType<typeof setTimeout> | null = null;
-let longPressed = false;
 let startX = 0;
 let startY = 0;
+let touchActive = false;
+let menuShown = false;
 
 function clearPressTimer() {
   if (pressTimer !== null) {
@@ -32,18 +33,23 @@ function clearPressTimer() {
 
 function onContextMenu(e: MouseEvent) {
   e.preventDefault();
+  if (touchActive) return;
+  // Real mouse right-click (no active touch) opens the menu immediately
   emit("menu", { bookId: props.book.id, x: e.clientX, y: e.clientY });
 }
 
 function onTouchStart(e: TouchEvent) {
-  longPressed = false;
   const touch = e.touches[0];
   if (!touch) return;
+  touchActive = true;
+  menuShown = false;
   startX = touch.clientX;
   startY = touch.clientY;
   clearPressTimer();
+  // Show the menu on a long press. If the user then starts dragging, BooksView closes it on the drag's @start;
+  // the book stays draggable underneath either way.
   pressTimer = setTimeout(() => {
-    longPressed = true;
+    menuShown = true;
     emit("menu", { bookId: props.book.id, x: startX, y: startY });
   }, LONG_PRESS_MS);
 }
@@ -51,18 +57,28 @@ function onTouchStart(e: TouchEvent) {
 function onTouchMove(e: TouchEvent) {
   const touch = e.touches[0];
   if (!touch) return;
+  // Movement before the long press = a drag/scroll, so don't pop the menu.
   if (Math.abs(touch.clientX - startX) > MOVE_THRESHOLD || Math.abs(touch.clientY - startY) > MOVE_THRESHOLD) {
     clearPressTimer();
   }
 }
 
-function onTouchEnd() {
+function onTouchEnd(e: TouchEvent) {
   clearPressTimer();
+  // Keep the long-press menu open on release; block the compatibility click it would otherwise spawn
+  // (which would close the menu or open the book)
+  if (menuShown && e.cancelable) e.preventDefault();
+  touchActive = false;
+}
+
+function onTouchCancel() {
+  clearPressTimer();
+  touchActive = false;
 }
 
 function onClick() {
-  if (longPressed) {
-    longPressed = false;
+  if (menuShown) {
+    menuShown = false;
     return;
   }
   emit("click", props.book.id);
@@ -110,7 +126,7 @@ const progressPercent = computed(() => {
       @touchstart.passive="onTouchStart"
       @touchmove.passive="onTouchMove"
       @touchend="onTouchEnd"
-      @touchcancel="onTouchEnd"
+      @touchcancel.passive="onTouchCancel"
     >
       <span v-if="showBadge" class="grid-progress-badge"> {{ progressPercent }}% </span>
       <img
@@ -188,6 +204,9 @@ const progressPercent = computed(() => {
   transition: transform 0.2s ease;
   box-shadow: var(--shadow);
   padding: var(--spacing-md);
+  /* Keep the 2:3 ratio even for long titles. Without this the flex box's automatic min-height lets the
+   text push the placeholder taller. */
+  overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
@@ -206,6 +225,13 @@ const progressPercent = computed(() => {
   font-weight: 500;
   word-break: break-word;
   line-height: 1.4;
+  /* Truncate very long titles with an ellipsis instead of overflowing the cover. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 8;
+  line-clamp: 8;
+  overflow: hidden;
+  max-height: 100%;
 }
 
 .grid-progress-badge {
