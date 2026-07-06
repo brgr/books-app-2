@@ -356,7 +356,7 @@ label {
 /* Responsive */
 @media (max-width: 768px) {
   .container {
-    padding: var(--spacing-md);
+    padding: var(--spacing-md) var(--spacing-md);
   }
 
   .form-row {
@@ -379,6 +379,6 @@ label {
 
 @media (max-width: 480px) {
   .container {
-    padding: var(--spacing-md);
+    padding: var(--spacing-md) var(--spacing-md);
   }
 }

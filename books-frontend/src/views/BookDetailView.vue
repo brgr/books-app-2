@@ -357,7 +357,7 @@ const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(() =
     flex-direction: column;
     align-items: center;
     text-align: center;
-    padding: var(--spacing-lg);
+    padding: var(--spacing-lg) 0;
     flex-wrap: wrap;
   }
 
@@ -399,7 +399,7 @@ const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(() =
   }
 
   .book-body {
-    padding: var(--spacing-lg);
+    padding: var(--spacing-lg) 0;
   }
 }
 </style>
