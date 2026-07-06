@@ -201,16 +201,24 @@ function cancelEditingProgress() {
 
 <style scoped>
 .status-card {
-  background: rgba(12, 8, 16, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(12, 8, 16, 0.03);
+  border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
   padding: var(--spacing-lg);
-  box-shadow: 0 10px 20px rgba(7, 5, 8, 0.2);
+  box-shadow: 0 10px 20px rgba(7, 5, 8, 0.06);
   display: inline-flex;
   flex-direction: column;
   gap: var(--spacing-md);
   width: fit-content;
   max-width: 100%;
+}
+
+@media (prefers-color-scheme: dark) {
+  .status-card {
+    background: rgba(12, 8, 16, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 10px 20px rgba(7, 5, 8, 0.2);
+  }
 }
 
 .status-header {
