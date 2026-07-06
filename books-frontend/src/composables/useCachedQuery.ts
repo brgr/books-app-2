@@ -29,6 +29,7 @@ export function useCachedQuery<T>(
     currentPromise = cachedQuery<T>({
       key: currentKey,
       fetcher,
+      isCurrent: () => gen === generation,
       onData: (d, source) => {
         if (gen !== generation) return;
         data.value = d;
