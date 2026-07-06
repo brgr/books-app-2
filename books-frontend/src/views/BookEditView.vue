@@ -4,8 +4,7 @@ import { useRoute, useRouter } from "vue-router";
 import { getBook, updateBook, deleteBook } from "../api/books";
 import type { Book, BookUpdate } from "../api/types";
 import NavigationBar from "../components/ui/NavigationBar.vue";
-import CoverPickerModal from "../components/modals/CoverPickerModal.vue";
-import CoverUpgradeModal from "../components/modals/CoverUpgradeModal.vue";
+import CoverEditField from "../components/book/CoverEditField.vue";
 import { useCachedQuery } from "../composables/useCachedQuery";
 import { cacheKeys } from "../cache/keys";
 import { cacheDel, cacheInvalidateByPrefix } from "../cache/store";
@@ -36,13 +35,6 @@ const formData = ref({
 
 const loading = ref(false);
 const error = ref("");
-const showCoverPicker = ref(false);
-const showCoverUpgrade = ref(false);
-
-const canUpgradeCover = computed(() => {
-  const url = book.value?.cover_image_url;
-  return !!url && !url.startsWith("http");
-});
 
 const loadError = computed(() => {
   const e = bookError.value;
@@ -68,16 +60,6 @@ watch(
   },
   { immediate: true },
 );
-
-function handleCoverSelected(imageUrl: string) {
-  formData.value.cover_image_url = imageUrl;
-  showCoverPicker.value = false;
-}
-
-function handleUpgradeSelected(imageUrl: string) {
-  formData.value.cover_image_url = imageUrl;
-  showCoverUpgrade.value = false;
-}
 
 async function handleSubmit() {
   if (!book.value) return;
@@ -164,6 +146,15 @@ async function handleDelete() {
         </div>
 
         <form @submit.prevent="handleSubmit">
+          <CoverEditField
+            v-model="formData.cover_image_url"
+            :title="formData.title"
+            :author="formData.author"
+            :isbn="formData.isbn"
+            :book-id="book.id"
+            :disabled="loading"
+          />
+
           <div class="form-group">
             <label for="title">Title *</label>
             <input
@@ -223,39 +214,6 @@ async function handleDelete() {
             ></textarea>
           </div>
 
-          <div class="form-group">
-            <label>Cover</label>
-            <div class="cover-row">
-              <div class="cover-preview" :class="{ empty: !formData.cover_image_url }">
-                <img v-if="formData.cover_image_url" :src="formData.cover_image_url" alt="Cover preview" />
-                <span v-else>No cover</span>
-              </div>
-              <div class="cover-actions">
-                <input
-                  v-model="formData.cover_image_url"
-                  type="text"
-                  placeholder="Cover image URL"
-                  :disabled="loading"
-                />
-                <div class="cover-buttons">
-                  <button type="button" @click="showCoverPicker = true" :disabled="loading">Find cover</button>
-                  <button type="button" v-if="canUpgradeCover" @click="showCoverUpgrade = true" :disabled="loading">
-                    Upgrade cover
-                  </button>
-                  <button
-                    type="button"
-                    v-if="formData.cover_image_url"
-                    @click="formData.cover_image_url = ''"
-                    :disabled="loading"
-                    class="btn-small"
-                  >
-                    Clear
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <div class="form-actions">
             <button type="button" @click="handleDelete" :disabled="loading" class="btn-danger delete-action">
               Delete Book
@@ -268,22 +226,6 @@ async function handleDelete() {
         </form>
       </div>
     </div>
-
-    <CoverPickerModal
-      v-if="showCoverPicker"
-      :initial-title="formData.title"
-      :initial-author="formData.author"
-      :initial-isbn="formData.isbn"
-      @select="handleCoverSelected"
-      @close="showCoverPicker = false"
-    />
-
-    <CoverUpgradeModal
-      v-if="showCoverUpgrade && book"
-      :book-id="book.id"
-      @select="handleUpgradeSelected"
-      @close="showCoverUpgrade = false"
-    />
   </div>
 </template>
 
@@ -332,46 +274,6 @@ async function handleDelete() {
 .edit-content h1 {
   margin: 0 0 var(--spacing-lg) 0;
   font-size: 1.75rem;
-}
-
-.cover-row {
-  display: flex;
-  gap: var(--spacing-md);
-  align-items: flex-start;
-}
-
-.cover-preview {
-  width: 90px;
-  aspect-ratio: 2 / 3;
-  flex-shrink: 0;
-  border-radius: var(--border-radius);
-  background-color: var(--color-bg);
-  border: 1px solid var(--color-border);
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-}
-
-.cover-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.cover-actions {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-  min-width: 0;
-}
-
-.cover-buttons {
-  display: flex;
-  gap: var(--spacing-sm);
 }
 
 .form-actions {
