@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
+import { ref, computed, watch, nextTick } from "vue";
 import draggable from "vuedraggable";
 import { useRouter } from "vue-router";
 import { getListBooks, getLists, reorderListItem } from "../api/books";
@@ -13,6 +13,8 @@ import NavigationBar from "../components/ui/NavigationBar.vue";
 import { ReadingStatus, type PaginatedBooks, type Book, type BookList } from "../api/types";
 import { useCachedQuery } from "../composables/useCachedQuery";
 import { useAddBook } from "../composables/useAddBook";
+import { useInfiniteScroll } from "../composables/useInfiniteScroll";
+import { useContextMenu } from "../composables/useContextMenu";
 import { cacheKeys } from "../cache/keys";
 
 const currentPage = ref(1);
@@ -77,12 +79,7 @@ watch(booksData, (next) => {
     accumulatedBooks.value = [...accumulatedBooks.value, ...additions];
   }
   isLoadingMore.value = false;
-  nextTick(() => {
-    if (sentinelObserver && sentinelEl.value) {
-      sentinelObserver.unobserve(sentinelEl.value);
-      sentinelObserver.observe(sentinelEl.value);
-    }
-  });
+  void nextTick(reobserve);
 });
 
 const hasMore = computed(() => Boolean(booksData.value) && currentPage.value < (booksData.value?.pages ?? 1));
@@ -150,35 +147,8 @@ async function loadMore() {
   currentPage.value += 1;
 }
 
-let sentinelObserver: IntersectionObserver | null = null;
 const sentinelEl = ref<HTMLElement | null>(null);
-
-function setupObserver() {
-  if (sentinelObserver || !sentinelEl.value) return;
-  sentinelObserver = new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        if (entry.isIntersecting) loadMore();
-      }
-    },
-    { rootMargin: "400px 0px" },
-  );
-  sentinelObserver.observe(sentinelEl.value);
-}
-
-watch(sentinelEl, () => {
-  if (sentinelObserver) {
-    sentinelObserver.disconnect();
-    sentinelObserver = null;
-  }
-  nextTick(() => setupObserver());
-});
-
-onMounted(() => nextTick(() => setupObserver()));
-onBeforeUnmount(() => {
-  sentinelObserver?.disconnect();
-  sentinelObserver = null;
-});
+const { reobserve } = useInfiniteScroll(sentinelEl, loadMore);
 
 const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(async () => {
   resetPagination();
@@ -197,6 +167,23 @@ function handleDragStart() {
   // Starting a drag dismisses any open long-press menu, revealing the book being
   // moved (the drag was already armed underneath the menu).
   closeContextMenu();
+}
+
+// Persists a reorder, then mirrors the new grid order back into the paginated
+// accumulator so it survives future page loads.
+async function commitReorder(movedId: number, beforeId: number | null, afterId: number | null) {
+  if (!activeListId.value) return;
+  try {
+    await reorderListItem(activeListId.value, {
+      moved_book_id: movedId,
+      before_book_id: beforeId,
+      after_book_id: afterId,
+    });
+    accumulatedBooks.value =
+      shelfFilter.value === "to-read" ? [...gridCurrentlyReading.value, ...gridToRead.value] : [...gridBooks.value];
+  } catch (err: any) {
+    console.error("Failed to reorder books:", err);
+  }
 }
 
 async function handleDragEndForList(list: Book[], event: { newIndex?: number; oldIndex?: number } | null) {
@@ -221,17 +208,7 @@ async function handleDragEndForList(list: Book[], event: { newIndex?: number; ol
   const beforeBook = event.newIndex > 0 ? list[event.newIndex - 1] : null;
   const afterBook = event.newIndex < list.length - 1 ? list[event.newIndex + 1] : null;
 
-  try {
-    await reorderListItem(activeListId.value, {
-      moved_book_id: movedBook.id,
-      before_book_id: beforeBook?.id ?? null,
-      after_book_id: afterBook?.id ?? null,
-    });
-    accumulatedBooks.value =
-      shelfFilter.value === "to-read" ? [...gridCurrentlyReading.value, ...gridToRead.value] : [...gridBooks.value];
-  } catch (err: any) {
-    console.error("Failed to reorder books:", err);
-  }
+  await commitReorder(movedBook.id, beforeBook?.id ?? null, afterBook?.id ?? null);
 }
 
 function handleCoverClick(bookId: number) {
@@ -240,21 +217,7 @@ function handleCoverClick(bookId: number) {
   router.push({ name: "book-detail", params: { id: bookId } });
 }
 
-const contextMenu = ref<{ visible: boolean; x: number; y: number; bookId: number | null }>({
-  visible: false,
-  x: 0,
-  y: 0,
-  bookId: null,
-});
-
-function openContextMenu(payload: { bookId: number; x: number; y: number }) {
-  contextMenu.value = { visible: true, x: payload.x, y: payload.y, bookId: payload.bookId };
-}
-
-function closeContextMenu() {
-  contextMenu.value.visible = false;
-  contextMenu.value.bookId = null;
-}
+const { contextMenu, openContextMenu, closeContextMenu } = useContextMenu();
 
 function handleContextView() {
   const bookId = contextMenu.value.bookId;
@@ -289,17 +252,7 @@ async function moveBookToEdge(bookId: number, edge: "top" | "bottom") {
   const beforeBook = edge === "bottom" ? (next[next.length - 2] ?? null) : null;
   const afterBook = edge === "top" ? (next[1] ?? null) : null;
 
-  try {
-    await reorderListItem(activeListId.value, {
-      moved_book_id: moved.id,
-      before_book_id: beforeBook?.id ?? null,
-      after_book_id: afterBook?.id ?? null,
-    });
-    accumulatedBooks.value =
-      shelfFilter.value === "to-read" ? [...gridCurrentlyReading.value, ...gridToRead.value] : [...gridBooks.value];
-  } catch (err: any) {
-    console.error("Failed to move book:", err);
-  }
+  await commitReorder(moved.id, beforeBook?.id ?? null, afterBook?.id ?? null);
 }
 
 function handleContextMove(edge: "top" | "bottom") {
