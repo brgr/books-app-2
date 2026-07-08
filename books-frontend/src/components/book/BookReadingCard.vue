@@ -18,7 +18,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  change: [status: ReadingStatus];
+  change: [status: ReadingStatus, occurredAt?: string];
   "update-progress": [progress: BookProgressUpdate];
 }>();
 
@@ -194,7 +194,11 @@ function cancelEditingProgress() {
     </div>
 
     <div class="status-actions">
-      <BookStatusButton :status="status" :updating="updating ?? false" @change="emit('change', $event)" />
+      <BookStatusButton
+        :status="status"
+        :updating="updating ?? false"
+        @change="(status, occurredAt) => emit('change', status, occurredAt)"
+      />
     </div>
   </div>
 </template>

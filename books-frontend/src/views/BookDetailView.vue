@@ -76,8 +76,8 @@ async function changeStatus(status: ReadingStatus, occurredAt?: string) {
   }
 }
 
-function handleStatusChange(status: ReadingStatus) {
-  return changeStatus(status);
+function handleStatusChange(status: ReadingStatus, occurredAt?: string) {
+  return changeStatus(status, occurredAt);
 }
 
 async function handleSaveNotes(notes: string) {
