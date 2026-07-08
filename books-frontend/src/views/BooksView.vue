@@ -262,6 +262,52 @@ function handleContextView() {
   if (bookId !== null) router.push({ name: "book-detail", params: { id: bookId } });
 }
 
+// Resolves the grid section a book belongs to, so a move stays within its
+// section (matching drag behavior, which never crosses "Reading now" / "Want to read").
+function gridListRefFor(bookId: number) {
+  if (shelfFilter.value === "to-read") {
+    if (gridCurrentlyReading.value.some((b) => b.id === bookId)) return gridCurrentlyReading;
+    return gridToRead;
+  }
+  return gridBooks;
+}
+
+async function moveBookToEdge(bookId: number, edge: "top" | "bottom") {
+  if (!activeListId.value || searchQuery.value.trim()) return;
+
+  const listRef = gridListRefFor(bookId);
+  const idx = listRef.value.findIndex((b) => b.id === bookId);
+  const targetIndex = edge === "top" ? 0 : listRef.value.length - 1;
+  if (idx === -1 || idx === targetIndex) return;
+
+  const moved = listRef.value[idx];
+  const next = listRef.value.filter((b) => b.id !== bookId);
+  if (edge === "top") next.unshift(moved);
+  else next.push(moved);
+  listRef.value = next;
+
+  const beforeBook = edge === "bottom" ? (next[next.length - 2] ?? null) : null;
+  const afterBook = edge === "top" ? (next[1] ?? null) : null;
+
+  try {
+    await reorderListItem(activeListId.value, {
+      moved_book_id: moved.id,
+      before_book_id: beforeBook?.id ?? null,
+      after_book_id: afterBook?.id ?? null,
+    });
+    accumulatedBooks.value =
+      shelfFilter.value === "to-read" ? [...gridCurrentlyReading.value, ...gridToRead.value] : [...gridBooks.value];
+  } catch (err: any) {
+    console.error("Failed to move book:", err);
+  }
+}
+
+function handleContextMove(edge: "top" | "bottom") {
+  const bookId = contextMenu.value.bookId;
+  closeContextMenu();
+  if (bookId !== null) moveBookToEdge(bookId, edge);
+}
+
 const dragOpts = computed(() => ({
   "item-key": "id",
   animation: 150,
@@ -374,6 +420,7 @@ const dragOpts = computed(() => ({
       :x="contextMenu.x"
       :y="contextMenu.y"
       @view="handleContextView"
+      @move="handleContextMove"
       @close="closeContextMenu"
     />
   </div>

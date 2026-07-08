@@ -6,9 +6,12 @@ const props = defineProps<{
   y: number;
 }>();
 
+type MoveEdge = "top" | "bottom";
+
 const emit = defineEmits<{
-  (e: "view"): void;
-  (e: "close"): void;
+  view: [];
+  move: [edge: MoveEdge];
+  close: [];
 }>();
 
 const menuEl = ref<HTMLElement | null>(null);
@@ -60,6 +63,8 @@ onBeforeUnmount(() => {
         @click.stop
       >
         <button type="button" class="ctx-item" role="menuitem" @click="emit('view')">View Book</button>
+        <button type="button" class="ctx-item" role="menuitem" @click="emit('move', 'top')">Move to Top</button>
+        <button type="button" class="ctx-item" role="menuitem" @click="emit('move', 'bottom')">Move to Bottom</button>
       </div>
     </div>
   </teleport>
