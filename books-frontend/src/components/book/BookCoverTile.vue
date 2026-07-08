@@ -135,6 +135,7 @@ const progressPercent = computed(() => {
         :alt="book.title"
         :title="book.title + ' by ' + book.author"
         class="grid-cover"
+        draggable="false"
       />
       <div v-else class="grid-cover-placeholder" :title="book.title + ' by ' + book.author">
         <div class="grid-no-cover-text">{{ book.title }}</div>
@@ -182,6 +183,9 @@ const progressPercent = computed(() => {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  /* Block iOS's native image drag-and-drop, which fires pointercancel and tears down the
+     SortableJS drag session when the long-press menu appears. */
+  -webkit-user-drag: none;
   touch-action: manipulation;
 }
 
