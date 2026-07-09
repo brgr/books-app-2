@@ -18,7 +18,16 @@ const emit = defineEmits<{
 
 const showCoverModal = ref(false);
 
-const previewUrl = computed(() => getMediaUrl(props.modelValue));
+// Google Books sometimes returns an "image not available" placeholder at higher zoom levels for metadata-only volumes.
+// The zoom=1 thumbnail is therefore the more reliable image, so we preview that.
+function previewSafeUrl(value: string): string {
+  if (value.includes("books.google") && /[?&]zoom=[2-9]/.test(value)) {
+    return value.replace(/zoom=\d+/, "zoom=1");
+  }
+  return value;
+}
+
+const previewUrl = computed(() => getMediaUrl(previewSafeUrl(props.modelValue)));
 
 const canUpgrade = computed(() => !!props.modelValue && !props.modelValue.startsWith("http"));
 

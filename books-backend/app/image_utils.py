@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import re
 import uuid
 from io import BytesIO
 from pathlib import Path
@@ -20,6 +22,14 @@ CONTENT_TYPE_TO_EXT = {
 }
 
 THUMBNAIL_SIZE = (300, 450)
+
+# Google Books serves this fixed "image not available" PNG for metadata-only volumes that have no real image at the
+# requested zoom level. It is a single book-independent asset; we match it by its exact size (a cheap pre-filter)
+# and the SHA-256 of its decoded RGB pixels.
+GOOGLE_BOOKS_PLACEHOLDER_SIZE = (300, 391)
+GOOGLE_BOOKS_PLACEHOLDER_DIGEST = (
+    "42b73c2339111d1350b2b78efafaf46dede1fd1fb0bb0486422e55ab76f022df"
+)
 
 
 def _normalize_extension(extension: str | None) -> str:
@@ -80,6 +90,61 @@ def store_cover_image(content: bytes, extension: str | None) -> tuple[str, str |
     return cover_url, thumbnail_url
 
 
+def _is_google_books_placeholder(content: bytes) -> bool:
+    """Detect Google Books' gray "image not available" placeholder image.
+
+    Metadata-only volumes have only a small thumbnail; requesting a larger
+    zoom silently returns this fixed-size PNG rather than an actual cover.
+    """
+    try:
+        with Image.open(BytesIO(content)) as image:
+            if image.size != GOOGLE_BOOKS_PLACEHOLDER_SIZE:
+                return False
+            digest = hashlib.sha256(image.convert("RGB").tobytes()).hexdigest()
+            return digest == GOOGLE_BOOKS_PLACEHOLDER_DIGEST
+    except (OSError, ValueError):
+        return False
+
+
+def _zoom_fallback_url(url: str) -> str | None:
+    """Return a zoom=1 variant of a Google Books content URL, if applicable.
+
+    Used to recover the real (lower-resolution) cover when a higher zoom
+    returned the placeholder.
+    """
+    if "books.google" not in url:
+        return None
+    match = re.search(r"zoom=(\d+)", url)
+    if not match or int(match.group(1)) <= 1:
+        return None
+    return re.sub(r"zoom=\d+", "zoom=1", url)
+
+
+async def _fetch_image(client: httpx.AsyncClient, url: str) -> tuple[bytes, str]:
+    """Fetch image bytes and infer a file extension from the response/URL."""
+    headers = {"User-Agent": "BooksApp/1.0"}
+    response = await client.get(url, headers=headers)
+    response.raise_for_status()
+
+    content_type = response.headers.get("content-type", "").split(";")[0].strip()
+    extension = CONTENT_TYPE_TO_EXT.get(content_type)
+
+    if not extension:
+        # Try to infer from URL if content-type is generic
+        if "jpeg" in url or "jpg" in url:
+            extension = "jpg"
+        elif "png" in url:
+            extension = "png"
+        elif "webp" in url:
+            extension = "webp"
+        elif "gif" in url:
+            extension = "gif"
+        else:
+            extension = "jpg"  # Default to jpg
+
+    return response.content, extension
+
+
 async def download_cover_image(url: str) -> tuple[str, str | None] | None:
     """
     Download an image from a URL and save it locally with a thumbnail.
@@ -94,30 +159,19 @@ async def download_cover_image(url: str) -> tuple[str, str | None] | None:
         return None
 
     try:
-        headers = {"User-Agent": "BooksApp/1.0"}
         async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
-            response = await client.get(url, headers=headers)
-            response.raise_for_status()
+            content, extension = await _fetch_image(client, url)
 
-            content_type = (
-                response.headers.get("content-type", "").split(";")[0].strip()
-            )
-            extension = CONTENT_TYPE_TO_EXT.get(content_type)
+            # A Google Books volume that has no cover returns the "image not available" placeholder at higher zoom
+            # levels. Fall back to the zoom=1 thumbnail, which holds the real (smaller) cover.
+            if _is_google_books_placeholder(content):
+                fallback_url = _zoom_fallback_url(url)
+                if fallback_url:
+                    fb_content, fb_extension = await _fetch_image(client, fallback_url)
+                    if not _is_google_books_placeholder(fb_content):
+                        content, extension = fb_content, fb_extension
 
-            if not extension:
-                # Try to infer from URL if content-type is generic
-                if "jpeg" in url or "jpg" in url:
-                    extension = "jpg"
-                elif "png" in url:
-                    extension = "png"
-                elif "webp" in url:
-                    extension = "webp"
-                elif "gif" in url:
-                    extension = "gif"
-                else:
-                    extension = "jpg"  # Default to jpg
-
-            return store_cover_image(response.content, extension)
+            return store_cover_image(content, extension)
 
     except httpx.HTTPError as e:
         print(f"Failed to download cover image from {url}: {e}")
