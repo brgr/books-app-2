@@ -7,13 +7,11 @@ const emit = defineEmits<{
 }>();
 
 const error = ref("");
+const dragActive = ref(false);
 const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_BYTES = 10 * 1024 * 1024;
 
-function handleFile(event: Event) {
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
-  input.value = ""; // allow re-picking the same file
+function acceptFile(file: File | undefined) {
   if (!file) return;
 
   if (!ALLOWED.includes(file.type)) {
@@ -29,13 +27,32 @@ function handleFile(event: Event) {
   // Staged locally; the bytes are only uploaded when the book is saved.
   emit("select", stagePendingCover(file));
 }
+
+function handleFile(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = ""; // allow re-picking the same file
+  acceptFile(file);
+}
+
+function handleDrop(event: DragEvent) {
+  dragActive.value = false;
+  acceptFile(event.dataTransfer?.files?.[0]);
+}
 </script>
 
 <template>
   <div class="upload-tab">
-    <label class="dropzone">
+    <label
+      class="dropzone"
+      :class="{ 'drag-active': dragActive }"
+      @dragenter.prevent="dragActive = true"
+      @dragover.prevent="dragActive = true"
+      @dragleave.prevent="dragActive = false"
+      @drop.prevent="handleDrop"
+    >
       <input accept="image/jpeg,image/png,image/webp,image/gif" type="file" @change="handleFile" />
-      <span class="dropzone-title">Choose an image</span>
+      <span class="dropzone-title">Drop an image here, or click to choose</span>
       <span class="dropzone-hint">JPEG, PNG, WebP, or GIF · up to 10 MB</span>
     </label>
     <p class="mode-hint">The picture is uploaded when you save the book.</p>
@@ -65,8 +82,13 @@ function handleFile(event: Event) {
   transition: border-color 0.15s ease;
 }
 
-.dropzone:hover {
+.dropzone:hover,
+.dropzone.drag-active {
   border-color: var(--color-primary);
+}
+
+.dropzone.drag-active {
+  background-color: var(--color-bg);
 }
 
 .dropzone input {
