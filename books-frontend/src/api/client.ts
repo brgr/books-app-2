@@ -4,7 +4,8 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:80
 
 export function getMediaUrl(path: string | null | undefined): string | undefined {
   if (!path) return undefined;
-  if (path.startsWith("http")) return path;
+  // Absolute (remote) and local object URLs (a not-yet-uploaded cover) are already usable as-is.
+  if (path.startsWith("http") || path.startsWith("blob:")) return path;
   return `${API_BASE_URL}${path}`;
 }
 

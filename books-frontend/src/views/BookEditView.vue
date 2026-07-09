@@ -1,7 +1,8 @@
-<script setup lang="ts">
-import { ref, computed, watch } from "vue";
+<script lang="ts" setup>
+import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { getBook, updateBook, deleteBook } from "../api/books";
+import { deleteBook, getBook, updateBook, uploadBookCover } from "../api/books";
+import { isPendingCover, takePendingCover } from "../components/book/pendingCoverUploads";
 import type { Book, BookUpdate } from "../api/types";
 import NavigationBar from "../components/ui/NavigationBar.vue";
 import CoverEditField from "../components/book/CoverEditField.vue";
@@ -67,6 +68,9 @@ async function handleSubmit() {
   loading.value = true;
 
   try {
+    const cover = formData.value.cover_image_url;
+    const pendingCover = isPendingCover(cover) ? takePendingCover(cover) : undefined;
+
     const bookData: BookUpdate = {
       title: formData.value.title,
       author: formData.value.author,
@@ -74,9 +78,13 @@ async function handleSubmit() {
       description: formData.value.description || undefined,
       published_date: formData.value.published_date || undefined,
       page_count: formData.value.page_count ? parseInt(formData.value.page_count) : undefined,
-      cover_image_url: formData.value.cover_image_url || undefined,
+      // A staged upload is committed via its own endpoint below, so leave the cover out of the update.
+      cover_image_url: isPendingCover(cover) ? undefined : cover || undefined,
     };
 
+    if (pendingCover) {
+      await uploadBookCover(book.value.id, pendingCover);
+    }
     await updateBook(book.value.id, bookData);
     await cacheDel(cacheKeys.book(book.value.id));
     await cacheInvalidateByPrefix("lists:");
@@ -122,7 +130,7 @@ async function handleDelete() {
 
     <div class="container">
       <div class="breadcrumb">
-        <router-link to="/" class="breadcrumb-link">Books</router-link>
+        <router-link class="breadcrumb-link" to="/">Books</router-link>
         <span class="breadcrumb-separator">/</span>
         <router-link v-if="book" :to="{ name: 'book-detail', params: { id: book.id } }" class="breadcrumb-link">
           {{ book.title }}
@@ -148,11 +156,11 @@ async function handleDelete() {
         <form @submit.prevent="handleSubmit">
           <CoverEditField
             v-model="formData.cover_image_url"
-            :title="formData.title"
             :author="formData.author"
-            :isbn="formData.isbn"
             :book-id="book.id"
             :disabled="loading"
+            :isbn="formData.isbn"
+            :title="formData.title"
           />
 
           <div class="form-group">
@@ -160,10 +168,10 @@ async function handleDelete() {
             <input
               id="title"
               v-model="formData.title"
-              type="text"
+              :disabled="loading"
               placeholder="Enter book title"
               required
-              :disabled="loading"
+              type="text"
             />
           </div>
 
@@ -172,17 +180,17 @@ async function handleDelete() {
             <input
               id="author"
               v-model="formData.author"
-              type="text"
+              :disabled="loading"
               placeholder="Enter author name"
               required
-              :disabled="loading"
+              type="text"
             />
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label for="isbn">ISBN</label>
-              <input id="isbn" v-model="formData.isbn" type="text" placeholder="Enter ISBN" :disabled="loading" />
+              <input id="isbn" v-model="formData.isbn" :disabled="loading" placeholder="Enter ISBN" type="text" />
             </div>
 
             <div class="form-group">
@@ -190,17 +198,17 @@ async function handleDelete() {
               <input
                 id="page_count"
                 v-model="formData.page_count"
-                type="number"
+                :disabled="loading"
                 min="0"
                 placeholder="Number of pages"
-                :disabled="loading"
+                type="number"
               />
             </div>
           </div>
 
           <div class="form-group">
             <label for="published_date">Published Date</label>
-            <input id="published_date" v-model="formData.published_date" type="date" :disabled="loading" />
+            <input id="published_date" v-model="formData.published_date" :disabled="loading" type="date" />
           </div>
 
           <div class="form-group">
@@ -208,18 +216,18 @@ async function handleDelete() {
             <textarea
               id="description"
               v-model="formData.description"
-              rows="4"
-              placeholder="Enter book description"
               :disabled="loading"
+              placeholder="Enter book description"
+              rows="4"
             ></textarea>
           </div>
 
           <div class="form-actions">
-            <button type="button" @click="handleDelete" :disabled="loading" class="btn-danger delete-action">
+            <button :disabled="loading" class="btn-danger delete-action" type="button" @click="handleDelete">
               Delete Book
             </button>
-            <button type="button" @click="handleCancel" :disabled="loading">Cancel</button>
-            <button type="submit" class="btn-primary" :disabled="loading">
+            <button :disabled="loading" type="button" @click="handleCancel">Cancel</button>
+            <button :disabled="loading" class="btn-primary" type="submit">
               {{ loading ? "Saving..." : "Save Book" }}
             </button>
           </div>

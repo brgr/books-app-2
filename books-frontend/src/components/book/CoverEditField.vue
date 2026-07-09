@@ -1,6 +1,7 @@
-<script setup lang="ts">
-import { ref, computed } from "vue";
+<script lang="ts" setup>
+import { computed, onBeforeUnmount, ref } from "vue";
 import { getMediaUrl } from "../../api/client";
+import { discardPendingCover, isPendingCover } from "./pendingCoverUploads";
 import CoverModal from "../modals/CoverModal.vue";
 
 const props = defineProps<{
@@ -29,35 +30,41 @@ function previewSafeUrl(value: string): string {
 
 const previewUrl = computed(() => getMediaUrl(previewSafeUrl(props.modelValue)));
 
-const canUpgrade = computed(() => !!props.modelValue && !props.modelValue.startsWith("http"));
+// The upgrade search runs against the stored cover; a locally-staged upload isn't stored yet.
+const canUpgrade = computed(
+  () => !!props.modelValue && !props.modelValue.startsWith("http") && !isPendingCover(props.modelValue),
+);
+
+function replaceCover(imageUrl: string) {
+  // Drop a previously staged upload we're about to replace, so its object URL isn't leaked.
+  if (props.modelValue !== imageUrl) discardPendingCover(props.modelValue);
+  emit("update:modelValue", imageUrl);
+}
 
 function handleCoverSelected(imageUrl: string) {
-  emit("update:modelValue", imageUrl);
+  replaceCover(imageUrl);
   showCoverModal.value = false;
 }
+
+// A staged upload that's never saved should not outlive the form.
+onBeforeUnmount(() => discardPendingCover(props.modelValue));
 </script>
 
 <template>
   <div class="form-group">
     <label>Cover</label>
     <div class="cover-row">
-      <div class="cover-preview" :class="{ empty: !modelValue }">
+      <div :class="{ empty: !modelValue }" class="cover-preview">
         <img v-if="previewUrl" :src="previewUrl" alt="Cover preview" />
         <span v-else>No cover</span>
       </div>
       <div class="cover-actions">
         <span v-if="!modelValue" class="cover-status">No cover</span>
         <div class="cover-buttons">
-          <button type="button" @click="showCoverModal = true" :disabled="disabled">
+          <button :disabled="disabled" type="button" @click="showCoverModal = true">
             {{ modelValue ? "Change cover" : "Find cover" }}
           </button>
-          <button
-            type="button"
-            v-if="modelValue"
-            @click="emit('update:modelValue', '')"
-            :disabled="disabled"
-            class="btn-small"
-          >
+          <button v-if="modelValue" :disabled="disabled" class="btn-small" type="button" @click="replaceCover('')">
             Clear
           </button>
         </div>
@@ -66,13 +73,13 @@ function handleCoverSelected(imageUrl: string) {
 
     <CoverModal
       v-if="showCoverModal"
-      :initial-title="title"
-      :initial-author="author"
-      :initial-isbn="isbn"
       :book-id="bookId"
       :can-upgrade="canUpgrade"
-      @select="handleCoverSelected"
+      :initial-author="author"
+      :initial-isbn="isbn"
+      :initial-title="title"
       @close="showCoverModal = false"
+      @select="handleCoverSelected"
     />
   </div>
 </template>

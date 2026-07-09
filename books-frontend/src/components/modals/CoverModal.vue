@@ -1,7 +1,8 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import { ref } from "vue";
 import CoverSearchTab from "./CoverSearchTab.vue";
 import CoverUpgradeTab from "./CoverUpgradeTab.vue";
+import CoverUploadTab from "./CoverUploadTab.vue";
 
 const props = defineProps<{
   initialTitle?: string;
@@ -16,12 +17,14 @@ const emit = defineEmits<{
   select: [imageUrl: string];
 }>();
 
+type Mode = "search" | "upload" | "upgrade";
+
 const showUpgradeTab = Boolean(props.bookId && props.canUpgrade);
-const mode = ref<"search" | "upgrade">("search");
+const mode = ref<Mode>("search");
 // The upgrade tab starts a background job on mount, so only mount it once opened.
 const upgradeActivated = ref(false);
 
-function selectMode(next: "search" | "upgrade") {
+function selectMode(next: Mode) {
   mode.value = next;
   if (next === "upgrade") upgradeActivated.value = true;
 }
@@ -32,32 +35,44 @@ function selectMode(next: "search" | "upgrade") {
     <div class="modal">
       <div class="modal-header">
         <h3>Change Cover</h3>
-        <button @click="emit('close')" class="btn-small">Close</button>
+        <button class="btn-small" @click="emit('close')">Close</button>
       </div>
 
-      <div v-if="showUpgradeTab" class="tabs">
-        <button type="button" class="tab" :class="{ active: mode === 'search' }" @click="selectMode('search')">
+      <div class="tabs">
+        <button :class="{ active: mode === 'search' }" class="tab" type="button" @click="selectMode('search')">
           Search
         </button>
-        <button type="button" class="tab" :class="{ active: mode === 'upgrade' }" @click="selectMode('upgrade')">
+        <button :class="{ active: mode === 'upload' }" class="tab" type="button" @click="selectMode('upload')">
+          Upload
+        </button>
+        <button
+          v-if="showUpgradeTab"
+          :class="{ active: mode === 'upgrade' }"
+          class="tab"
+          type="button"
+          @click="selectMode('upgrade')"
+        >
           Higher resolution
         </button>
       </div>
 
       <div class="modal-body">
-        <CoverSearchTab
-          v-show="mode === 'search'"
-          :initial-title="initialTitle"
-          :initial-author="initialAuthor"
-          :initial-isbn="initialIsbn"
-          @select="emit('select', $event)"
-        />
-        <CoverUpgradeTab
-          v-if="upgradeActivated && bookId"
-          v-show="mode === 'upgrade'"
-          :book-id="bookId"
-          @select="emit('select', $event)"
-        />
+        <!-- Wrap each tab in its own element: these components have multiple root nodes,
+             so v-show on the component itself can't hide them. -->
+        <div v-show="mode === 'search'">
+          <CoverSearchTab
+            :initial-author="initialAuthor"
+            :initial-isbn="initialIsbn"
+            :initial-title="initialTitle"
+            @select="emit('select', $event)"
+          />
+        </div>
+        <div v-show="mode === 'upload'">
+          <CoverUploadTab @select="emit('select', $event)" />
+        </div>
+        <div v-if="upgradeActivated && bookId" v-show="mode === 'upgrade'">
+          <CoverUpgradeTab :book-id="bookId" @select="emit('select', $event)" />
+        </div>
       </div>
     </div>
   </div>

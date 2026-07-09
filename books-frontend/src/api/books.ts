@@ -1,19 +1,19 @@
 import { apiClient } from "./client";
 import type {
   Book,
-  PaginatedBooks,
   BookCreate,
-  BookUpdate,
-  UserBookStatusUpdate,
-  UserBook,
-  GoogleBookResult,
-  CoverSearchResult,
-  CoverUpgradeJob,
   BookEvent,
-  BookProgressUpdate,
   BookList,
   BookListReorderRequest,
+  BookProgressUpdate,
+  BookUpdate,
+  CoverSearchResult,
+  CoverUpgradeJob,
+  GoogleBookResult,
   ImportRecord,
+  PaginatedBooks,
+  UserBook,
+  UserBookStatusUpdate,
 } from "./types";
 
 export async function getBooks(page = 1, pageSize = 20): Promise<PaginatedBooks> {
@@ -85,6 +85,15 @@ export async function searchBookCovers(params: {
 }): Promise<CoverSearchResult[]> {
   const response = await apiClient.get<CoverSearchResult[]>("/books/search-covers", {
     params,
+  });
+  return response.data;
+}
+
+export async function uploadBookCover(bookId: number, file: File): Promise<Book> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await apiClient.post<Book>(`/books/${bookId}/cover`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
   });
   return response.data;
 }
