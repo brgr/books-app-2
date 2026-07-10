@@ -23,6 +23,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: "/shelves/:shelf(to-read|finished)",
+      name: "shelf",
+      component: BooksView,
+      meta: { requiresAuth: true },
+    },
+    {
       path: "/books/:id",
       name: "book-detail",
       component: BookDetailView,

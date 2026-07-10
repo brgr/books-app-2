@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from "vue";
 import draggable from "vuedraggable";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { getListBooks, getLists, reorderListItem } from "../api/books";
 import BookCard from "../components/book/BookCard/BookCard.vue";
 import BookCoverTile from "../components/book/BookCoverTile.vue";
@@ -19,10 +19,19 @@ import { useContextMenu } from "../composables/useContextMenu";
 import { cacheKeys } from "../cache/keys";
 
 const pageSize = 30;
+const route = useRoute();
 const router = useRouter();
 
 const searchQuery = ref("");
-const shelfFilter = ref<"to-read" | "finished">("to-read");
+// The shelf lives in the URL: /shelves/:shelf drives it, while bare "/" implies "to-read".
+const shelfFilter = computed<"to-read" | "finished">(() =>
+  route.params.shelf === "finished" ? "finished" : "to-read",
+);
+
+function goToShelf(shelf: "to-read" | "finished") {
+  router.push({ name: "shelf", params: { shelf } });
+}
+
 const activeListId = ref<number | null>(null);
 
 const { data: listsData } = useCachedQuery<BookList[]>(cacheKeys.lists(), () => getLists());
@@ -241,7 +250,7 @@ const dragOpts = computed(() => ({
   <div class="books-view">
     <NavigationBar @add-book="openSearch">
       <template #nav>
-        <LibraryNav v-model="shelfFilter" />
+        <LibraryNav :model-value="shelfFilter" @update:model-value="goToShelf" />
       </template>
     </NavigationBar>
 
