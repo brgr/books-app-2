@@ -10,18 +10,16 @@ import BookSearchModal from "../components/modals/BookSearchModal.vue";
 import BooksSearchHeader from "../components/ui/BooksSearchHeader.vue";
 import LibraryNav from "../components/ui/LibraryNav.vue";
 import NavigationBar from "../components/ui/NavigationBar.vue";
-import { ReadingStatus, type PaginatedBooks, type Book, type BookList } from "../api/types";
+import { ReadingStatus, type Book, type BookList } from "../api/types";
 import { useCachedQuery } from "../composables/useCachedQuery";
+import { usePaginatedList } from "../composables/usePaginatedList";
 import { useAddBook } from "../composables/useAddBook";
 import { useInfiniteScroll } from "../composables/useInfiniteScroll";
 import { useContextMenu } from "../composables/useContextMenu";
 import { cacheKeys } from "../cache/keys";
 
-const currentPage = ref(1);
-const pageSize = ref(30);
+const pageSize = 30;
 const router = useRouter();
-const accumulatedBooks = ref<Book[]>([]);
-const isLoadingMore = ref(false);
 
 const searchQuery = ref("");
 const shelfFilter = ref<"to-read" | "finished">("to-read");
@@ -42,16 +40,19 @@ watch(
 );
 
 const {
-  data: booksData,
+  items: books,
+  hasMore,
+  isLoadingMore,
+  loaded: booksLoaded,
   error: booksError,
-  refresh: refreshBooks,
-} = useCachedQuery<PaginatedBooks>(
-  computed(() =>
-    activeListId.value ? cacheKeys.listBooks(activeListId.value, currentPage.value, pageSize.value) : "",
-  ),
-  () => getListBooks(activeListId.value!, currentPage.value, pageSize.value),
-  { enabled: computed(() => activeListId.value !== null) },
-);
+  loadMore,
+  reload: reloadBooks,
+} = usePaginatedList<Book>({
+  resourceId: activeListId,
+  cacheKey: (listId, page) => cacheKeys.listBooks(listId, page, pageSize),
+  fetchPage: (listId, page) => getListBooks(listId, page, pageSize),
+  itemKey: (book) => book.id,
+});
 
 const error = computed(() => {
   const e = booksError.value;
@@ -69,35 +70,16 @@ watch(viewMode, (newMode) => {
   localStorage.setItem("booksViewMode", newMode);
 });
 
-watch(booksData, (next) => {
-  if (!next) return;
-  if (next.page === 1) {
-    accumulatedBooks.value = [...next.items];
-  } else {
-    const seen = new Set(accumulatedBooks.value.map((b) => b.id));
-    const additions = next.items.filter((b) => !seen.has(b.id));
-    accumulatedBooks.value = [...accumulatedBooks.value, ...additions];
-  }
-  isLoadingMore.value = false;
-  void nextTick(reobserve);
-});
-
-const hasMore = computed(() => Boolean(booksData.value) && currentPage.value < (booksData.value?.pages ?? 1));
-
 const filteredBooks = computed(() => {
-  if (!booksData.value && accumulatedBooks.value.length === 0) return [];
-
-  let books = accumulatedBooks.value;
+  let list = books.value;
 
   // Filter by search query
   if (searchQuery.value.trim()) {
     const query = searchQuery.value.toLowerCase().trim();
-    books = books.filter(
-      (book) => book.title.toLowerCase().includes(query) || book.author.toLowerCase().includes(query),
-    );
+    list = list.filter((book) => book.title.toLowerCase().includes(query) || book.author.toLowerCase().includes(query));
   }
 
-  return books;
+  return list;
 });
 
 const currentlyReadingBooks = computed(() =>
@@ -132,39 +114,17 @@ function setActiveListForShelf() {
   activeListId.value = match ? match.id : null;
 }
 
-async function loadBooks() {
-  await refreshBooks();
-}
-
-function resetPagination() {
-  currentPage.value = 1;
-  accumulatedBooks.value = [];
-  // Drop the previous list's page so `hasMore` can't stay true off stale data.
-  // Otherwise, when switching shelves, the infinite-scroll observer fires loadMore(), advances
-  // currentPage to 2 before the new list's page 1 returns, and useCachedQuery then discards that page-1 response.
-  booksData.value = null;
-}
-
-async function loadMore() {
-  if (isLoadingMore.value || !hasMore.value) return;
-  isLoadingMore.value = true;
-  currentPage.value += 1;
-}
-
 const sentinelEl = ref<HTMLElement | null>(null);
 const { reobserve } = useInfiniteScroll(sentinelEl, loadMore);
 
-const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(async () => {
-  resetPagination();
-  await refreshBooks();
-});
+// Re-observe once a fresh page has rendered, so the sentinel keeps triggering.
+watch(books, () => void nextTick(reobserve));
 
-// Switching surfaces (To Read / Finished) loads the matching list from scratch.
-watch(shelfFilter, () => {
-  resetPagination();
-  setActiveListForShelf();
-  loadBooks();
-});
+const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(reloadBooks);
+
+// Switching surfaces (To Read / Finished) points usePaginatedList at the matching list;
+// it resets and reloads on its own from the resource change.
+watch(shelfFilter, setActiveListForShelf);
 
 function handleDragStart() {
   isDragging.value = true;
@@ -183,7 +143,7 @@ async function commitReorder(movedId: number, beforeId: number | null, afterId: 
       before_book_id: beforeId,
       after_book_id: afterId,
     });
-    accumulatedBooks.value =
+    books.value =
       shelfFilter.value === "to-read" ? [...gridCurrentlyReading.value, ...gridToRead.value] : [...gridBooks.value];
   } catch (err: any) {
     console.error("Failed to reorder books:", err);
@@ -292,7 +252,7 @@ const dragOpts = computed(() => ({
 
       <BooksSearchHeader v-model:search-query="searchQuery" v-model:view-mode="viewMode" />
 
-      <div v-if="booksData && filteredBooks.length === 0" class="empty-state">
+      <div v-if="booksLoaded && filteredBooks.length === 0" class="empty-state">
         <p v-if="searchQuery">No books match your search.</p>
         <p v-else-if="shelfFilter === 'finished'">No finished books yet.</p>
         <p v-else>No books yet. Add your first book to get started!</p>
