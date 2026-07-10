@@ -139,6 +139,10 @@ async function loadBooks() {
 function resetPagination() {
   currentPage.value = 1;
   accumulatedBooks.value = [];
+  // Drop the previous list's page so `hasMore` can't stay true off stale data.
+  // Otherwise, when switching shelves, the infinite-scroll observer fires loadMore(), advances
+  // currentPage to 2 before the new list's page 1 returns, and useCachedQuery then discards that page-1 response.
+  booksData.value = null;
 }
 
 async function loadMore() {
