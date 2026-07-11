@@ -104,9 +104,18 @@ class BookService:
         # noinspection PyTypeChecker
         return books, total
 
-    def delete(self, book: Book) -> None:
-        self.db.delete(book)
-        self.db.commit()
+    def remove_from_library(self, book: Book) -> None:
+        """Remove the book from the acting user's library.
+
+        Deleting the UserBook cascades to its events and list items via the
+        ORM relationship.
+        """
+        # noinspection PyTypeChecker
+        user_book = get_user_book(self.db, user_id=self._user_id, book_id=book.id)
+
+        if user_book:
+            self.db.delete(user_book)
+            self.db.commit()
 
     def delete_all(self) -> None:
         """Delete all books and every user's reading state for them.

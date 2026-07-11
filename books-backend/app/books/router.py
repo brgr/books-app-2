@@ -230,17 +230,11 @@ def delete_all_books(
 
 @router.delete("/books/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_book(
-    book_id: int,
-    db: Annotated[Session, Depends(get_db)],
+    book: Annotated[Book, Depends(get_library_book)],
     service: Annotated[BookService, Depends(get_book_service)],
 ):
-    """Delete a book."""
-    book = get_book_by_id(db, book_id)
-    if not book:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
-        )
-    service.delete(book)
+    """Remove a book from the current user's library."""
+    service.remove_from_library(book)
     return None
 
 
