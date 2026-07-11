@@ -1,6 +1,6 @@
 """Event helper functions for book event sourcing (initial three-event slice)."""
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -16,6 +16,7 @@ from app.models import (
     ReadingStatus,
     UserBook,
 )
+from app.schemas import UserBookResponse
 
 
 def _get_event_type(session: Session, code: BookEventCode) -> BookEventType:
@@ -313,24 +314,46 @@ def record_cover_changed(
     return event
 
 
-def project_user_book_state(session: Session, user_book: UserBook) -> UserBook:
-    """Project the current reading state from the event stream onto the user_book snapshot fields."""
-    user_book_id = user_book.id
+def derive_reading_dates(
+    session: Session, user_book_id: int
+) -> tuple[datetime | None, datetime | None]:
+    """Derive ``(started_at, finished_at)`` for a user_book from its event stream.
+
+    ``started_at`` is the latest start event's ``occurred_at`` (None if never started).
+    ``finished_at`` is the latest finish event's ``occurred_at`` only when that finish is after the latest start
+    (None otherwise), matching an open vs. closed reading cycle.
+    """
     latest_start = _latest_event(session, user_book_id, BookEventCode.STARTED_READING)
     latest_finish = _latest_event(session, user_book_id, BookEventCode.FINISHED_READING)
+
+    started_at = latest_start.occurred_at if latest_start else None
+    if latest_finish and _is_after(latest_finish, latest_start):
+        finished_at = latest_finish.occurred_at
+    else:
+        finished_at = None
+    # noinspection PyTypeChecker
+    return started_at, finished_at
+
+
+def project_user_book_state(session: Session, user_book: UserBook) -> UserBook:
+    """Project the current reading state from the event stream onto the user_book snapshot fields.
+
+    Reading dates are *not* stored on the user_book. Instead, they are derived on demand via
+    ``derive_reading_dates`` for serialization. This only projects the persisted snapshot columns
+    (status, current page/percent).
+    """
+    # noinspection PyTypeChecker
+    user_book_id: int = user_book.id
+    started_at, finished_at = derive_reading_dates(session, user_book_id)
     latest_progress = _latest_event(session, user_book_id, BookEventCode.PROGRESS_SET)
 
-    if latest_finish and _is_after(latest_finish, latest_start):
+    if finished_at is not None:
         user_book.status = ReadingStatus.FINISHED
-        user_book.finished_at = latest_finish.occurred_at
-    elif latest_start:
+    elif started_at is not None:
         user_book.status = ReadingStatus.STARTED
-        user_book.finished_at = None
     else:
         user_book.status = ReadingStatus.WANT_TO_READ
-        user_book.finished_at = None
 
-    user_book.started_at = latest_start.occurred_at if latest_start else None
     if latest_progress:
         progress_entry = (
             session.query(BookEventProgress)
@@ -345,3 +368,15 @@ def project_user_book_state(session: Session, user_book: UserBook) -> UserBook:
     session.flush()
 
     return user_book
+
+
+def build_user_book_response(session: Session, user_book: UserBook) -> UserBookResponse:
+    """Assemble the reading-state response DTO for a user_book.
+
+    Combines the persisted snapshot columns with the event-derived reading
+    dates. This is the single seam that produces the read model; the ORM
+    ``UserBook`` itself carries no date attributes.
+    """
+    # noinspection PyTypeChecker
+    started_at, finished_at = derive_reading_dates(session, user_book.id)
+    return UserBookResponse.from_user_book(user_book, started_at, finished_at)

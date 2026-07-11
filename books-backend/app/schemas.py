@@ -106,6 +106,31 @@ class UserBookResponse(UserBookBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+    @classmethod
+    def from_user_book(
+        cls,
+        user_book: UserBook,
+        started_at: Optional[datetime],
+        finished_at: Optional[datetime],
+    ) -> "UserBookResponse":
+        """Build the response from a user_book plus its event-derived dates.
+
+        Reading dates are not stored on ``UserBook``; the caller derives them
+        (see ``derive_reading_dates``) and passes them in.
+        """
+        # noinspection PyTypeChecker
+        return cls(
+            id=user_book.id,
+            user_id=user_book.user_id,
+            book_id=user_book.book_id,
+            status=user_book.status,
+            notes=user_book.notes,
+            started_at=started_at,
+            finished_at=finished_at,
+            current_page=user_book.current_page,
+            current_percent=user_book.current_percent,
+        )
+
 
 # Book list schemas
 class BookListResponse(BaseModel):
@@ -192,7 +217,14 @@ class ExportBookEntry(BaseModel):
     current_percent: Optional[float] = None
 
     @classmethod
-    def from_orm_pair(cls, book: Book, user_book: UserBook) -> "ExportBookEntry":
+    def from_orm_pair(
+        cls,
+        book: Book,
+        user_book: UserBook,
+        started_at: Optional[datetime],
+        finished_at: Optional[datetime],
+    ) -> "ExportBookEntry":
+        # noinspection PyTypeChecker
         return cls(
             id=book.id,
             title=book.title,
@@ -203,8 +235,8 @@ class ExportBookEntry(BaseModel):
             page_count=book.page_count,
             status=user_book.status,
             notes=user_book.notes,
-            started_at=user_book.started_at,
-            finished_at=user_book.finished_at,
+            started_at=started_at,
+            finished_at=finished_at,
             current_page=user_book.current_page,
             current_percent=user_book.current_percent,
         )

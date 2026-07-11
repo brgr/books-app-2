@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
-from app.book_events import project_user_book_state
+from app.book_events import build_user_book_response, project_user_book_state
 from app.book_lists.book_lists import (
     DEFAULT_LIST_NAMES,
     SORT_ORDER_GAP,
@@ -88,7 +88,7 @@ class BookListService:
         books = []
         for book, user_book in book_pairs:
             project_user_book_state(self.db, user_book)
-            book.user_status = user_book
+            book.user_status = build_user_book_response(self.db, user_book)
             books.append(book)
         return books, total
 

@@ -6,6 +6,7 @@ from pathlib import Path
 
 from fastapi import status
 
+from app.book_events import derive_reading_dates
 from app.models import (
     Book,
     BookEvent,
@@ -615,15 +616,16 @@ def test_import_real_export_currently_reading(client, auth_headers, db_session):
         "UNIX and Linux System Administration Handbook, 5/e",
     }
 
+    # started_at is now derived from the event stream, not a stored column.
     ekel = next(ub for book, ub in started if book.title == "Der Ekel")
-    assert ekel.started_at == datetime(2026, 4, 13)
+    assert derive_reading_dates(db_session, ekel.id)[0] == datetime(2026, 4, 13)
 
     unix = next(
         ub
         for book, ub in started
         if book.title == "UNIX and Linux System Administration Handbook, 5/e"
     )
-    assert unix.started_at == datetime(2026, 4, 18)
+    assert derive_reading_dates(db_session, unix.id)[0] == datetime(2026, 4, 18)
 
 
 def test_import_real_export_creates_lists(client, auth_headers, db_session):

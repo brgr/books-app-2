@@ -16,7 +16,7 @@ import enum
 import uuid
 
 if TYPE_CHECKING:
-    from app.schemas import BookCreate, BookUpdate
+    from app.schemas import BookCreate, BookUpdate, UserBookResponse
 
 Base = declarative_base()
 
@@ -77,9 +77,9 @@ class Book(Base):
         back_populates="book", cascade="all, delete-orphan"
     )
 
-    # Transient, non-persisted: the acting user's reading state, attached by the
-    # service layer for serialization. Not a mapped column.
-    user_status: "UserBook | None" = None
+    # Transient, non-persisted: the acting user's reading state (a response DTO),
+    # attached by the service layer for serialization. Not a mapped column.
+    user_status: "UserBookResponse | None" = None
 
     @classmethod
     def from_create(cls, data: "BookCreate") -> "Book":
@@ -137,8 +137,6 @@ class UserBook(Base):
     status: Mapped[ReadingStatus] = mapped_column(
         Enum(ReadingStatus), nullable=False, default=ReadingStatus.WANT_TO_READ
     )
-    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     current_page: Mapped[int | None] = mapped_column(Integer, nullable=True)
     current_percent: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)

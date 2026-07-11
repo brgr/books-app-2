@@ -168,8 +168,6 @@ def import_reading_list_from_bytes(
             user_id=user_id,
             book_id=book_id,
             status=derived_status,
-            started_at=started_at,
-            finished_at=finished_at,
             notes=notes,
             current_page=current_page,
         )

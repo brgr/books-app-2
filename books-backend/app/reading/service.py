@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.book_events import (
     apply_progress_event,
+    build_user_book_response,
     ensure_added_event,
     project_user_book_state,
     record_finished_reading,
@@ -26,7 +27,7 @@ from app.models import (
     User,
     UserBook,
 )
-from app.schemas import BookProgressUpdate, UserBookStatusUpdate
+from app.schemas import BookProgressUpdate, UserBookResponse, UserBookStatusUpdate
 
 
 class ReadingService:
@@ -41,7 +42,9 @@ class ReadingService:
         # noinspection PyTypeChecker
         return self.user.id
 
-    def set_status(self, book_id: int, status_data: UserBookStatusUpdate) -> UserBook:
+    def set_status(
+        self, book_id: int, status_data: UserBookStatusUpdate
+    ) -> UserBookResponse:
         """Set or update the acting user's reading status for a book.
 
         Raises ValueError on any domain-rule violation (illegal transition, a
@@ -59,7 +62,7 @@ class ReadingService:
 
         self.db.commit()
         self.db.refresh(user_book)
-        return user_book
+        return build_user_book_response(self.db, user_book)
 
     def remove_status(self, book_id: int) -> bool:
         """Remove the book from the user's library. Returns False if absent."""
@@ -92,7 +95,7 @@ class ReadingService:
 
     def add_progress(
         self, book_id: int, max_page: int | None, progress: BookProgressUpdate
-    ) -> UserBook:
+    ) -> UserBookResponse:
         """Record a progress event, requiring an in-progress reading cycle.
 
         Raises ValueError (mapped to HTTP 400) if the book has not been started.
@@ -105,13 +108,14 @@ class ReadingService:
         if user_book.status != ReadingStatus.STARTED:
             raise ValueError("Cannot record progress before starting reading")
 
-        return apply_progress_event(
+        user_book = apply_progress_event(
             self.db,
             user_book,
             page=progress.page,
             percent=progress.percent,
             max_page=max_page,
         )
+        return build_user_book_response(self.db, user_book)
 
     @staticmethod
     def _normalize_occurred_at(occurred_at: datetime | None) -> datetime | None:

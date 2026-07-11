@@ -3,6 +3,7 @@
 from sqlalchemy.orm import Session
 
 from app.book_events import (
+    build_user_book_response,
     ensure_added_event,
     project_user_book_state,
     record_cover_changed,
@@ -68,7 +69,7 @@ class BookService:
 
         self.db.commit()
         self.db.refresh(book)
-        return self.attach_status(book, reproject=False)
+        return self.attach_status(book)
 
     def set_cover(self, book: Book, cover_url: str, thumbnail_url: str | None) -> Book:
         """Point the book at an already-stored cover, journaling the change."""
@@ -82,7 +83,7 @@ class BookService:
             )
         self.db.commit()
         self.db.refresh(book)
-        return self.attach_status(book, reproject=False)
+        return self.attach_status(book)
 
     def list(self, page: int, page_size: int) -> tuple[list[Book], int]:
         """Return one page of books (with user status attached) and the total."""
@@ -124,16 +125,18 @@ class BookService:
             current_cover_path=current_cover_path,
         )
 
-    def attach_status(self, book: Book, *, reproject: bool = True) -> Book:
+    def attach_status(self, book: Book) -> Book:
         """Attach the acting user's reading state to ``book.user_status``.
 
-        When ``reproject`` is set, the user_book snapshot is first recomputed
-        from its event stream (used on reads); cover-only writes skip it.
+        The snapshot columns are recomputed from the event stream and the
+        event-derived reading dates are assembled into the DTO for serialization.
         """
         user_book = get_user_book(self.db, user_id=self._user_id, book_id=book.id)
-        if user_book and reproject:
+        if user_book:
             project_user_book_state(self.db, user_book)
-        book.user_status = user_book
+            book.user_status = build_user_book_response(self.db, user_book)
+        else:
+            book.user_status = None
         return book
 
     @staticmethod
