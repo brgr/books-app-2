@@ -148,10 +148,9 @@ def test_remove_reading_status(client, auth_headers, created_book):
     response = client.delete(f"/books/{book_id}/status", headers=auth_headers)
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
-    # Verify it's removed - book should now have null status
+    # Verify it's removed - the book is no longer in the user's library
     response = client.get(f"/books/{book_id}", headers=auth_headers)
-    book = response.json()
-    assert book["user_status"] is None
+    assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 def test_cannot_revert_to_want_after_start(client, auth_headers, created_book):
