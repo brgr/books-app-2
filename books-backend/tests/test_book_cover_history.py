@@ -9,6 +9,7 @@ from app.models import (
     BookEventCode,
     BookEventCover,
     BookEventType,
+    User,
     UserBook,
 )
 
@@ -25,6 +26,13 @@ def _make_book(db_session, **overrides):
     db_session.add(book)
     db_session.commit()
     db_session.refresh(book)
+
+    # The update/cover endpoints require the book to be in the acting user's
+    # library, so link it to the (single) test user.
+    user = db_session.query(User).first()
+    if user:
+        db_session.add(UserBook(user_id=user.id, book_id=book.id))
+        db_session.commit()
     return book
 
 

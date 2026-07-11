@@ -205,17 +205,11 @@ def get_book(
 
 @router.put("/books/{book_id}", response_model=BookResponse)
 async def update_book(
-    book_id: int,
     book_data: BookUpdate,
-    db: Annotated[Session, Depends(get_db)],
+    book: Annotated[Book, Depends(get_library_book)],
     service: Annotated[BookService, Depends(get_book_service)],
 ):
-    """Update a book."""
-    book = get_book_by_id(db, book_id)
-    if not book:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
-        )
+    """Update a book in the current user's library."""
     return await service.update(book, book_data)
 
 
@@ -240,18 +234,11 @@ def delete_book(
 
 @router.post("/books/{book_id}/cover", response_model=BookResponse)
 async def upload_book_cover(
-    book_id: int,
     file: Annotated[UploadFile, File(...)],
-    db: Annotated[Session, Depends(get_db)],
+    book: Annotated[Book, Depends(get_library_book)],
     service: Annotated[BookService, Depends(get_book_service)],
 ):
-    """Upload a cover image for a book."""
-    book = get_book_by_id(db, book_id)
-    if not book:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
-        )
-
+    """Upload a cover image for a book in the current user's library."""
     allowed_types = ["image/jpeg", "image/png", "image/webp", "image/gif"]
     if file.content_type not in allowed_types:
         raise HTTPException(
