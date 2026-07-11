@@ -164,7 +164,7 @@ def test_delete_all_books_cascades_to_user_books_and_events(
     the freed book IDs for fresh books, silently re-linking old reading state
     to unrelated imported books.
     """
-    from app.models import UserBook, BookEvent
+    from app.models import BookEvent, UserBook
 
     resp = client.post("/books", json=sample_book_data, headers=auth_headers)
     assert resp.status_code == status.HTTP_201_CREATED
@@ -183,6 +183,37 @@ def test_delete_all_books_cascades_to_user_books_and_events(
 
     assert db_session.query(UserBook).count() == 0
     assert db_session.query(BookEvent).count() == 0
+
+
+def test_clear_library_is_scoped_to_the_acting_user(db_session):
+    """clear_library must delete only the acting user's UserBooks."""
+    from app.books.service import BookService
+    from app.models import Book, User, UserBook
+
+    user_a = User(username="user_a", hashed_password="x")
+    user_b = User(username="user_b", hashed_password="x")
+    db_session.add_all([user_a, user_b])
+    db_session.flush()
+
+    book_a = Book(title="A", author="A")
+    book_b = Book(title="B", author="B")
+    db_session.add_all([book_a, book_b])
+    db_session.flush()
+
+    db_session.add_all(
+        [
+            UserBook(user_id=user_a.id, book_id=book_a.id),
+            UserBook(user_id=user_b.id, book_id=book_b.id),
+        ]
+    )
+    db_session.commit()
+
+    BookService(db_session, user_a).clear_library()
+
+    # Only User B's UserBook remains; the shared catalog is untouched
+    remaining = db_session.query(UserBook).all()
+    assert [ub.user_id for ub in remaining] == [user_b.id]
+    assert db_session.query(Book).count() == 2
 
 
 def test_delete_all_books_when_empty(client, auth_headers):

@@ -117,15 +117,17 @@ class BookService:
             self.db.delete(user_book)
             self.db.commit()
 
-    def delete_all(self) -> None:
-        """Delete all books and every user's reading state for them.
+    def clear_library(self) -> None:
+        """Remove every book from the acting user's library.
 
-        Removing user_books first lets the ondelete=CASCADE on book_events and
-        book_list_items fire at the DB level, avoiding orphaned rows that would
-        otherwise re-link to unrelated books via SQLite primary-key reuse.
+        Deletes only this user's user_books; the ondelete=CASCADE on
+        book_events and book_list_items fires at the DB level to clear their
+        events and list items. The shared catalog Books and other users'
+        libraries are left untouched.
         """
-        self.db.query(UserBook).delete(synchronize_session=False)
-        self.db.query(Book).delete(synchronize_session=False)
+        self.db.query(UserBook).filter(UserBook.user_id == self._user_id).delete(
+            synchronize_session=False
+        )
         self.db.commit()
 
     def start_cover_upgrade(

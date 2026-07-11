@@ -223,8 +223,8 @@ async def update_book(
 def delete_all_books(
     service: Annotated[BookService, Depends(get_book_service)],
 ):
-    """Delete all books, along with every user's reading state for them."""
-    service.delete_all()
+    """Remove all books from the current user's library."""
+    service.clear_library()
     return None
 
 
