@@ -86,14 +86,21 @@ class BookService:
         return self.attach_status(book)
 
     def list(self, page: int, page_size: int) -> tuple[list[Book], int]:
-        """Return one page of books (with user status attached) and the total."""
-        total = self.db.query(Book).count()
-        books = (
-            self.db.query(Book).offset((page - 1) * page_size).limit(page_size).all()
+        """Return one page of the user's library (with status attached) and the total."""
+        library_books = (
+            self.db.query(Book)
+            .join(UserBook, UserBook.book_id == Book.id)
+            .filter(UserBook.user_id == self._user_id)
         )
+
+        offset = (page - 1) * page_size
+        total = library_books.count()
+        books = library_books.offset(offset).limit(page_size).all()
+
         for book in books:
             # noinspection PyTypeChecker
             self.attach_status(book)
+
         # noinspection PyTypeChecker
         return books, total
 
