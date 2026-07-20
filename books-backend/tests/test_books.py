@@ -3,7 +3,7 @@ from fastapi import status
 
 def test_create_book(client, auth_headers, sample_book_data):
     """Test creating a book."""
-    response = client.post("/books", json=sample_book_data, headers=auth_headers)
+    response = client.post("/api/books", json=sample_book_data, headers=auth_headers)
 
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
@@ -15,7 +15,7 @@ def test_create_book(client, auth_headers, sample_book_data):
 
 def test_create_book_requires_auth(client, sample_book_data):
     """Test that creating a book requires authentication."""
-    response = client.post("/books", json=sample_book_data)
+    response = client.post("/api/books", json=sample_book_data)
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
@@ -26,10 +26,10 @@ def test_list_books(client, auth_headers, sample_book_data):
         book_data = sample_book_data.copy()
         book_data["title"] = f"Test Book {i}"
         book_data["isbn"] = f"123456789{i}"
-        client.post("/books", json=book_data, headers=auth_headers)
+        client.post("/api/books", json=book_data, headers=auth_headers)
 
     # List books
-    response = client.get("/books", headers=auth_headers)
+    response = client.get("/api/books", headers=auth_headers)
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -49,10 +49,10 @@ def test_list_books_pagination(client, auth_headers, sample_book_data):
         book_data = sample_book_data.copy()
         book_data["title"] = f"Test Book {i}"
         book_data["isbn"] = f"123456789{i}"
-        client.post("/books", json=book_data, headers=auth_headers)
+        client.post("/api/books", json=book_data, headers=auth_headers)
 
     # Get first page with 2 items
-    response = client.get("/books?page=1&page_size=2", headers=auth_headers)
+    response = client.get("/api/books?page=1&page_size=2", headers=auth_headers)
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     assert len(data["items"]) == 2
@@ -60,7 +60,7 @@ def test_list_books_pagination(client, auth_headers, sample_book_data):
     assert data["pages"] == 3
 
     # Get second page
-    response = client.get("/books?page=2&page_size=2", headers=auth_headers)
+    response = client.get("/api/books?page=2&page_size=2", headers=auth_headers)
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     assert len(data["items"]) == 2
@@ -69,11 +69,13 @@ def test_list_books_pagination(client, auth_headers, sample_book_data):
 def test_get_book(client, auth_headers, sample_book_data):
     """Test getting a single book."""
     # Create a book
-    create_response = client.post("/books", json=sample_book_data, headers=auth_headers)
+    create_response = client.post(
+        "/api/books", json=sample_book_data, headers=auth_headers
+    )
     book_id = create_response.json()["id"]
 
     # Get the book
-    response = client.get(f"/books/{book_id}", headers=auth_headers)
+    response = client.get(f"/api/books/{book_id}", headers=auth_headers)
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -83,19 +85,23 @@ def test_get_book(client, auth_headers, sample_book_data):
 
 def test_get_nonexistent_book(client, auth_headers):
     """Test getting a book that doesn't exist."""
-    response = client.get("/books/99999", headers=auth_headers)
+    response = client.get("/api/books/99999", headers=auth_headers)
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 def test_update_book(client, auth_headers, sample_book_data):
     """Test updating a book."""
     # Create a book
-    create_response = client.post("/books", json=sample_book_data, headers=auth_headers)
+    create_response = client.post(
+        "/api/books", json=sample_book_data, headers=auth_headers
+    )
     book_id = create_response.json()["id"]
 
     # Update the book
     update_data = {"title": "Updated Title", "page_count": 350}
-    response = client.put(f"/books/{book_id}", json=update_data, headers=auth_headers)
+    response = client.put(
+        f"/api/books/{book_id}", json=update_data, headers=auth_headers
+    )
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -107,7 +113,7 @@ def test_update_book(client, auth_headers, sample_book_data):
 def test_update_nonexistent_book(client, auth_headers):
     """Test updating a book that doesn't exist."""
     response = client.put(
-        "/books/99999", json={"title": "New Title"}, headers=auth_headers
+        "/api/books/99999", json={"title": "New Title"}, headers=auth_headers
     )
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -115,21 +121,23 @@ def test_update_nonexistent_book(client, auth_headers):
 def test_delete_book(client, auth_headers, sample_book_data):
     """Test deleting a book."""
     # Create a book
-    create_response = client.post("/books", json=sample_book_data, headers=auth_headers)
+    create_response = client.post(
+        "/api/books", json=sample_book_data, headers=auth_headers
+    )
     book_id = create_response.json()["id"]
 
     # Delete the book
-    response = client.delete(f"/books/{book_id}", headers=auth_headers)
+    response = client.delete(f"/api/books/{book_id}", headers=auth_headers)
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
     # Verify it's gone
-    response = client.get(f"/books/{book_id}", headers=auth_headers)
+    response = client.get(f"/api/books/{book_id}", headers=auth_headers)
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 def test_delete_nonexistent_book(client, auth_headers):
     """Test deleting a book that doesn't exist."""
-    response = client.delete("/books/99999", headers=auth_headers)
+    response = client.delete("/api/books/99999", headers=auth_headers)
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
@@ -140,18 +148,18 @@ def test_delete_all_books(client, auth_headers, sample_book_data):
         book_data = sample_book_data.copy()
         book_data["title"] = f"Test Book {i}"
         book_data["isbn"] = f"123456789{i}"
-        client.post("/books", json=book_data, headers=auth_headers)
+        client.post("/api/books", json=book_data, headers=auth_headers)
 
     # Verify books exist
-    response = client.get("/books", headers=auth_headers)
+    response = client.get("/api/books", headers=auth_headers)
     assert response.json()["total"] == 3
 
     # Delete all
-    response = client.delete("/books", headers=auth_headers)
+    response = client.delete("/api/books", headers=auth_headers)
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
     # Verify all gone
-    response = client.get("/books", headers=auth_headers)
+    response = client.get("/api/books", headers=auth_headers)
     assert response.json()["total"] == 0
 
 
@@ -166,19 +174,19 @@ def test_delete_all_books_cascades_to_user_books_and_events(
     """
     from app.models import BookEvent, UserBook
 
-    resp = client.post("/books", json=sample_book_data, headers=auth_headers)
+    resp = client.post("/api/books", json=sample_book_data, headers=auth_headers)
     assert resp.status_code == status.HTTP_201_CREATED
     book_id = resp.json()["id"]
 
     resp = client.put(
-        f"/books/{book_id}/status", json={"status": "started"}, headers=auth_headers
+        f"/api/books/{book_id}/shelf", json={"shelf": "started"}, headers=auth_headers
     )
     assert resp.status_code == status.HTTP_200_OK
 
     assert db_session.query(UserBook).count() > 0
     assert db_session.query(BookEvent).count() > 0
 
-    resp = client.delete("/books", headers=auth_headers)
+    resp = client.delete("/api/books", headers=auth_headers)
     assert resp.status_code == status.HTTP_204_NO_CONTENT
 
     assert db_session.query(UserBook).count() == 0
@@ -218,13 +226,13 @@ def test_clear_library_is_scoped_to_the_acting_user(db_session):
 
 def test_delete_all_books_when_empty(client, auth_headers):
     """Test deleting all books when there are none."""
-    response = client.delete("/books", headers=auth_headers)
+    response = client.delete("/api/books", headers=auth_headers)
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
 
 def test_delete_all_books_requires_auth(client):
     """Test that deleting all books requires authentication."""
-    response = client.delete("/books")
+    response = client.delete("/api/books")
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
@@ -232,7 +240,7 @@ def test_book_validation(client, auth_headers):
     """Test book data validation."""
     # Missing required field
     response = client.post(
-        "/books",
+        "/api/books",
         json={
             "author": "Test Author"
             # Missing title
@@ -243,7 +251,7 @@ def test_book_validation(client, auth_headers):
 
     # Invalid page count (negative)
     response = client.post(
-        "/books",
+        "/api/books",
         json={"title": "Test Book", "author": "Test Author", "page_count": -10},
         headers=auth_headers,
     )

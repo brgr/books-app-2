@@ -64,7 +64,7 @@ def local_cover(tmp_path, monkeypatch):
 
 
 def test_start_cover_upgrade_404_for_unknown_book(client, auth_headers):
-    r = client.post("/books/999/cover-upgrade-search", headers=auth_headers)
+    r = client.post("/api/books/999/cover-upgrade-search", headers=auth_headers)
     assert r.status_code == 404
 
 
@@ -73,7 +73,7 @@ def test_start_cover_upgrade_404_when_book_not_in_library(
 ):
     book = _create_book_with_local_cover(db_session, cover_path=local_cover)
     # Note: book exists but no UserBook row for current user.
-    r = client.post(f"/books/{book.id}/cover-upgrade-search", headers=auth_headers)
+    r = client.post(f"/api/books/{book.id}/cover-upgrade-search", headers=auth_headers)
     assert r.status_code == 404
 
 
@@ -85,7 +85,7 @@ def test_start_cover_upgrade_400_when_no_local_cover(client, auth_headers, db_se
     _add_to_library(
         db_session, user_id=_user_id(db_session, "testuser"), book_id=book.id
     )
-    r = client.post(f"/books/{book.id}/cover-upgrade-search", headers=auth_headers)
+    r = client.post(f"/api/books/{book.id}/cover-upgrade-search", headers=auth_headers)
     assert r.status_code == 400
 
 
@@ -97,7 +97,7 @@ def test_start_cover_upgrade_400_for_external_cover(client, auth_headers, db_ses
     _add_to_library(
         db_session, user_id=_user_id(db_session, "testuser"), book_id=book.id
     )
-    r = client.post(f"/books/{book.id}/cover-upgrade-search", headers=auth_headers)
+    r = client.post(f"/api/books/{book.id}/cover-upgrade-search", headers=auth_headers)
     assert r.status_code == 400
 
 
@@ -116,13 +116,13 @@ def test_start_and_get_cover_upgrade_job(
         db_session, user_id=_user_id(db_session, "testuser"), book_id=book.id
     )
 
-    r = client.post(f"/books/{book.id}/cover-upgrade-search", headers=auth_headers)
+    r = client.post(f"/api/books/{book.id}/cover-upgrade-search", headers=auth_headers)
     assert r.status_code == 202
     job_id = r.json()["job_id"]
 
     # Poll once — fake_run completes immediately.
     r2 = client.get(
-        f"/books/{book.id}/cover-upgrade-search/{job_id}", headers=auth_headers
+        f"/api/books/{book.id}/cover-upgrade-search/{job_id}", headers=auth_headers
     )
     assert r2.status_code == 200
     body = r2.json()
@@ -143,10 +143,12 @@ def test_get_job_404_for_wrong_book_id(
     _add_to_library(
         db_session, user_id=_user_id(db_session, "testuser"), book_id=book.id
     )
-    r = client.post(f"/books/{book.id}/cover-upgrade-search", headers=auth_headers)
+    r = client.post(f"/api/books/{book.id}/cover-upgrade-search", headers=auth_headers)
     job_id = r.json()["job_id"]
 
-    r2 = client.get(f"/books/9999/cover-upgrade-search/{job_id}", headers=auth_headers)
+    r2 = client.get(
+        f"/api/books/9999/cover-upgrade-search/{job_id}", headers=auth_headers
+    )
     assert r2.status_code == 404
 
 
@@ -166,7 +168,7 @@ def test_get_job_404_for_other_users_job(
         db_session, user_id=_user_id(db_session, "testuser"), book_id=book.id
     )
 
-    r = client.post(f"/books/{book.id}/cover-upgrade-search", headers=auth_headers)
+    r = client.post(f"/api/books/{book.id}/cover-upgrade-search", headers=auth_headers)
     job_id = r.json()["job_id"]
 
     # The harness only allows one user, so simulate cross-user isolation by
@@ -174,7 +176,7 @@ def test_get_job_404_for_other_users_job(
     cover_upgrade._jobs[job_id].user_id = 99999
 
     r2 = client.get(
-        f"/books/{book.id}/cover-upgrade-search/{job_id}", headers=auth_headers
+        f"/api/books/{book.id}/cover-upgrade-search/{job_id}", headers=auth_headers
     )
     assert r2.status_code == 404
 

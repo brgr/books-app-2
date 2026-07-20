@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from "vue";
+import { computed, nextTick, ref, type Ref, watch } from "vue";
 import draggable from "vuedraggable";
 import { useRoute, useRouter } from "vue-router";
-import { getListBooks, getLists, reorderListItem } from "../api/books";
+import { getShelfBooks, getShelves, reorderShelfItem } from "../api/books";
 import BookCard from "../components/book/BookCard/BookCard.vue";
 import BookCoverTile from "../components/book/BookCoverTile.vue";
 import BookContextMenu from "../components/book/BookContextMenu.vue";
@@ -10,7 +10,7 @@ import BookSearchModal from "../components/modals/BookSearchModal.vue";
 import BooksSearchHeader from "../components/ui/BooksSearchHeader.vue";
 import LibraryNav from "../components/ui/LibraryNav.vue";
 import NavigationBar from "../components/ui/NavigationBar.vue";
-import { ReadingStatus, type Book, type BookList } from "../api/types";
+import { type Book, ReadingStatus, type Shelf } from "../api/types";
 import { useCachedQuery } from "../composables/useCachedQuery";
 import { usePaginatedList } from "../composables/usePaginatedList";
 import { useAddBook } from "../composables/useAddBook";
@@ -32,17 +32,17 @@ function goToShelf(shelf: "to-read" | "finished") {
   router.push({ name: "shelf", params: { shelf } });
 }
 
-const activeListId = ref<number | null>(null);
+const activeShelfId = ref<number | null>(null);
 
-const { data: listsData } = useCachedQuery<BookList[]>(cacheKeys.lists(), () => getLists());
+const { data: shelvesData } = useCachedQuery<Shelf[]>(cacheKeys.shelves(), () => getShelves());
 
-const lists = computed(() => listsData.value ?? []);
+const shelves = computed(() => shelvesData.value ?? []);
 
 watch(
-  lists,
-  (newLists) => {
-    if (newLists.length && !activeListId.value) {
-      setActiveListForShelf();
+  shelves,
+  (newShelves) => {
+    if (newShelves.length && !activeShelfId.value) {
+      setActiveShelfForTab();
     }
   },
   { immediate: true },
@@ -50,6 +50,7 @@ watch(
 
 const {
   items: books,
+  replaceItems: replaceBooks,
   hasMore,
   isLoadingMore,
   loaded: booksLoaded,
@@ -57,11 +58,25 @@ const {
   loadMore,
   reload: reloadBooks,
 } = usePaginatedList<Book>({
-  resourceId: activeListId,
-  cacheKey: (listId, page) => cacheKeys.listBooks(listId, page, pageSize),
-  fetchPage: (listId, page) => getListBooks(listId, page, pageSize),
+  resourceId: activeShelfId,
+  cacheKey: (shelfId, page) => cacheKeys.shelfBooks(shelfId, page, pageSize),
+  cacheKeyPrefix: (shelfId) => cacheKeys.shelfBooksPrefix(shelfId),
+  fetchPage: (shelfId, page) => getShelfBooks(shelfId, page, pageSize),
   itemKey: (book) => book.id,
 });
+
+// We only get one page here for "Reading Now" books, which is fine, as we get up to 100 books, and more likely
+// the user has like 3 to 5 books max in progress.
+// In the future, we should consider that this could potentially be more for some users, and we should implement
+// this better in some way.
+const startedShelfId = computed(() => shelves.value.find((shelf) => shelf.name === ReadingStatus.STARTED)?.id ?? null);
+
+const { data: startedBooksData, setData: setStartedBooks } = useCachedQuery<Book[]>(
+  computed(() => (startedShelfId.value ? cacheKeys.shelfBooks(startedShelfId.value, 1, 100) : "")),
+  () => getShelfBooks(startedShelfId.value as number, 1, 100).then((result) => result.items),
+);
+
+const startedBooks = computed(() => startedBooksData.value ?? []);
 
 const error = computed(() => {
   const e = booksError.value;
@@ -79,48 +94,48 @@ watch(viewMode, (newMode) => {
   localStorage.setItem("booksViewMode", newMode);
 });
 
-const filteredBooks = computed(() => {
-  let list = books.value;
+function matchesSearch(book: Book): boolean {
+  const query = searchQuery.value.toLowerCase().trim();
+  if (!query) return true;
 
-  // Filter by search query
-  if (searchQuery.value.trim()) {
-    const query = searchQuery.value.toLowerCase().trim();
-    list = list.filter((book) => book.title.toLowerCase().includes(query) || book.author.toLowerCase().includes(query));
-  }
+  return book.title.toLowerCase().includes(query) || book.author.toLowerCase().includes(query);
+}
 
-  return list;
-});
+const filteredBooks = computed(() => books.value.filter(matchesSearch));
+const currentlyReadingBooks = computed(() => startedBooks.value.filter(matchesSearch));
+const toReadBooks = computed(() => filteredBooks.value);
 
-const currentlyReadingBooks = computed(() =>
-  filteredBooks.value.filter((book) => book.user_status?.status === ReadingStatus.STARTED),
-);
-const toReadBooks = computed(() =>
-  filteredBooks.value.filter((book) => book.user_status?.status !== ReadingStatus.STARTED),
+const isEmpty = computed(() =>
+  shelfFilter.value === "to-read"
+    ? filteredBooks.value.length === 0 && currentlyReadingBooks.value.length === 0
+    : filteredBooks.value.length === 0,
 );
 
 const gridBooks = ref<Book[]>([]);
-const gridCurrentlyReading = ref<Book[]>([]);
 const gridToRead = ref<Book[]>([]);
+const gridCurrentlyReading = ref<Book[]>([]);
 const isDragging = ref(false);
 const lastDragTime = ref(0);
 watch(
   filteredBooks,
   (next) => {
     gridBooks.value = [...next];
-    gridCurrentlyReading.value = next.filter((book) => book.user_status?.status === ReadingStatus.STARTED);
-    gridToRead.value = next.filter((book) => book.user_status?.status !== ReadingStatus.STARTED);
+    gridToRead.value = [...next];
+  },
+  { immediate: true },
+);
+watch(
+  currentlyReadingBooks,
+  (next) => {
+    gridCurrentlyReading.value = [...next];
   },
   { immediate: true },
 );
 
-function getShelfListName(): string {
-  return shelfFilter.value === "to-read" ? "To Read" : "Finished";
-}
-
-function setActiveListForShelf() {
-  const targetName = getShelfListName();
-  const match = lists.value.find((list) => list.name === targetName) || null;
-  activeListId.value = match ? match.id : null;
+function setActiveShelfForTab() {
+  const targetName = shelfFilter.value === "to-read" ? ReadingStatus.WANT_TO_READ : ReadingStatus.FINISHED;
+  const match = shelves.value.find((shelf) => shelf.name === targetName) || null;
+  activeShelfId.value = match ? match.id : null;
 }
 
 const sentinelEl = ref<HTMLElement | null>(null);
@@ -133,7 +148,7 @@ const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(relo
 
 // Switching surfaces (To Read / Finished) points usePaginatedList at the matching list;
 // it resets and reloads on its own from the resource change.
-watch(shelfFilter, setActiveListForShelf);
+watch(shelfFilter, setActiveShelfForTab);
 
 function handleDragStart() {
   isDragging.value = true;
@@ -142,24 +157,34 @@ function handleDragStart() {
   closeContextMenu();
 }
 
-// Persists a reorder, then mirrors the new grid order back into the paginated
-// accumulator so it survives future page loads.
-async function commitReorder(movedId: number, beforeId: number | null, afterId: number | null) {
-  if (!activeListId.value) return;
+// Persists a reorder against the given shelf, then mirrors the new grid order back
+// into whichever accumulator backs that shelf so it survives future page loads.
+async function commitReorder(shelfId: number, movedId: number, beforeId: number | null, afterId: number | null) {
   try {
-    await reorderListItem(activeListId.value, {
+    await reorderShelfItem(shelfId, {
       moved_book_id: movedId,
       before_book_id: beforeId,
       after_book_id: afterId,
     });
-    books.value =
-      shelfFilter.value === "to-read" ? [...gridCurrentlyReading.value, ...gridToRead.value] : [...gridBooks.value];
+
+    if (shelfId === startedShelfId.value) {
+      // The started shelf is a single cache entry (one page of up to 100), so rewriting it with the new order is
+      // safe and survives a remount from cache
+      await setStartedBooks([...gridCurrentlyReading.value]);
+    } else if (shelfId === activeShelfId.value) {
+      // The paginated shelf spans multiple cache entries; replaceBooks invalidates them so the remount refetches
+      await replaceBooks(shelfFilter.value === "to-read" ? [...gridToRead.value] : [...gridBooks.value]);
+    }
   } catch (err: any) {
     console.error("Failed to reorder books:", err);
   }
 }
 
-async function handleDragEndForList(list: Book[], event: { newIndex?: number; oldIndex?: number } | null) {
+async function handleDragEndForList(
+  shelfId: number | null,
+  list: Book[],
+  event: { newIndex?: number; oldIndex?: number } | null,
+) {
   isDragging.value = false;
   lastDragTime.value = Date.now();
 
@@ -169,7 +194,7 @@ async function handleDragEndForList(list: Book[], event: { newIndex?: number; ol
   if (event.newIndex === event.oldIndex) {
     return;
   }
-  if (!activeListId.value) {
+  if (!shelfId) {
     return;
   }
   if (searchQuery.value.trim()) {
@@ -181,7 +206,7 @@ async function handleDragEndForList(list: Book[], event: { newIndex?: number; ol
   const beforeBook = event.newIndex > 0 ? list[event.newIndex - 1] : null;
   const afterBook = event.newIndex < list.length - 1 ? list[event.newIndex + 1] : null;
 
-  await commitReorder(movedBook.id, beforeBook?.id ?? null, afterBook?.id ?? null);
+  await commitReorder(shelfId, movedBook.id, beforeBook?.id ?? null, afterBook?.id ?? null);
 }
 
 function handleCoverClick(bookId: number) {
@@ -198,20 +223,21 @@ function handleContextView() {
   if (bookId !== null) router.push({ name: "book-detail", params: { id: bookId } });
 }
 
-// Resolves the grid section a book belongs to, so a move stays within its
-// section (matching drag behavior, which never crosses "Reading now" / "Want to read").
-function gridListRefFor(bookId: number) {
-  if (shelfFilter.value === "to-read") {
-    if (gridCurrentlyReading.value.some((b) => b.id === bookId)) return gridCurrentlyReading;
-    return gridToRead;
+// Resolves the grid section a book belongs to (and the shelf backing it), so a move
+// stays within its section (matching drag behavior, which never crosses "Reading now" / "Want to read").
+function gridSectionFor(bookId: number): { shelfId: number | null; listRef: Ref<Book[]> } {
+  if (shelfFilter.value === "to-read" && gridCurrentlyReading.value.some((b) => b.id === bookId)) {
+    return { shelfId: startedShelfId.value, listRef: gridCurrentlyReading };
   }
-  return gridBooks;
+  return { shelfId: activeShelfId.value, listRef: shelfFilter.value === "to-read" ? gridToRead : gridBooks };
 }
 
 async function moveBookToEdge(bookId: number, edge: "top" | "bottom") {
-  if (!activeListId.value || searchQuery.value.trim()) return;
+  if (searchQuery.value.trim()) return;
 
-  const listRef = gridListRefFor(bookId);
+  const { shelfId, listRef } = gridSectionFor(bookId);
+  if (!shelfId) return;
+
   const idx = listRef.value.findIndex((b) => b.id === bookId);
   const targetIndex = edge === "top" ? 0 : listRef.value.length - 1;
   if (idx === -1 || idx === targetIndex) return;
@@ -225,7 +251,7 @@ async function moveBookToEdge(bookId: number, edge: "top" | "bottom") {
   const beforeBook = edge === "bottom" ? (next[next.length - 2] ?? null) : null;
   const afterBook = edge === "top" ? (next[1] ?? null) : null;
 
-  await commitReorder(moved.id, beforeBook?.id ?? null, afterBook?.id ?? null);
+  await commitReorder(shelfId, moved.id, beforeBook?.id ?? null, afterBook?.id ?? null);
 }
 
 function handleContextMove(edge: "top" | "bottom") {
@@ -261,7 +287,7 @@ const dragOpts = computed(() => ({
 
       <BooksSearchHeader v-model:search-query="searchQuery" v-model:view-mode="viewMode" />
 
-      <div v-if="booksLoaded && filteredBooks.length === 0" class="empty-state">
+      <div v-if="booksLoaded && isEmpty" class="empty-state">
         <p v-if="searchQuery">No books match your search.</p>
         <p v-else-if="shelfFilter === 'finished'">No finished books yet.</p>
         <p v-else>No books yet. Add your first book to get started!</p>
@@ -276,7 +302,7 @@ const dragOpts = computed(() => ({
               :list="gridCurrentlyReading"
               v-bind="dragOpts"
               @start="handleDragStart"
-              @end="handleDragEndForList(gridCurrentlyReading, $event)"
+              @end="handleDragEndForList(startedShelfId, gridCurrentlyReading, $event)"
             >
               <template #item="{ element: book }">
                 <BookCoverTile :book="book" show-progress @click="handleCoverClick" @menu="openContextMenu" />
@@ -291,7 +317,7 @@ const dragOpts = computed(() => ({
               :list="gridToRead"
               v-bind="dragOpts"
               @start="handleDragStart"
-              @end="handleDragEndForList(gridToRead, $event)"
+              @end="handleDragEndForList(activeShelfId, gridToRead, $event)"
             >
               <template #item="{ element: book }">
                 <BookCoverTile :book="book" @click="handleCoverClick" @menu="openContextMenu" />
@@ -306,7 +332,7 @@ const dragOpts = computed(() => ({
           :list="gridBooks"
           v-bind="dragOpts"
           @start="handleDragStart"
-          @end="handleDragEndForList(gridBooks, $event)"
+          @end="handleDragEndForList(activeShelfId, gridBooks, $event)"
         >
           <template #item="{ element: book }">
             <BookCoverTile :book="book" @click="handleCoverClick" @menu="openContextMenu" />

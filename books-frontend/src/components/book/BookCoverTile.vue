@@ -96,7 +96,7 @@ const hasPercent = computed(() => {
 const showBadge = computed(() => {
   if (!props.showProgress) return false;
   const status = props.book.user_status;
-  if (status?.status !== ReadingStatus.STARTED) return false;
+  if (status?.shelf !== ReadingStatus.STARTED) return false;
   // A percent-tracked book carries progress even without a page count.
   return (
     hasPercent.value ||

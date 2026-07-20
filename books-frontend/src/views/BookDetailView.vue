@@ -59,14 +59,14 @@ async function loadBook() {
   await refreshEvents();
 }
 
-const canUpdateProgress = computed(() => book.value?.user_status?.status === ReadingStatus.STARTED);
+const canUpdateProgress = computed(() => book.value?.user_status?.shelf === ReadingStatus.STARTED);
 
-async function changeStatus(status: ReadingStatus, occurredAt?: string) {
+async function changeStatus(shelf: ReadingStatus, occurredAt?: string) {
   if (!book.value) return;
   updatingStatus.value = true;
   try {
-    await setReadingStatus(book.value.id, { status, occurred_at: occurredAt });
-    await cacheInvalidateByPrefix("lists:");
+    await setReadingStatus(book.value.id, { shelf, occurred_at: occurredAt });
+    await cacheInvalidateByPrefix(cacheKeys.shelvesPrefix());
     await loadBook();
   } catch (err) {
     console.error("Failed to update reading status:", err);
@@ -84,8 +84,8 @@ async function handleSaveNotes(notes: string) {
   if (!book.value) return;
   notesSaving.value = true;
   try {
-    const status = book.value.user_status?.status ?? ReadingStatus.WANT_TO_READ;
-    book.value.user_status = await setReadingStatus(book.value.id, { status, notes });
+    const shelf = book.value.user_status?.shelf ?? ReadingStatus.WANT_TO_READ;
+    book.value.user_status = await setReadingStatus(book.value.id, { shelf, notes });
     await cacheDel(cacheKeys.bookEvents(book.value.id));
     await refreshEvents();
   } catch (error) {
@@ -149,14 +149,14 @@ const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(() =
             <div class="book-status-section">
               <BookStatusButton
                 v-if="!canUpdateProgress"
-                :status="book.user_status?.status ?? null"
+                :status="book.user_status?.shelf ?? null"
                 :updating="updatingStatus"
                 @change="handleStatusChange"
               />
 
               <BookReadingCard
                 v-else
-                :status="book.user_status?.status ?? null"
+                :status="book.user_status?.shelf ?? null"
                 :updating="updatingStatus"
                 :current-page="book.user_status?.current_page ?? null"
                 :current-percent="book.user_status?.current_percent ?? null"

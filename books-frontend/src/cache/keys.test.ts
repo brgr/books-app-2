@@ -2,12 +2,12 @@ import { describe, it, expect } from "vitest";
 import { cacheKeys } from "./keys";
 
 describe("cacheKeys", () => {
-  it("generates key for lists", () => {
-    expect(cacheKeys.lists()).toBe("lists");
+  it("generates key for shelves", () => {
+    expect(cacheKeys.shelves()).toBe("shelves");
   });
 
-  it("generates key for list books with pagination", () => {
-    expect(cacheKeys.listBooks(5, 1, 20)).toBe("lists:5:books:page=1&pageSize=20");
+  it("generates key for shelf books with pagination", () => {
+    expect(cacheKeys.shelfBooks(5, 1, 20)).toBe("shelves:5:books:page=1&pageSize=20");
   });
 
   it("generates key for a single book", () => {
@@ -16,5 +16,11 @@ describe("cacheKeys", () => {
 
   it("generates key for book events", () => {
     expect(cacheKeys.bookEvents(42)).toBe("books:42:events");
+  });
+
+  it("generates invalidation prefixes that cover the matching keys", () => {
+    expect(cacheKeys.shelfBooks(5, 1, 20).startsWith(cacheKeys.shelvesPrefix())).toBe(true);
+    expect(cacheKeys.book(42).startsWith(cacheKeys.bookPrefix(42))).toBe(true);
+    expect(cacheKeys.bookEvents(42).startsWith(cacheKeys.bookPrefix(42))).toBe(true);
   });
 });

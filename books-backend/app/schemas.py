@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 from datetime import datetime
 from typing import Literal, Optional, cast
-from app.models import Book, BookEvent, ReadingStatus, BookEventCode, UserBook
+from app.models import Book, BookEvent, ShelfName, BookEventCode, UserBook
 
 
 # User schemas
@@ -72,9 +72,9 @@ class BookResponse(BookBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-# UserBook (reading status) schemas
+# UserBook schemas
 class UserBookBase(BaseModel):
-    status: ReadingStatus
+    shelf: ShelfName
     notes: Optional[str] = None
 
 
@@ -83,14 +83,14 @@ class UserBookCreate(UserBookBase):
 
 
 class UserBookUpdate(BaseModel):
-    status: Optional[ReadingStatus] = None
+    shelf: Optional[ShelfName] = None
     notes: Optional[str] = None
 
 
-class UserBookStatusUpdate(BaseModel):
-    """Simpler schema for updating just status via PUT endpoint."""
+class UserBookShelfUpdate(BaseModel):
+    """Schema for updating just the shelf via PUT endpoint."""
 
-    status: ReadingStatus
+    shelf: ShelfName
     notes: Optional[str] = None
     occurred_at: Optional[datetime] = None
 
@@ -123,7 +123,7 @@ class UserBookResponse(UserBookBase):
             id=user_book.id,
             user_id=user_book.user_id,
             book_id=user_book.book_id,
-            status=user_book.status,
+            shelf=user_book.shelf,
             notes=user_book.notes,
             started_at=started_at,
             finished_at=finished_at,
@@ -132,15 +132,16 @@ class UserBookResponse(UserBookBase):
         )
 
 
-# Book list schemas
-class BookListResponse(BaseModel):
+# Shelf schemas
+class ShelfResponse(BaseModel):
     id: int
-    name: str
+    name: ShelfName
+    display_name: str
 
     model_config = ConfigDict(from_attributes=True)
 
 
-class BookListItemReorderRequest(BaseModel):
+class ShelfItemReorderRequest(BaseModel):
     moved_book_id: int
     before_book_id: Optional[int] = None
     after_book_id: Optional[int] = None
@@ -209,7 +210,7 @@ class ExportBookEntry(BaseModel):
     description: Optional[str] = None
     published_date: Optional[datetime] = None
     page_count: Optional[int] = None
-    status: ReadingStatus
+    shelf: ShelfName
     notes: Optional[str] = None
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
@@ -233,7 +234,7 @@ class ExportBookEntry(BaseModel):
             description=book.description,
             published_date=book.published_date,
             page_count=book.page_count,
-            status=user_book.status,
+            shelf=user_book.shelf,
             notes=user_book.notes,
             started_at=started_at,
             finished_at=finished_at,

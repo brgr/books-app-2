@@ -8,7 +8,7 @@ const props = defineProps<{
   book: Book;
 }>();
 
-const readingStatus = computed(() => props.book.user_status?.status || null);
+const readingStatus = computed(() => props.book.user_status?.shelf || null);
 </script>
 
 <template>

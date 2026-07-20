@@ -83,7 +83,7 @@ def test_put_book_with_new_cover_records_event_on_user_book(
     _patch_cover_download(monkeypatch)
 
     response = client.put(
-        f"/books/{book.id}",
+        f"/api/books/{book.id}",
         json={"cover_image_url": "https://example.com/new-cover.jpg"},
         headers=auth_headers,
     )
@@ -105,7 +105,7 @@ def test_put_book_with_unchanged_cover_records_nothing(
     book = _make_book(db_session)
 
     response = client.put(
-        f"/books/{book.id}",
+        f"/api/books/{book.id}",
         json={"title": "Renamed"},
         headers=auth_headers,
     )
@@ -124,7 +124,7 @@ def test_put_book_with_same_cover_url_records_nothing(
     )
 
     response = client.put(
-        f"/books/{book.id}",
+        f"/api/books/{book.id}",
         json={"cover_image_url": "/uploads/covers/keep.jpg"},
         headers=auth_headers,
     )
@@ -139,7 +139,7 @@ def test_put_book_clearing_cover_records_event(
     book = _make_book(db_session)
 
     response = client.put(
-        f"/books/{book.id}",
+        f"/api/books/{book.id}",
         json={"cover_image_url": None},
         headers=auth_headers,
     )
@@ -159,7 +159,7 @@ def test_upload_cover_records_event(client, auth_headers, db_session, monkeypatc
     _patch_cover_store(monkeypatch)
 
     response = client.post(
-        f"/books/{book.id}/cover",
+        f"/api/books/{book.id}/cover",
         headers=auth_headers,
         files={"file": ("cover.jpg", io.BytesIO(b"fake-bytes"), "image/jpeg")},
     )
@@ -184,7 +184,7 @@ def test_two_consecutive_changes_record_two_events(
         new_thumb="/uploads/covers/thumbnails/v2.jpg",
     )
     r1 = client.put(
-        f"/books/{book.id}",
+        f"/api/books/{book.id}",
         json={"cover_image_url": "https://example.com/v2.jpg"},
         headers=auth_headers,
     )
@@ -196,7 +196,7 @@ def test_two_consecutive_changes_record_two_events(
         new_thumb="/uploads/covers/thumbnails/v3.jpg",
     )
     r2 = client.put(
-        f"/books/{book.id}",
+        f"/api/books/{book.id}",
         json={"cover_image_url": "https://example.com/v3.jpg"},
         headers=auth_headers,
     )
@@ -231,7 +231,7 @@ def test_old_cover_file_is_preserved_on_change(
         _patch_cover_download(monkeypatch)
 
         response = client.put(
-            f"/books/{book.id}",
+            f"/api/books/{book.id}",
             json={"cover_image_url": "https://example.com/replacement.jpg"},
             headers=auth_headers,
         )
@@ -255,13 +255,13 @@ def test_get_book_events_includes_cover_changes_for_user(
         new_thumb="/uploads/covers/thumbnails/v2.jpg",
     )
     r = client.put(
-        f"/books/{book.id}",
+        f"/api/books/{book.id}",
         json={"cover_image_url": "https://example.com/v2.jpg"},
         headers=auth_headers,
     )
     assert r.status_code == 200
 
-    response = client.get(f"/books/{book.id}/events", headers=auth_headers)
+    response = client.get(f"/api/books/{book.id}/events", headers=auth_headers)
     assert response.status_code == 200
     events = response.json()
     cover_events = [

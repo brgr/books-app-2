@@ -17,7 +17,7 @@ export interface UserBook {
   id: number;
   user_id: number;
   book_id: number;
-  status: ReadingStatus;
+  shelf: ReadingStatus;
   started_at: string | null;
   finished_at: string | null;
   notes: string | null;
@@ -27,12 +27,13 @@ export interface UserBook {
   updated_at: string;
 }
 
-export interface BookList {
+export interface Shelf {
   id: number;
-  name: string;
+  name: ReadingStatus;
+  display_name: string;
 }
 
-export interface BookListReorderRequest {
+export interface ShelfReorderRequest {
   moved_book_id: number;
   before_book_id?: number | null;
   after_book_id?: number | null;
@@ -81,8 +82,8 @@ export interface BookUpdate {
   cover_image_url?: string;
 }
 
-export interface UserBookStatusUpdate {
-  status: ReadingStatus;
+export interface UserBookShelfUpdate {
+  shelf: ReadingStatus;
   notes?: string;
   occurred_at?: string;
 }

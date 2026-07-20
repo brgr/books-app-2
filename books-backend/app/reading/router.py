@@ -12,7 +12,7 @@ from app.schemas import (
     BookEventResponse,
     BookProgressUpdate,
     UserBookResponse,
-    UserBookStatusUpdate,
+    UserBookShelfUpdate,
 )
 
 router = APIRouter()
@@ -25,34 +25,34 @@ def get_reading_service(
     return ReadingService(db, current_user)
 
 
-@router.put("/books/{book_id}/status", response_model=UserBookResponse)
-def set_reading_status(
+@router.put("/books/{book_id}/shelf", response_model=UserBookResponse)
+def set_shelf(
     book_id: int,
-    status_data: UserBookStatusUpdate,
+    shelf_data: UserBookShelfUpdate,
     db: Annotated[Session, Depends(get_db)],
     service: Annotated[ReadingService, Depends(get_reading_service)],
 ):
-    """Set or update the reading status for a book for the current user."""
+    """Set or update the shelf for a book for the current user."""
     if not get_book_by_id(db, book_id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
         )
 
     try:
-        return service.set_status(book_id, status_data)
+        return service.set_shelf(book_id, shelf_data)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
         ) from exc
 
 
-@router.delete("/books/{book_id}/status", status_code=status.HTTP_204_NO_CONTENT)
-def remove_reading_status(
+@router.delete("/books/{book_id}/shelf", status_code=status.HTTP_204_NO_CONTENT)
+def remove_from_library(
     book_id: int,
     service: Annotated[ReadingService, Depends(get_reading_service)],
 ):
-    """Remove a book from the current user's reading list."""
-    if not service.remove_status(book_id):
+    """Remove a book from the current user's library."""
+    if not service.remove_from_library(book_id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Book not in your reading list",

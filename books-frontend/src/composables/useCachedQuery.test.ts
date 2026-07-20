@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ref, nextTick } from "vue";
 import { useCachedQuery } from "./useCachedQuery";
-import { cacheSet, cacheClear } from "../cache/store";
+import { cacheSet, cacheGet, cacheClear } from "../cache/store";
 
 async function flushPromises() {
   for (let i = 0; i < 5; i++) {
@@ -107,6 +107,21 @@ describe("useCachedQuery", () => {
     await invalidate();
 
     expect(data.value).toBe("new");
+  });
+
+  it("setData updates the value and mirrors it into the cache", async () => {
+    const fetcher = vi.fn().mockResolvedValue("v1");
+
+    const { data, setData } = useCachedQuery("key", fetcher);
+    await flushPromises();
+    expect(data.value).toBe("v1");
+
+    // Optimistically replace the value (e.g. after a persisted mutation)
+    await setData("v2");
+
+    // In-memory reflects it immediately, and the cache entry is rewritten so a remount serves the new value
+    expect(data.value).toBe("v2");
+    expect((await cacheGet<string>("key"))?.data).toBe("v2");
   });
 
   it("reacts to key changes", async () => {

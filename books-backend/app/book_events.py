@@ -13,7 +13,7 @@ from app.models import (
     BookEventNote,
     BookEventProgress,
     BookEventType,
-    ReadingStatus,
+    ShelfName,
     UserBook,
 )
 from app.schemas import UserBookResponse
@@ -97,9 +97,7 @@ def _ensure_user_book(session: Session, user_id: int, book_id: int) -> UserBook:
     if user_book is not None:
         return user_book
 
-    user_book = UserBook(
-        user_id=user_id, book_id=book_id, status=ReadingStatus.WANT_TO_READ
-    )
+    user_book = UserBook(user_id=user_id, book_id=book_id, shelf=ShelfName.WANT_TO_READ)
     session.add(user_book)
     session.flush()
 
@@ -340,7 +338,7 @@ def project_user_book_state(session: Session, user_book: UserBook) -> UserBook:
 
     Reading dates are *not* stored on the user_book. Instead, they are derived on demand via
     ``derive_reading_dates`` for serialization. This only projects the persisted snapshot columns
-    (status, current page/percent).
+    (shelf, current page/percent).
     """
     # noinspection PyTypeChecker
     user_book_id: int = user_book.id
@@ -348,11 +346,11 @@ def project_user_book_state(session: Session, user_book: UserBook) -> UserBook:
     latest_progress = _latest_event(session, user_book_id, BookEventCode.PROGRESS_SET)
 
     if finished_at is not None:
-        user_book.status = ReadingStatus.FINISHED
+        user_book.shelf = ShelfName.FINISHED
     elif started_at is not None:
-        user_book.status = ReadingStatus.STARTED
+        user_book.shelf = ShelfName.STARTED
     else:
-        user_book.status = ReadingStatus.WANT_TO_READ
+        user_book.shelf = ShelfName.WANT_TO_READ
 
     if latest_progress:
         progress_entry = (

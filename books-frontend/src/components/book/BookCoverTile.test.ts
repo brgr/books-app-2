@@ -58,7 +58,7 @@ describe("BookCoverTile", () => {
         book: makeBook({
           page_count: 200,
           user_status: {
-            status: ReadingStatus.STARTED,
+            shelf: ReadingStatus.STARTED,
             current_page: 50,
           } as Book["user_status"],
         }),
@@ -74,7 +74,7 @@ describe("BookCoverTile", () => {
         book: makeBook({
           page_count: 200,
           user_status: {
-            status: ReadingStatus.STARTED,
+            shelf: ReadingStatus.STARTED,
             current_page: 50,
           } as Book["user_status"],
         }),
@@ -92,7 +92,7 @@ describe("BookCoverTile", () => {
         book: makeBook({
           page_count: 200,
           user_status: {
-            status: ReadingStatus.WANT_TO_READ,
+            shelf: ReadingStatus.WANT_TO_READ,
             current_page: 50,
           } as Book["user_status"],
         }),

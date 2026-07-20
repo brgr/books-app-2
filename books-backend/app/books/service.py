@@ -8,18 +8,15 @@ from app.book_events import (
     project_user_book_state,
     record_cover_changed,
 )
-from app.book_lists.book_lists import (
-    ensure_list_item,
-    get_or_create_default_lists,
-    list_name_for_status,
-)
 from app.books.queries import get_user_book
 from app.cover_upgrade import CoverUpgradeJob, start_job
 from app.image_utils import download_cover_image
 from app.models import Book, User, UserBook
 from app.schemas import BookCreate, BookUpdate
+from app.shelves.shelves import ensure_shelf_position
 
 
+# noinspection bad-argument-type
 class BookService:
     """Book operations scoped to a single request's db session and user."""
 
@@ -118,13 +115,7 @@ class BookService:
             self.db.commit()
 
     def clear_library(self) -> None:
-        """Remove every book from the acting user's library.
-
-        Deletes only this user's user_books; the ondelete=CASCADE on
-        book_events and book_list_items fires at the DB level to clear their
-        events and list items. The shared catalog Books and other users'
-        libraries are left untouched.
-        """
+        """Remove every book from the acting user's library."""
         self.db.query(UserBook).filter(UserBook.user_id == self._user_id).delete(
             synchronize_session=False
         )
@@ -167,14 +158,8 @@ class BookService:
     def _add_to_library(self, book: Book) -> None:
         user_book = ensure_added_event(self.db, user_id=self._user_id, book_id=book.id)
         project_user_book_state(self.db, user_book)
-        lists_by_name = get_or_create_default_lists(self.db, self._user_id)
-        target_list_name = list_name_for_status(user_book.status)
-        if target_list_name and target_list_name in lists_by_name:
-            ensure_list_item(
-                self.db,
-                list_id=lists_by_name[target_list_name].id,
-                user_book_id=user_book.id,
-            )
+
+        ensure_shelf_position(self.db, user_book)
 
     def _record_cover_change(
         self,

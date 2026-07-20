@@ -1,6 +1,6 @@
 """Orchestration layer for a user's reading state and timeline."""
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session, joinedload
 
@@ -13,23 +13,19 @@ from app.book_events import (
     record_note_event,
     record_started_reading,
 )
-from app.book_lists.book_lists import (
-    ensure_list_item,
-    get_or_create_default_lists,
-    list_name_for_status,
-)
 from app.books.queries import get_user_book
 from app.models import (
     BookEvent,
     BookEventCode,
-    BookListItem,
-    ReadingStatus,
+    ShelfName,
     User,
     UserBook,
 )
-from app.schemas import BookProgressUpdate, UserBookResponse, UserBookStatusUpdate
+from app.schemas import BookProgressUpdate, UserBookResponse, UserBookShelfUpdate
+from app.shelves.shelves import ensure_shelf_position, move_to_end_of_shelf
 
 
+# noinspection bad-argument-type
 class ReadingService:
     """Reading-state operations scoped to a single request's db session and user."""
 
@@ -42,29 +38,31 @@ class ReadingService:
         # noinspection PyTypeChecker
         return self.user.id
 
-    def set_status(
-        self, book_id: int, status_data: UserBookStatusUpdate
+    def set_shelf(
+        self, book_id: int, shelf_data: UserBookShelfUpdate
     ) -> UserBookResponse:
-        """Set or update the acting user's reading status for a book.
+        """Set or update the acting user's shelf for a book.
 
         Raises ValueError on any domain-rule violation (illegal transition, a
         future ``occurred_at``, etc.); the router maps these to HTTP 400.
         """
         user_book = ensure_added_event(self.db, user_id=self._user_id, book_id=book_id)
         project_user_book_state(self.db, user_book)
+        previous_shelf = user_book.shelf
 
-        occurred_at = self._normalize_occurred_at(status_data.occurred_at)
-        self._apply_status_transition(user_book, status_data.status, occurred_at)
-        self._apply_notes(user_book, status_data)
+        occurred_at = self._normalize_occurred_at(shelf_data.occurred_at)
+        self._apply_shelf_transition(user_book, shelf_data.shelf, occurred_at)
+        self._apply_notes(user_book, shelf_data)
 
         project_user_book_state(self.db, user_book)
-        self._sync_default_lists(user_book)
+        self._sync_shelf_position(user_book, previous_shelf)
 
         self.db.commit()
         self.db.refresh(user_book)
+
         return build_user_book_response(self.db, user_book)
 
-    def remove_status(self, book_id: int) -> bool:
+    def remove_from_library(self, book_id: int) -> bool:
         """Remove the book from the user's library. Returns False if absent."""
         user_book = get_user_book(self.db, user_id=self._user_id, book_id=book_id)
         if not user_book:
@@ -105,7 +103,7 @@ class ReadingService:
             raise ValueError("Cannot record progress before starting reading")
 
         project_user_book_state(self.db, user_book)
-        if user_book.status != ReadingStatus.STARTED:
+        if user_book.shelf != ShelfName.STARTED:
             raise ValueError("Cannot record progress before starting reading")
 
         user_book = apply_progress_event(
@@ -127,42 +125,38 @@ class ReadingService:
             raise ValueError("occurred_at cannot be in the future")
         return occurred_at
 
-    def _apply_status_transition(
+    def _apply_shelf_transition(
         self,
         user_book: UserBook,
-        target_status: ReadingStatus,
+        target_shelf: ShelfName,
         occurred_at: datetime | None,
     ) -> None:
         user_book_id = user_book.id
         if (
-            target_status == ReadingStatus.WANT_TO_READ
-            and user_book.status != ReadingStatus.WANT_TO_READ
+            target_shelf == ShelfName.WANT_TO_READ
+            and user_book.shelf != ShelfName.WANT_TO_READ
         ):
             raise ValueError(
                 "Cannot revert to 'want_to_read' after reading has started"
             )
 
-        if (
-            target_status == ReadingStatus.STARTED
-            and user_book.status != ReadingStatus.STARTED
-        ):
+        if target_shelf == ShelfName.STARTED and user_book.shelf != ShelfName.STARTED:
             record_started_reading(
                 self.db, user_book_id=user_book_id, occurred_at=occurred_at
             )
         elif (
-            target_status == ReadingStatus.FINISHED
-            and user_book.status != ReadingStatus.FINISHED
+            target_shelf == ShelfName.FINISHED and user_book.shelf != ShelfName.FINISHED
         ):
             record_finished_reading(
                 self.db, user_book_id=user_book_id, occurred_at=occurred_at
             )
 
     def _apply_notes(
-        self, user_book: UserBook, status_data: UserBookStatusUpdate
+        self, user_book: UserBook, shelf_data: UserBookShelfUpdate
     ) -> None:
-        if "notes" not in status_data.model_fields_set:
+        if "notes" not in shelf_data.model_fields_set:
             return
-        normalized_notes = status_data.notes
+        normalized_notes = shelf_data.notes
         if normalized_notes == "":
             normalized_notes = None
         if normalized_notes != user_book.notes:
@@ -174,26 +168,11 @@ class ReadingService:
             )
             user_book.notes = normalized_notes
 
-    def _sync_default_lists(self, user_book: UserBook) -> None:
-        """Place the user_book in the list matching its status, removing it from others."""
-        user_book_id = user_book.id
-        lists_by_name = get_or_create_default_lists(self.db, self._user_id)
-        target_list_name = list_name_for_status(user_book.status)
-        target_list_id = (
-            lists_by_name[target_list_name].id
-            if target_list_name in lists_by_name
-            else None
-        )
-        if target_list_id is not None:
-            ensure_list_item(self.db, list_id=target_list_id, user_book_id=user_book_id)
-
-        for book_list in lists_by_name.values():
-            if book_list.id != target_list_id:
-                (
-                    self.db.query(BookListItem)
-                    .filter(
-                        BookListItem.list_id == book_list.id,
-                        BookListItem.user_book_id == user_book_id,
-                    )
-                    .delete()
-                )
+    def _sync_shelf_position(
+        self, user_book: UserBook, previous_shelf: ShelfName
+    ) -> None:
+        """Keep the book's position sensible after a shelf change."""
+        if previous_shelf != user_book.shelf:
+            move_to_end_of_shelf(self.db, user_book)
+        else:
+            ensure_shelf_position(self.db, user_book)

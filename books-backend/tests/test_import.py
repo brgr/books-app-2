@@ -13,10 +13,9 @@ from app.models import (
     BookEventCode,
     BookEventImportSource,
     BookEventType,
-    BookList,
-    BookListItem,
     Import,
-    ReadingStatus,
+    Shelf,
+    ShelfName,
     UserBook,
 )
 
@@ -69,7 +68,7 @@ def _make_zip(rows: list[dict], images: dict[str, bytes] | None = None) -> bytes
 
 def _upload_zip(client, auth_headers, zip_bytes: bytes):
     return client.post(
-        "/import/reading-list",
+        "/api/import/reading-list",
         headers=auth_headers,
         files={"file": ("export.zip", zip_bytes, "application/zip")},
     )
@@ -116,7 +115,7 @@ def test_import_creates_user_book(client, auth_headers, db_session):
     assert resp.status_code == status.HTTP_200_OK
 
     ub = db_session.query(UserBook).one()
-    assert ub.status == ReadingStatus.WANT_TO_READ
+    assert ub.shelf == ShelfName.WANT_TO_READ
 
 
 # --- Status mapping ---
@@ -139,7 +138,7 @@ def test_import_status_finished(client, auth_headers, db_session):
     assert resp.status_code == status.HTTP_200_OK
 
     ub = db_session.query(UserBook).one()
-    assert ub.status == ReadingStatus.FINISHED
+    assert ub.shelf == ShelfName.FINISHED
 
 
 def test_import_status_abandoned(client, auth_headers, db_session):
@@ -158,7 +157,7 @@ def test_import_status_abandoned(client, auth_headers, db_session):
     assert resp.status_code == status.HTTP_200_OK
 
     ub = db_session.query(UserBook).one()
-    assert ub.status == ReadingStatus.ABANDONED
+    assert ub.shelf == ShelfName.ABANDONED
 
 
 def test_import_status_started(client, auth_headers, db_session):
@@ -177,7 +176,7 @@ def test_import_status_started(client, auth_headers, db_session):
     assert resp.status_code == status.HTTP_200_OK
 
     ub = db_session.query(UserBook).one()
-    assert ub.status == ReadingStatus.STARTED
+    assert ub.shelf == ShelfName.STARTED
 
 
 # --- Notes and progress ---
@@ -299,45 +298,10 @@ def test_import_duplicate_isbn_is_skipped(client, auth_headers, db_session):
     assert db_session.query(UserBook).count() == 1
 
 
-def test_import_started_books_appear_first_in_to_read(client, auth_headers, db_session):
-    """STARTED books must sort before WANT_TO_READ ones in the 'To Read' list.
-
-    The frontend filters the visible page for STARTED books to populate the
-    'Currently Reading' section. If they're buried on page 20 they disappear.
-    """
-    rows = []
-    for i in range(30):
-        rows.append(
-            {"Reading List ID": f"Q{i}", "Title": f"Queued {i}", "Authors": "A, B"}
-        )
-    rows.insert(
-        25,
-        {
-            "Reading List ID": "READING",
-            "Title": "Currently Reading Book",
-            "Authors": "A, B",
-            "Started Reading": "2026-04-01",
-        },
-    )
-
-    resp = _upload_zip(client, auth_headers, _make_zip(rows))
-    assert resp.status_code == status.HTTP_200_OK
-
-    to_read = db_session.query(BookList).filter(BookList.name == "To Read").one()
-    items = (
-        db_session.query(BookListItem)
-        .filter(BookListItem.list_id == to_read.id)
-        .order_by(BookListItem.sort_order)
-        .all()
-    )
-    first_title = items[0].user_book.book.title
-    assert first_title == "Currently Reading Book"
-
-
 def test_import_puts_books_in_default_shelves(client, auth_headers, db_session):
-    """Imported books must appear in the default 'To Read' / 'Finished' lists.
+    """Imported books must appear on the default built-in shelves.
 
-    The frontend loads the main shelf by querying these lists, so books not in
+    The frontend loads the main shelf by querying these shelves, so books not on
     them show up as 'No books yet' even though rows exist in user_books.
     """
     zip_bytes = _make_zip(
@@ -362,24 +326,18 @@ def test_import_puts_books_in_default_shelves(client, auth_headers, db_session):
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
 
-    to_read = db_session.query(BookList).filter(BookList.name == "To Read").one()
-    finished = db_session.query(BookList).filter(BookList.name == "Finished").one()
+    def titles_on(shelf: ShelfName) -> set[str]:
+        return {
+            book.title
+            for book in db_session.query(Book)
+            .join(UserBook, UserBook.book_id == Book.id)
+            .filter(UserBook.shelf == shelf)
+            .all()
+        }
 
-    to_read_titles = {
-        item.user_book.book.title
-        for item in db_session.query(BookListItem)
-        .filter(BookListItem.list_id == to_read.id)
-        .all()
-    }
-    finished_titles = {
-        item.user_book.book.title
-        for item in db_session.query(BookListItem)
-        .filter(BookListItem.list_id == finished.id)
-        .all()
-    }
-
-    assert to_read_titles == {"Queued", "Reading"}
-    assert finished_titles == {"Done"}
+    assert titles_on(ShelfName.WANT_TO_READ) == {"Queued"}
+    assert titles_on(ShelfName.STARTED) == {"Reading"}
+    assert titles_on(ShelfName.FINISHED) == {"Done"}
 
 
 # --- Import provenance ---
@@ -394,7 +352,7 @@ def test_import_creates_import_record(client, auth_headers, db_session):
     )
 
     resp = client.post(
-        "/import/reading-list",
+        "/api/import/reading-list",
         headers=auth_headers,
         files={"file": ("my-export.zip", zip_bytes, "application/zip")},
     )
@@ -474,7 +432,7 @@ def test_import_does_not_link_started_or_finished_events(
 
 def test_import_rejects_non_zip(client, auth_headers):
     resp = client.post(
-        "/import/reading-list",
+        "/api/import/reading-list",
         headers=auth_headers,
         files={"file": ("export.txt", b"not a zip", "text/plain")},
     )
@@ -535,21 +493,15 @@ def test_import_real_export_counts_match_csv(client, auth_headers, db_session):
     assert db_session.query(UserBook).count() == expected_imported
 
     assert (
-        db_session.query(UserBook)
-        .filter(UserBook.status == ReadingStatus.FINISHED)
-        .count()
+        db_session.query(UserBook).filter(UserBook.shelf == ShelfName.FINISHED).count()
         == expected_finished
     )
     assert (
-        db_session.query(UserBook)
-        .filter(UserBook.status == ReadingStatus.STARTED)
-        .count()
+        db_session.query(UserBook).filter(UserBook.shelf == ShelfName.STARTED).count()
         == expected_started
     )
     assert (
-        db_session.query(UserBook)
-        .filter(UserBook.status == ReadingStatus.ABANDONED)
-        .count()
+        db_session.query(UserBook).filter(UserBook.shelf == ShelfName.ABANDONED).count()
         == expected_abandoned
     )
     assert (
@@ -579,7 +531,7 @@ def test_import_real_export_currently_reading(client, auth_headers, db_session):
     started = (
         db_session.query(Book, UserBook)
         .join(UserBook, UserBook.book_id == Book.id)
-        .filter(UserBook.status == ReadingStatus.STARTED)
+        .filter(UserBook.shelf == ShelfName.STARTED)
         .all()
     )
 
@@ -601,8 +553,8 @@ def test_import_real_export_currently_reading(client, auth_headers, db_session):
     assert derive_reading_dates(db_session, unix.id)[0] == datetime(2026, 4, 18)
 
 
-def test_import_real_export_creates_no_custom_lists(client, auth_headers, db_session):
-    """The real export names many lists; none of them become BookList rows."""
+def test_import_real_export_creates_no_custom_shelves(client, auth_headers, db_session):
+    """The real export names many lists; none of them become shelves."""
     csv_path = FIXTURES / "reading_list_sample.csv"
     with open(csv_path) as f:
         rows = list(csv.DictReader(f))
@@ -613,9 +565,8 @@ def test_import_real_export_creates_no_custom_lists(client, auth_headers, db_ses
     resp = _upload_zip(client, auth_headers, _zip_from_csv(csv_path))
     assert resp.status_code == status.HTTP_200_OK
 
-    created = {bl.name for bl in db_session.query(BookList).all()}
-    assert created == {"To Read", "Finished"}
+    assert db_session.query(Shelf).count() == 0
 
-    # Every imported book sits on exactly one list.
-    user_book_ids = [item.user_book_id for item in db_session.query(BookListItem).all()]
-    assert len(user_book_ids) == len(set(user_book_ids))
+    # Every imported book still got a position (sort_order) on the shelf its status puts it on.
+    positions = [ub.sort_order for ub in db_session.query(UserBook).all()]
+    assert positions and all(position is not None for position in positions)

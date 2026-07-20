@@ -1,12 +1,17 @@
 import axios from "axios";
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+// The backend origin. Empty means same-origin.
+// In dev, the Vite proxy (vite.config.ts) forwards /api and /uploads to the backend, which keeps covers and cookies on
+// one origin.
+export const BACKEND_ORIGIN = import.meta.env.VITE_API_URL || "";
+
+export const API_BASE_URL = `${BACKEND_ORIGIN}/api`;
 
 export function getMediaUrl(path: string | null | undefined): string | undefined {
   if (!path) return undefined;
   // Absolute (remote) and local object URLs (a not-yet-uploaded cover) are already usable as-is.
   if (path.startsWith("http") || path.startsWith("blob:")) return path;
-  return `${API_BASE_URL}${path}`;
+  return `${BACKEND_ORIGIN}${path}`;
 }
 
 export const apiClient = axios.create({
@@ -16,6 +21,8 @@ export const apiClient = axios.create({
   },
   // Send cookies with every request (HttpOnly auth cookies)
   withCredentials: true,
+  responseType: "json",
+  transitional: { silentJSONParsing: false },
 });
 
 // Track authentication state (verified via /users/me endpoint)

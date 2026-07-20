@@ -1,11 +1,11 @@
-from fastapi import FastAPI, Request
+from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.books import router as books
 from app.auth import router as auth
-from app.book_lists import router as lists
+from app.shelves import router as shelves
 from app.imports import router as imports
 from app.reading import router as reading
 
@@ -45,8 +45,10 @@ async def root():
     return {"message": "Welcome to the Books API!"}
 
 
-app.include_router(auth.router)
-app.include_router(lists.router)
-app.include_router(books.router)
-app.include_router(reading.router)
-app.include_router(imports.router)
+api = APIRouter(prefix="/api")
+api.include_router(auth.router)
+api.include_router(shelves.router)
+api.include_router(books.router)
+api.include_router(reading.router)
+api.include_router(imports.router)
+app.include_router(api)

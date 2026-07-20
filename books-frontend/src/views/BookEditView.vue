@@ -85,9 +85,11 @@ async function handleSubmit() {
     if (pendingCover) {
       await uploadBookCover(book.value.id, pendingCover);
     }
+
     await updateBook(book.value.id, bookData);
     await cacheDel(cacheKeys.book(book.value.id));
-    await cacheInvalidateByPrefix("lists:");
+    await cacheInvalidateByPrefix(cacheKeys.shelvesPrefix());
+
     router.push({ name: "book-detail", params: { id: book.value.id } });
   } catch (err: any) {
     console.error("Failed to save book:", err);
@@ -113,8 +115,9 @@ async function handleDelete() {
   loading.value = true;
   try {
     await deleteBook(book.value.id);
-    await cacheInvalidateByPrefix(`books:${book.value.id}`);
-    await cacheInvalidateByPrefix("lists:");
+    await cacheInvalidateByPrefix(cacheKeys.bookPrefix(book.value.id));
+    await cacheInvalidateByPrefix(cacheKeys.shelvesPrefix());
+
     router.push({ name: "books" });
   } catch (err: any) {
     console.error("Failed to delete book:", err);

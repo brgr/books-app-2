@@ -12,39 +12,39 @@ def test_user_books_export_sorted_by_id(
         payload = sample_book_data.copy()
         payload["title"] = title
         payload["isbn"] = f"ISBN-{idx}"
-        response = client.post("/books", json=payload, headers=auth_headers)
+        response = client.post("/api/books", json=payload, headers=auth_headers)
         assert response.status_code == status.HTTP_201_CREATED
         created_books.append(response.json())
 
-    status_updates = ["finished", "started", "want_to_read"]
-    expected_status_by_id = {}
+    shelf_updates = ["finished", "started", "want_to_read"]
+    expected_shelf_by_id = {}
 
-    for book, new_status in zip(reversed(created_books), status_updates):
+    for book, new_shelf in zip(reversed(created_books), shelf_updates):
         notes = f"Note for {book['title']}"
-        if new_status == "finished":
+        if new_shelf == "finished":
             start_response = client.put(
-                f"/books/{book['id']}/status",
-                json={"status": "started"},
+                f"/api/books/{book['id']}/shelf",
+                json={"shelf": "started"},
                 headers=auth_headers,
             )
             assert start_response.status_code == status.HTTP_200_OK
 
             response = client.put(
-                f"/books/{book['id']}/status",
-                json={"status": "finished", "notes": notes},
+                f"/api/books/{book['id']}/shelf",
+                json={"shelf": "finished", "notes": notes},
                 headers=auth_headers,
             )
             assert response.status_code == status.HTTP_200_OK
         else:
             response = client.put(
-                f"/books/{book['id']}/status",
-                json={"status": new_status, "notes": notes},
+                f"/api/books/{book['id']}/shelf",
+                json={"shelf": new_shelf, "notes": notes},
                 headers=auth_headers,
             )
             assert response.status_code == status.HTTP_200_OK
-        expected_status_by_id[book["id"]] = {"status": new_status, "notes": notes}
+        expected_shelf_by_id[book["id"]] = {"shelf": new_shelf, "notes": notes}
 
-    response = client.get("/users/me/export", headers=auth_headers)
+    response = client.get("/api/users/me/export", headers=auth_headers)
     assert response.status_code == status.HTTP_200_OK
     payload = response.json()
 
@@ -57,6 +57,6 @@ def test_user_books_export_sorted_by_id(
     assert exported_titles == expected_titles
 
     for book in payload["books"]:
-        expected = expected_status_by_id[book["id"]]
-        assert book["status"] == expected["status"]
+        expected = expected_shelf_by_id[book["id"]]
+        assert book["shelf"] == expected["shelf"]
         assert book["notes"] == expected["notes"]

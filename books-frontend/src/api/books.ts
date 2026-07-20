@@ -3,8 +3,6 @@ import type {
   Book,
   BookCreate,
   BookEvent,
-  BookList,
-  BookListReorderRequest,
   BookProgressUpdate,
   BookUpdate,
   CoverSearchResult,
@@ -12,8 +10,10 @@ import type {
   GoogleBookResult,
   ImportRecord,
   PaginatedBooks,
+  Shelf,
+  ShelfReorderRequest,
   UserBook,
-  UserBookStatusUpdate,
+  UserBookShelfUpdate,
 } from "./types";
 
 export async function getBooks(page = 1, pageSize = 20): Promise<PaginatedBooks> {
@@ -23,20 +23,20 @@ export async function getBooks(page = 1, pageSize = 20): Promise<PaginatedBooks>
   return response.data;
 }
 
-export async function getLists(): Promise<BookList[]> {
-  const response = await apiClient.get<BookList[]>("/lists");
+export async function getShelves(): Promise<Shelf[]> {
+  const response = await apiClient.get<Shelf[]>("/shelves");
   return response.data;
 }
 
-export async function getListBooks(listId: number, page = 1, pageSize = 20): Promise<PaginatedBooks> {
-  const response = await apiClient.get<PaginatedBooks>(`/lists/${listId}/books`, {
+export async function getShelfBooks(shelfId: number, page = 1, pageSize = 20): Promise<PaginatedBooks> {
+  const response = await apiClient.get<PaginatedBooks>(`/shelves/${shelfId}/books`, {
     params: { page, page_size: pageSize },
   });
   return response.data;
 }
 
-export async function reorderListItem(listId: number, payload: BookListReorderRequest): Promise<void> {
-  await apiClient.post(`/lists/${listId}/items/reorder`, payload);
+export async function reorderShelfItem(shelfId: number, payload: ShelfReorderRequest): Promise<void> {
+  await apiClient.post(`/shelves/${shelfId}/items/reorder`, payload);
 }
 
 export async function getBook(id: number): Promise<Book> {
@@ -62,13 +62,13 @@ export async function deleteAllBooks(): Promise<void> {
   await apiClient.delete("/books");
 }
 
-export async function setReadingStatus(bookId: number, data: UserBookStatusUpdate): Promise<UserBook> {
-  const response = await apiClient.put<UserBook>(`/books/${bookId}/status`, data);
+export async function setReadingStatus(bookId: number, data: UserBookShelfUpdate): Promise<UserBook> {
+  const response = await apiClient.put<UserBook>(`/books/${bookId}/shelf`, data);
   return response.data;
 }
 
 export async function removeReadingStatus(bookId: number): Promise<void> {
-  await apiClient.delete(`/books/${bookId}/status`);
+  await apiClient.delete(`/books/${bookId}/shelf`);
 }
 
 export async function searchGoogleBooks(query: string): Promise<GoogleBookResult[]> {

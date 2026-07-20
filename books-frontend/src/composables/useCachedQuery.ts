@@ -1,6 +1,6 @@
 import { ref, watch, toValue, isRef, type Ref } from "vue";
 import { cachedQuery } from "../cache/query";
-import { cacheDel } from "../cache/store";
+import { cacheDel, cacheSet } from "../cache/store";
 
 type MaybeRefOrGetter<T> = T | Ref<T> | (() => T);
 
@@ -54,6 +54,17 @@ export function useCachedQuery<T>(
     await currentPromise;
   }
 
+  /**
+   * Optimistically replace the value (e.g. after a persisted mutation) and mirror it into the cache entry, so a later
+   * remount serves the new value rather than the stale one.
+   */
+  async function setData(next: T) {
+    data.value = next;
+    const currentKey = toValue(key);
+    if (!currentKey) return;
+    await cacheSet(currentKey, next);
+  }
+
   if (isRef(key) || typeof key === "function") {
     watch(
       () => toValue(key),
@@ -73,5 +84,5 @@ export function useCachedQuery<T>(
     );
   }
 
-  return { data, isStale, error, refresh, invalidate };
+  return { data: data as Readonly<Ref<T | null>>, isStale, error, setData, refresh, invalidate };
 }

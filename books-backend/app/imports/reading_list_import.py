@@ -10,13 +10,9 @@ from app.book_events import (
     record_finished_reading,
     record_started_reading,
 )
-from app.book_lists.book_lists import (
-    ensure_list_item,
-    get_or_create_default_lists,
-    list_name_for_status,
-)
 from app.image_utils import store_cover_image
-from app.models import Book, Import, ReadingStatus, UserBook
+from app.models import Book, Import, ShelfName, UserBook
+from app.shelves.shelves import ensure_shelf_position
 
 
 class ImportReadingListError(ValueError):
@@ -31,14 +27,14 @@ def _parse_author(raw: str) -> str:
     return raw.strip()
 
 
-def _derive_status(row: dict) -> ReadingStatus:
+def _derive_shelf(row: dict) -> ShelfName:
     if row.get("Finished Reading"):
-        return ReadingStatus.FINISHED
+        return ShelfName.FINISHED
     if row.get("Did Not Finish"):
-        return ReadingStatus.ABANDONED
+        return ShelfName.ABANDONED
     if row.get("Started Reading"):
-        return ReadingStatus.STARTED
-    return ReadingStatus.WANT_TO_READ
+        return ShelfName.STARTED
+    return ShelfName.WANT_TO_READ
 
 
 def _parse_date(val: str) -> datetime | None:
@@ -69,15 +65,7 @@ def import_reading_list_from_bytes(
         if n.startswith("images/") and "/" in n and n != "images/"
     }
 
-    reader = csv.DictReader(io.StringIO(csv_data))
-    # Process STARTED books first so they get the lowest sort_order in the
-    # default 'To Read' list; the frontend filters only the visible page for
-    # 'Currently Reading', so buried rows disappear from that section.
-    rows = sorted(
-        reader,
-        key=lambda r: 0 if _derive_status(r) == ReadingStatus.STARTED else 1,
-    )
-    default_lists = get_or_create_default_lists(db, user_id)
+    rows = list(csv.DictReader(io.StringIO(csv_data)))
     import_record = Import(user_id=user_id, filename=filename)
     db.add(import_record)
     db.flush()
@@ -145,7 +133,7 @@ def import_reading_list_from_bytes(
             imported += 1
             continue
 
-        derived_status = _derive_status(row)
+        derived_shelf = _derive_shelf(row)
         started_at = _parse_date((row.get("Started Reading") or "").strip())
         finished_at = _parse_date((row.get("Finished Reading") or "").strip())
         notes = (row.get("Notes") or "").strip() or None
@@ -155,7 +143,7 @@ def import_reading_list_from_bytes(
         user_book = UserBook(
             user_id=user_id,
             book_id=book_id,
-            status=derived_status,
+            shelf=derived_shelf,
             notes=notes,
             current_page=current_page,
         )
@@ -163,29 +151,23 @@ def import_reading_list_from_bytes(
         db.flush()
 
         ensure_added_event(db, user_id=user_id, book_id=book_id, import_id=import_id)
-        if derived_status in (ReadingStatus.STARTED, ReadingStatus.FINISHED):
+        if derived_shelf in (ShelfName.STARTED, ShelfName.FINISHED):
             record_started_reading(
                 db,
                 user_book_id=user_book.id,
                 occurred_at=started_at,
             )
-        if derived_status == ReadingStatus.FINISHED:
+        if derived_shelf == ShelfName.FINISHED:
             record_finished_reading(
                 db,
                 user_book_id=user_book.id,
                 occurred_at=finished_at,
             )
 
-        default_list_name = list_name_for_status(derived_status)
-        if default_list_name and default_list_name in default_lists:
-            ensure_list_item(
-                db,
-                list_id=default_lists[default_list_name].id,
-                user_book_id=user_book.id,
-            )
+        ensure_shelf_position(db, user_book)
 
-        # The export's "Lists" column is ignored: a book belongs to exactly one default list,
-        # the one matching its reading status.
+        # The export's "Lists" column is ignored: a book sits on exactly one
+        # built-in shelf, the one its ShelfName puts it on.
 
         imported += 1
 

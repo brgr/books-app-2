@@ -1,4 +1,4 @@
-import { openDB, type IDBPDatabase } from "idb";
+import { type IDBPDatabase, openDB } from "idb";
 
 interface CacheEntry<T = unknown> {
   key: string;
@@ -16,12 +16,15 @@ function getDb(): Promise<IDBPDatabase> {
   if (!dbPromise) {
     dbPromise = openDB(DB_NAME, DB_VERSION, {
       upgrade(db) {
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME, { keyPath: "key" });
+        if (db.objectStoreNames.contains(STORE_NAME)) {
+          db.deleteObjectStore(STORE_NAME);
         }
+
+        db.createObjectStore(STORE_NAME, { keyPath: "key" });
       },
     });
   }
+
   return dbPromise;
 }
 
