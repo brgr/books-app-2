@@ -9,8 +9,11 @@ wheels/
 # Virtual environments
 .venv
 
-# Database files
+# Database files (incl. SQLite WAL/journal files)
 *.db
+*.db-wal
+*.db-shm
+*.db-journal
 
 # Uploaded files
 uploads/
