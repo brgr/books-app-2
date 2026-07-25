@@ -205,33 +205,6 @@ def test_import_notes_and_current_page(client, auth_headers, db_session):
     assert ub.current_page == 42
 
 
-# --- Lists ---
-
-
-def test_import_creates_lists(client, auth_headers, db_session):
-    zip_bytes = _make_zip(
-        [
-            {
-                "Reading List ID": "AAA",
-                "Title": "Listed Book",
-                "Authors": "A, B",
-                "Lists": "Sci-Fi (5); Philosophy (3)",
-            },
-        ]
-    )
-
-    resp = _upload_zip(client, auth_headers, zip_bytes)
-    assert resp.status_code == status.HTTP_200_OK
-
-    lists = db_session.query(BookList).all()
-    list_names = {bl.name for bl in lists}
-    assert "Sci-Fi" in list_names
-    assert "Philosophy" in list_names
-
-    items = db_session.query(BookListItem).all()
-    assert len(items) >= 2
-
-
 # --- Cover images ---
 
 
@@ -628,38 +601,21 @@ def test_import_real_export_currently_reading(client, auth_headers, db_session):
     assert derive_reading_dates(db_session, unix.id)[0] == datetime(2026, 4, 18)
 
 
-def test_import_real_export_creates_lists(client, auth_headers, db_session):
-    """The real export includes named lists that should become BookList rows.
-
-    Lists from rows whose ISBN duplicates an earlier row are dropped, since the
-    whole row is skipped.
-    """
+def test_import_real_export_creates_no_custom_lists(client, auth_headers, db_session):
+    """The real export names many lists; none of them become BookList rows."""
     csv_path = FIXTURES / "reading_list_sample.csv"
     with open(csv_path) as f:
         rows = list(csv.DictReader(f))
 
-    import re
-
-    def _list_names(row: dict) -> set[str]:
-        return {
-            re.sub(r"\s*\(\d+\)\s*$", "", seg).strip()
-            for seg in (row["Lists"] or "").split(";")
-            if seg.strip()
-        }
-
-    seen_isbns: set[str] = set()
-    expected_lists: set[str] = set()
-    for row in rows:
-        isbn = row["ISBN-13"].strip()
-        if isbn and isbn in seen_isbns:
-            continue
-        if isbn:
-            seen_isbns.add(isbn)
-        expected_lists |= _list_names(row)
+    named_in_export = {row["Lists"].strip() for row in rows if row["Lists"].strip()}
+    assert len(named_in_export) > 5  # sanity check: the fixture does name lists
 
     resp = _upload_zip(client, auth_headers, _zip_from_csv(csv_path))
     assert resp.status_code == status.HTTP_200_OK
 
     created = {bl.name for bl in db_session.query(BookList).all()}
-    assert expected_lists == created - {"To Read", "Finished"}
-    assert len(expected_lists) > 5  # sanity check against empty match
+    assert created == {"To Read", "Finished"}
+
+    # Every imported book sits on exactly one list.
+    user_book_ids = [item.user_book_id for item in db_session.query(BookListItem).all()]
+    assert len(user_book_ids) == len(set(user_book_ids))

@@ -1,6 +1,5 @@
 import csv
 import io
-import re
 import zipfile
 from datetime import datetime
 
@@ -17,7 +16,7 @@ from app.book_lists.book_lists import (
     list_name_for_status,
 )
 from app.image_utils import store_cover_image
-from app.models import Book, BookList, Import, ReadingStatus, UserBook
+from app.models import Book, Import, ReadingStatus, UserBook
 
 
 class ImportReadingListError(ValueError):
@@ -30,17 +29,6 @@ def _parse_author(raw: str) -> str:
         parts = raw.split(",", 1)
         return f"{parts[1].strip()} {parts[0].strip()}"
     return raw.strip()
-
-
-def _parse_lists(raw: str) -> list[str]:
-    """Parse 'Name (count); Name (count)' into list of names."""
-    if not raw:
-        return []
-    return [
-        re.sub(r"\s*\(\d+\)\s*$", "", seg).strip()
-        for seg in raw.split(";")
-        if seg.strip()
-    ]
 
 
 def _derive_status(row: dict) -> ReadingStatus:
@@ -196,22 +184,8 @@ def import_reading_list_from_bytes(
                 user_book_id=user_book.id,
             )
 
-        list_names = _parse_lists((row.get("Lists") or "").strip())
-        for list_name in list_names:
-            book_list = (
-                db.query(BookList)
-                .filter(BookList.user_id == user_id, BookList.name == list_name)
-                .first()
-            )
-            if not book_list:
-                book_list = BookList(user_id=user_id, name=list_name)
-                db.add(book_list)
-                db.flush()
-            ensure_list_item(
-                db,
-                list_id=book_list.id,
-                user_book_id=user_book.id,
-            )
+        # The export's "Lists" column is ignored: a book belongs to exactly one default list,
+        # the one matching its reading status.
 
         imported += 1
 
