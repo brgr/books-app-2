@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { authenticate } from "../support/auth";
-import { createLibraryBook, setReadingStatus } from "../support/api";
+import { createLibraryBook, setShelf } from "../support/api";
 
 const FINISHED_TITLE = "E2E Finished Book";
 
@@ -12,8 +12,8 @@ test.beforeAll(async () => {
   // A finished book: create it, then walk it through the real reading lifecycle (started ->
   // finished), which relocates it from "To Read" to the "Finished" shelf.
   const bookId = await createLibraryBook(FINISHED_TITLE, "E2E Author");
-  await setReadingStatus(bookId, "started");
-  await setReadingStatus(bookId, "finished");
+  await setShelf(bookId, "started");
+  await setShelf(bookId, "finished");
 });
 
 test("finished book is visible on the Finished shelf", async ({

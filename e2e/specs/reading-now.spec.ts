@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { authenticate } from "../support/auth";
-import { createLibraryBook, setReadingStatus } from "../support/api";
+import { createLibraryBook, setShelf } from "../support/api";
 
 const READING_NOW_TITLE = "E2E Buried Reading";
 
@@ -17,7 +17,7 @@ test.beforeAll(async () => {
   // its list position, so it stays buried past the first loaded page. This is the exact state
   // the "Reading now" bug used to miss.
   const bookId = await createLibraryBook(READING_NOW_TITLE, "E2E Author");
-  await setReadingStatus(bookId, "started");
+  await setShelf(bookId, "started");
 });
 
 test("currently-reading book below the first page shows in 'Reading now'", async ({

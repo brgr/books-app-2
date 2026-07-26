@@ -2,8 +2,8 @@ import { type APIRequestContext, request } from "@playwright/test";
 import { BACKEND_URL } from "./config";
 import { login } from "./auth";
 
-/** A reading status a library book can be moved to via the API. */
-export type ReadingStatus =
+/** A shelf a library book can be moved to via the API. */
+export type Shelf =
   "want_to_read" | "started" | "finished" | "abandoned";
 
 // The dev user's token is stable for the whole run, so get it once and
@@ -45,25 +45,25 @@ export async function createLibraryBook(
 }
 
 /**
- * Move a library book to a reading status (`PUT /books/:id/status`).
+ * Move a library book to a shelf (`PUT /books/:id/shelf`).
  *
  * Moving to "started" keeps the book's existing position in "To Read"; moving to "finished"
  * relocates it to the "Finished" shelf. This is the same endpoint the app calls.
  */
-export async function setReadingStatus(
+export async function setShelf(
   bookId: number,
-  status: ReadingStatus,
+  shelf: Shelf,
 ): Promise<void> {
   const api = await backendClient();
 
   try {
-    const response = await api.put(`/api/books/${bookId}/status`, {
-      data: { status },
+    const response = await api.put(`/api/books/${bookId}/shelf`, {
+      data: { shelf },
     });
 
     if (!response.ok()) {
       throw new Error(
-        `Set status failed: ${response.status()} ${await response.text()}`,
+        `Set shelf failed: ${response.status()} ${await response.text()}`,
       );
     }
   } finally {
