@@ -37,3 +37,11 @@ if [[ "$frontend_changed" == 1 ]]; then
 else
   echo "No frontend changes staged, skipping frontend checks."
 fi
+
+# e2e is full-stack, so run it whenever either side changed
+if [[ "$backend_changed" == 1 || "$frontend_changed" == 1 ]]; then
+  echo "Running e2e tests (playwright)..."
+  (cd "$repo_root/e2e" && npm run test:e2e)
+else
+  echo "No backend or frontend changes staged, skipping e2e tests."
+fi
