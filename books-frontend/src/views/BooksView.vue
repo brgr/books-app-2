@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, type Ref, watch } from "vue";
-import draggable from "vuedraggable";
+import { computed, type MaybeRefOrGetter, nextTick, ref, type Ref, toValue, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { getShelfBooks, getShelves, reorderShelfItem } from "../api/books";
-import BookCard from "../components/book/BookCard/BookCard.vue";
-import BookCoverTile from "../components/book/BookCoverTile.vue";
+import BookShelf from "../components/book/BookShelf.vue";
 import BookContextMenu from "../components/book/BookContextMenu.vue";
 import BookSearchModal from "../components/modals/BookSearchModal.vue";
 import BooksSearchHeader from "../components/ui/BooksSearchHeader.vue";
@@ -103,34 +101,78 @@ function matchesSearch(book: Book): boolean {
 
 const filteredBooks = computed(() => books.value.filter(matchesSearch));
 const currentlyReadingBooks = computed(() => startedBooks.value.filter(matchesSearch));
-const toReadBooks = computed(() => filteredBooks.value);
 
-const isEmpty = computed(() =>
-  shelfFilter.value === "to-read"
-    ? filteredBooks.value.length === 0 && currentlyReadingBooks.value.length === 0
-    : filteredBooks.value.length === 0,
-);
+/**
+ * vuedraggable reorders the array it renders from in place, so each shelf draws from a mutable
+ * copy that re-syncs whenever the underlying filtered list changes.
+ */
+function draggableMirror(source: MaybeRefOrGetter<Book[]>): Ref<Book[]> {
+  const mirror = ref<Book[]>([]) as Ref<Book[]>;
 
-const gridBooks = ref<Book[]>([]);
-const gridToRead = ref<Book[]>([]);
-const gridCurrentlyReading = ref<Book[]>([]);
+  watch(
+    () => toValue(source),
+    (next) => {
+      mirror.value = [...next];
+    },
+    { immediate: true },
+  );
+
+  return mirror;
+}
+
+const startedMirror = draggableMirror(currentlyReadingBooks);
+const shelfMirror = draggableMirror(filteredBooks);
+
+/** A shelf as this page renders it: which shelf to reorder against, its heading, and its books. */
+interface DisplayedShelf {
+  key: string;
+  id: number | null;
+  title: string | null;
+  books: Book[];
+  showProgress: boolean;
+}
+
+const visibleShelves = computed<DisplayedShelf[]>(() => {
+  let shelvesInToReadTab = [
+    {
+      key: "started",
+      id: startedShelfId.value,
+      title: "Reading now",
+      books: startedMirror.value,
+      showProgress: true,
+    },
+    {
+      key: "want-to-read",
+      id: activeShelfId.value,
+      title: "Want to read",
+      books: shelfMirror.value,
+      showProgress: false,
+    },
+  ];
+
+  let shelfInFinishedTab = [
+    {
+      key: "finished",
+      id: activeShelfId.value,
+      title: null,
+      books: shelfMirror.value,
+      showProgress: false,
+    },
+  ];
+
+  const shelves: DisplayedShelf[] = shelfFilter.value === "to-read" ? shelvesInToReadTab : shelfInFinishedTab;
+
+  return shelves.filter((shelf) => shelf.books.length > 0);
+});
+
+const isEmpty = computed(() => visibleShelves.value.length === 0);
+
+// Reordering persists positions against a shelf, which only makes sense while the full shelf is
+// on screen (i.e., no search filter is active)
+const isReorderable = computed(() => !searchQuery.value.trim());
+
 const isDragging = ref(false);
 const lastDragTime = ref(0);
-watch(
-  filteredBooks,
-  (next) => {
-    gridBooks.value = [...next];
-    gridToRead.value = [...next];
-  },
-  { immediate: true },
-);
-watch(
-  currentlyReadingBooks,
-  (next) => {
-    gridCurrentlyReading.value = [...next];
-  },
-  { immediate: true },
-);
 
 function setActiveShelfForTab() {
   const targetName = shelfFilter.value === "to-read" ? ReadingStatus.WANT_TO_READ : ReadingStatus.FINISHED;
@@ -157,9 +199,15 @@ function handleDragStart() {
   closeContextMenu();
 }
 
-// Persists a reorder against the given shelf, then mirrors the new grid order back
-// into whichever accumulator backs that shelf so it survives future page loads.
-async function commitReorder(shelfId: number, movedId: number, beforeId: number | null, afterId: number | null) {
+// Persists a reorder against the given shelf, then mirrors the new order back into whichever
+// accumulator backs that shelf so it survives future page loads
+async function commitReorder(
+  shelfId: number,
+  order: Book[],
+  movedId: number,
+  beforeId: number | null,
+  afterId: number | null,
+) {
   try {
     await reorderShelfItem(shelfId, {
       moved_book_id: movedId,
@@ -170,21 +218,17 @@ async function commitReorder(shelfId: number, movedId: number, beforeId: number 
     if (shelfId === startedShelfId.value) {
       // The started shelf is a single cache entry (one page of up to 100), so rewriting it with the new order is
       // safe and survives a remount from cache
-      await setStartedBooks([...gridCurrentlyReading.value]);
+      await setStartedBooks([...order]);
     } else if (shelfId === activeShelfId.value) {
       // The paginated shelf spans multiple cache entries; replaceBooks invalidates them so the remount refetches
-      await replaceBooks(shelfFilter.value === "to-read" ? [...gridToRead.value] : [...gridBooks.value]);
+      await replaceBooks([...order]);
     }
   } catch (err: any) {
     console.error("Failed to reorder books:", err);
   }
 }
 
-async function handleDragEndForList(
-  shelfId: number | null,
-  list: Book[],
-  event: { newIndex?: number; oldIndex?: number } | null,
-) {
+async function handleDragEnd(shelf: DisplayedShelf, event: { newIndex?: number; oldIndex?: number } | null) {
   isDragging.value = false;
   lastDragTime.value = Date.now();
 
@@ -194,19 +238,17 @@ async function handleDragEndForList(
   if (event.newIndex === event.oldIndex) {
     return;
   }
-  if (!shelfId) {
-    return;
-  }
-  if (searchQuery.value.trim()) {
+  if (shelf.id === null || !isReorderable.value) {
     return;
   }
 
+  const list = shelf.books;
   const movedBook = list[event.newIndex];
   if (!movedBook) return;
   const beforeBook = event.newIndex > 0 ? list[event.newIndex - 1] : null;
   const afterBook = event.newIndex < list.length - 1 ? list[event.newIndex + 1] : null;
 
-  await commitReorder(shelfId, movedBook.id, beforeBook?.id ?? null, afterBook?.id ?? null);
+  await commitReorder(shelf.id, list, movedBook.id, beforeBook?.id ?? null, afterBook?.id ?? null);
 }
 
 function handleCoverClick(bookId: number) {
@@ -223,35 +265,26 @@ function handleContextView() {
   if (bookId !== null) router.push({ name: "book-detail", params: { id: bookId } });
 }
 
-// Resolves the grid section a book belongs to (and the shelf backing it), so a move
-// stays within its section (matching drag behavior, which never crosses "Reading now" / "Want to read").
-function gridSectionFor(bookId: number): { shelfId: number | null; listRef: Ref<Book[]> } {
-  if (shelfFilter.value === "to-read" && gridCurrentlyReading.value.some((b) => b.id === bookId)) {
-    return { shelfId: startedShelfId.value, listRef: gridCurrentlyReading };
-  }
-  return { shelfId: activeShelfId.value, listRef: shelfFilter.value === "to-read" ? gridToRead : gridBooks };
-}
-
 async function moveBookToEdge(bookId: number, edge: "top" | "bottom") {
-  if (searchQuery.value.trim()) return;
+  if (!isReorderable.value) return;
 
-  const { shelfId, listRef } = gridSectionFor(bookId);
-  if (!shelfId) return;
+  const shelf = visibleShelves.value.find((candidate) => candidate.books.some((book) => book.id === bookId));
+  if (!shelf || shelf.id === null) return;
 
-  const idx = listRef.value.findIndex((b) => b.id === bookId);
-  const targetIndex = edge === "top" ? 0 : listRef.value.length - 1;
+  const list = shelf.books;
+  const idx = list.findIndex((book) => book.id === bookId);
+  const targetIndex = edge === "top" ? 0 : list.length - 1;
   if (idx === -1 || idx === targetIndex) return;
 
-  const moved = listRef.value[idx];
-  const next = listRef.value.filter((b) => b.id !== bookId);
-  if (edge === "top") next.unshift(moved);
-  else next.push(moved);
-  listRef.value = next;
+  // Reordered in place: this array is the one the shelf renders (and vuedraggable mutates) directly
+  const [moved] = list.splice(idx, 1);
+  if (edge === "top") list.unshift(moved);
+  else list.push(moved);
 
-  const beforeBook = edge === "bottom" ? (next[next.length - 2] ?? null) : null;
-  const afterBook = edge === "top" ? (next[1] ?? null) : null;
+  const beforeBook = edge === "bottom" ? (list[list.length - 2] ?? null) : null;
+  const afterBook = edge === "top" ? (list[1] ?? null) : null;
 
-  await commitReorder(shelfId, moved.id, beforeBook?.id ?? null, afterBook?.id ?? null);
+  await commitReorder(shelf.id, list, moved.id, beforeBook?.id ?? null, afterBook?.id ?? null);
 }
 
 function handleContextMove(edge: "top" | "bottom") {
@@ -259,17 +292,6 @@ function handleContextMove(edge: "top" | "bottom") {
   closeContextMenu();
   if (bookId !== null) moveBookToEdge(bookId, edge);
 }
-
-const dragOpts = computed(() => ({
-  "item-key": "id",
-  animation: 150,
-  delay: 120,
-  "delay-on-touch-only": true,
-  disabled: Boolean(searchQuery.value.trim()),
-  "ghost-class": "grid-ghost",
-  "drag-class": "grid-drag",
-  "chosen-class": "grid-chosen",
-}));
 </script>
 
 <template>
@@ -293,71 +315,20 @@ const dragOpts = computed(() => ({
         <p v-else>No books yet. Add your first book to get started!</p>
       </div>
 
-      <template v-if="viewMode === 'grid'">
-        <template v-if="shelfFilter === 'to-read'">
-          <section v-if="gridCurrentlyReading.length" class="shelf-section">
-            <h2 class="shelf-section-title">Reading now</h2>
-            <draggable
-              class="books-container books-grid sectioned"
-              :list="gridCurrentlyReading"
-              v-bind="dragOpts"
-              @start="handleDragStart"
-              @end="handleDragEndForList(startedShelfId, gridCurrentlyReading, $event)"
-            >
-              <template #item="{ element: book }">
-                <BookCoverTile :book="book" show-progress @click="handleCoverClick" @menu="openContextMenu" />
-              </template>
-            </draggable>
-          </section>
-
-          <section v-if="gridToRead.length" class="shelf-section">
-            <h2 class="shelf-section-title">Want to read</h2>
-            <draggable
-              class="books-container books-grid sectioned"
-              :list="gridToRead"
-              v-bind="dragOpts"
-              @start="handleDragStart"
-              @end="handleDragEndForList(activeShelfId, gridToRead, $event)"
-            >
-              <template #item="{ element: book }">
-                <BookCoverTile :book="book" @click="handleCoverClick" @menu="openContextMenu" />
-              </template>
-            </draggable>
-          </section>
-        </template>
-
-        <draggable
-          v-else
-          class="books-container books-grid"
-          :list="gridBooks"
-          v-bind="dragOpts"
-          @start="handleDragStart"
-          @end="handleDragEndForList(activeShelfId, gridBooks, $event)"
-        >
-          <template #item="{ element: book }">
-            <BookCoverTile :book="book" @click="handleCoverClick" @menu="openContextMenu" />
-          </template>
-        </draggable>
-      </template>
-
-      <div v-else class="books-container books-list">
-        <template v-if="shelfFilter === 'to-read'">
-          <section v-if="currentlyReadingBooks.length" class="shelf-section">
-            <h2 class="shelf-section-title">Reading now</h2>
-            <div v-for="book in currentlyReadingBooks" :key="book.id">
-              <BookCard :book="book" @menu="openContextMenu" />
-            </div>
-          </section>
-          <section v-if="toReadBooks.length" class="shelf-section">
-            <h2 class="shelf-section-title">Want to read</h2>
-            <div v-for="book in toReadBooks" :key="book.id">
-              <BookCard :book="book" @menu="openContextMenu" />
-            </div>
-          </section>
-        </template>
-        <div v-else v-for="book in filteredBooks" :key="book.id">
-          <BookCard :book="book" @menu="openContextMenu" />
-        </div>
+      <div v-if="visibleShelves.length" class="shelves">
+        <BookShelf
+          v-for="shelf in visibleShelves"
+          :key="shelf.key"
+          :title="shelf.title"
+          :books="shelf.books"
+          :view-mode="viewMode"
+          :show-progress="shelf.showProgress"
+          :reorderable="isReorderable"
+          @dragstart="handleDragStart"
+          @dragend="handleDragEnd(shelf, $event)"
+          @select="handleCoverClick"
+          @menu="openContextMenu"
+        />
       </div>
 
       <div v-if="hasMore || isLoadingMore" ref="sentinelEl" class="infinite-sentinel">
@@ -386,70 +357,18 @@ const dragOpts = computed(() => ({
   background-color: var(--color-bg);
 }
 
-.books-view :deep(.navbar) {
-  z-index: 200;
-}
-
 .empty-state {
   text-align: center;
   padding: var(--spacing-xl);
   color: var(--color-text-secondary);
 }
 
-.books-container {
-  margin-top: var(--spacing-lg);
-  overflow-x: clip;
-  overflow-y: visible;
-}
-
-.books-container.sectioned {
-  margin-top: 0;
-}
-
-.shelf-section {
+.shelves {
   margin-top: var(--spacing-lg);
 }
 
-.shelf-section:first-child {
-  margin-top: 0;
-}
-
-.shelf-section-title {
-  margin: 0 0 var(--spacing-sm);
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--color-text);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.books-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.books-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 1.25rem;
-  align-items: center;
-  width: 100%;
-  max-width: 100%;
-  padding-top: 6px;
-  padding-bottom: var(--spacing-sm);
-  overflow-x: clip;
-  overflow-y: visible;
-}
-
-/*noinspection CssUnusedSymbol*/
-.books-grid :deep(.sortable-ghost .grid-cover),
-.books-grid :deep(.sortable-ghost .grid-cover-placeholder),
-.books-grid :deep(.sortable-chosen .grid-cover),
-.books-grid :deep(.sortable-chosen .grid-cover-placeholder),
-.books-grid :deep(.sortable-drag .grid-cover),
-.books-grid :deep(.sortable-drag .grid-cover-placeholder) {
-  transform: none;
-  box-shadow: var(--shadow);
+.shelves > * + * {
+  margin-top: var(--spacing-lg);
 }
 
 .infinite-sentinel {
@@ -465,36 +384,10 @@ const dragOpts = computed(() => ({
   font-size: 14px;
 }
 
-@media (max-width: 768px) {
-  .books-grid {
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 1.25rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .books-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.75rem;
-  }
-}
-
-/* Desktop: LibraryNav is inline tabs, not a fixed bar — drop the reserved space. */
+/* Desktop: LibraryNav is inline tabs, not a fixed bar: drop the reserved space. */
 @media (min-width: 769px) {
   .books-view {
     padding-bottom: var(--spacing-xl);
   }
-}
-
-/* vuedraggable applies these classes at runtime to slot content during drag. */
-/*noinspection CssUnusedSymbol*/
-.grid-ghost {
-  opacity: 0;
-}
-
-/*noinspection CssUnusedSymbol*/
-.grid-drag,
-.grid-chosen {
-  opacity: 1 !important;
 }
 </style>
