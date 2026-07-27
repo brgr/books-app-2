@@ -8,7 +8,7 @@ import BookSearchModal from "../components/modals/BookSearchModal.vue";
 import BooksSearchHeader from "../components/ui/BooksSearchHeader.vue";
 import LibraryNav from "../components/ui/LibraryNav.vue";
 import NavigationBar from "../components/ui/NavigationBar.vue";
-import { type Book, ReadingStatus, type Shelf } from "../api/types";
+import { type Book, ShelfName, type Shelf } from "../api/types";
 import { useCachedQuery } from "../composables/useCachedQuery";
 import { usePaginatedList } from "../composables/usePaginatedList";
 import { useAddBook } from "../composables/useAddBook";
@@ -67,7 +67,7 @@ const {
 // the user has like 3 to 5 books max in progress.
 // In the future, we should consider that this could potentially be more for some users, and we should implement
 // this better in some way.
-const startedShelfId = computed(() => shelves.value.find((shelf) => shelf.name === ReadingStatus.STARTED)?.id ?? null);
+const startedShelfId = computed(() => shelves.value.find((shelf) => shelf.name === ShelfName.STARTED)?.id ?? null);
 
 const { data: startedBooksData, setData: setStartedBooks } = useCachedQuery<Book[]>(
   computed(() => (startedShelfId.value ? cacheKeys.shelfBooks(startedShelfId.value, 1, 100) : "")),
@@ -175,7 +175,7 @@ const isDragging = ref(false);
 const lastDragTime = ref(0);
 
 function setActiveShelfForTab() {
-  const targetName = shelfFilter.value === "to-read" ? ReadingStatus.WANT_TO_READ : ReadingStatus.FINISHED;
+  const targetName = shelfFilter.value === "to-read" ? ShelfName.WANT_TO_READ : ShelfName.FINISHED;
   const match = shelves.value.find((shelf) => shelf.name === targetName) || null;
   activeShelfId.value = match ? match.id : null;
 }

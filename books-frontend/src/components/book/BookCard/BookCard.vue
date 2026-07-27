@@ -4,7 +4,7 @@ import { type Book } from "../../../api/types";
 import { getMediaUrl } from "../../../api/client";
 import KebabButton from "../../ui/KebabButton.vue";
 import BookCardMeta from "./BookCardMeta.vue";
-import BookCardStatus from "./BookCardStatus.vue";
+import BookCardShelf from "./BookCardShelf.vue";
 
 const props = defineProps<{
   book: Book;
@@ -47,7 +47,7 @@ const coverUrl = computed(() => props.book.cover_thumbnail_url || props.book.cov
 
         <BookCardMeta :book="book" />
 
-        <BookCardStatus :book="book" />
+        <BookCardShelf :book="book" />
       </div>
     </div>
   </div>

@@ -66,7 +66,7 @@ class BookService:
 
         self.db.commit()
         self.db.refresh(book)
-        return self.attach_status(book)
+        return self.attach_user_book(book)
 
     def set_cover(self, book: Book, cover_url: str, thumbnail_url: str | None) -> Book:
         """Point the book at an already-stored cover, journaling the change."""
@@ -80,10 +80,10 @@ class BookService:
             )
         self.db.commit()
         self.db.refresh(book)
-        return self.attach_status(book)
+        return self.attach_user_book(book)
 
     def list(self, page: int, page_size: int) -> tuple[list[Book], int]:
-        """Return one page of the user's library (with status attached) and the total."""
+        """Return one page of the user's library (with shelf entry attached) and the total."""
         library_books = (
             self.db.query(Book)
             .join(UserBook, UserBook.book_id == Book.id)
@@ -95,10 +95,8 @@ class BookService:
         books = library_books.offset(offset).limit(page_size).all()
 
         for book in books:
-            # noinspection PyTypeChecker
-            self.attach_status(book)
+            self.attach_user_book(book)
 
-        # noinspection PyTypeChecker
         return books, total
 
     def remove_from_library(self, book: Book) -> None:
@@ -134,18 +132,20 @@ class BookService:
             current_cover_path=current_cover_path,
         )
 
-    def attach_status(self, book: Book) -> Book:
-        """Attach the acting user's reading state to ``book.user_status``.
+    def attach_user_book(self, book: Book) -> Book:
+        """Attach the acting user's shelf entry to ``book.user_book``.
 
         The snapshot columns are recomputed from the event stream and the
         event-derived reading dates are assembled into the DTO for serialization.
         """
         user_book = get_user_book(self.db, user_id=self._user_id, book_id=book.id)
+
         if user_book:
             project_user_book_state(self.db, user_book)
-            book.user_status = build_user_book_response(self.db, user_book)
+            book.user_book = build_user_book_response(self.db, user_book)
         else:
-            book.user_status = None
+            book.user_book = None
+
         return book
 
     @staticmethod

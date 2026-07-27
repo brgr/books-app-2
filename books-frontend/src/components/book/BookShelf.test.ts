@@ -18,7 +18,7 @@ function makeBook(overrides: Partial<Book> = {}): Book {
     cover_thumbnail_url: null,
     created_at: "",
     updated_at: "",
-    user_status: null,
+    user_book: null,
     ...overrides,
   };
 }

@@ -11,8 +11,8 @@ def created_book(client, auth_headers, sample_book_data):
     return response.json()
 
 
-def test_set_reading_status(client, auth_headers, created_book):
-    """Test setting a reading status for a book."""
+def test_set_shelf(client, auth_headers, created_book):
+    """Test setting a shelf for a book."""
     book_id = created_book["id"]
 
     response = client.put(
@@ -30,11 +30,11 @@ def test_set_reading_status(client, auth_headers, created_book):
     assert data["started_at"] is not None
 
 
-def test_update_reading_status(client, auth_headers, created_book):
-    """Test updating an existing reading status."""
+def test_update_shelf(client, auth_headers, created_book):
+    """Test updating an existing shelf assignment."""
     book_id = created_book["id"]
 
-    # Set initial status
+    # Set the initial shelf
     client.put(
         f"/api/books/{book_id}/shelf",
         json={"shelf": "want_to_read"},
@@ -54,7 +54,7 @@ def test_update_reading_status(client, auth_headers, created_book):
     assert data["notes"] == "Now reading"
 
 
-def test_set_finished_status(client, auth_headers, created_book):
+def test_set_finished_shelf(client, auth_headers, created_book):
     """Finishing requires a start event and sets finished_at."""
     book_id = created_book["id"]
 
@@ -86,21 +86,21 @@ def test_set_finished_status(client, auth_headers, created_book):
     assert data["finished_at"] is not None
 
 
-def test_reading_status_on_nonexistent_book(client, auth_headers):
-    """Test setting status on a book that doesn't exist."""
+def test_set_shelf_on_nonexistent_book(client, auth_headers):
+    """Test setting a shelf on a book that doesn't exist."""
     response = client.put(
         "/api/books/99999/shelf", json={"shelf": "started"}, headers=auth_headers
     )
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
-def test_book_list_includes_user_status(client, auth_headers, sample_book_data):
-    """Test that book list includes user's reading status."""
+def test_book_list_includes_user_book(client, auth_headers, sample_book_data):
+    """Test that the book list includes the user's shelf entry."""
     # Create a book
     response = client.post("/api/books", json=sample_book_data, headers=auth_headers)
     book_id = response.json()["id"]
 
-    # Set reading status
+    # Put it on a shelf
     client.put(
         f"/api/books/{book_id}/shelf", json={"shelf": "started"}, headers=auth_headers
     )
@@ -111,15 +111,15 @@ def test_book_list_includes_user_status(client, auth_headers, sample_book_data):
     books = response.json()["items"]
 
     book = next(b for b in books if b["id"] == book_id)
-    assert book["user_status"] is not None
-    assert book["user_status"]["shelf"] == "started"
+    assert book["user_book"] is not None
+    assert book["user_book"]["shelf"] == "started"
 
 
-def test_get_book_includes_user_status(client, auth_headers, created_book):
-    """Test that getting a single book includes user's reading status."""
+def test_get_book_includes_user_book(client, auth_headers, created_book):
+    """Test that getting a single book includes the user's shelf entry."""
     book_id = created_book["id"]
 
-    # Set reading status
+    # Put it on a shelf
     client.put(
         f"/api/books/{book_id}/shelf", json={"shelf": "started"}, headers=auth_headers
     )
@@ -134,21 +134,21 @@ def test_get_book_includes_user_status(client, auth_headers, created_book):
     assert response.status_code == status.HTTP_200_OK
     book = response.json()
 
-    assert book["user_status"] is not None
-    assert book["user_status"]["shelf"] == "finished"
-    assert book["user_status"]["notes"] == "Excellent!"
+    assert book["user_book"] is not None
+    assert book["user_book"]["shelf"] == "finished"
+    assert book["user_book"]["notes"] == "Excellent!"
 
 
-def test_remove_reading_status(client, auth_headers, created_book):
-    """Test removing a book from reading list."""
+def test_remove_from_library(client, auth_headers, created_book):
+    """Test removing a book from the library."""
     book_id = created_book["id"]
 
-    # Set reading status
+    # Put it on a shelf
     client.put(
         f"/api/books/{book_id}/shelf", json={"shelf": "started"}, headers=auth_headers
     )
 
-    # Remove status
+    # Remove it from the library
     response = client.delete(f"/api/books/{book_id}/shelf", headers=auth_headers)
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
@@ -174,19 +174,19 @@ def test_cannot_revert_to_want_after_start(client, auth_headers, created_book):
     assert "Cannot revert to 'want_to_read'" in response.json()["detail"]
 
 
-def test_remove_nonexistent_reading_status(client, auth_headers, created_book):
-    """Test removing a reading status that doesn't exist."""
+def test_remove_nonexistent_shelf_entry(client, auth_headers, created_book):
+    """Test removing a shelf entry that doesn't exist."""
     book_id = created_book["id"]
 
-    # Creating a book auto-assigns a status; remove it first so we can test the 404 path.
+    # Creating a book auto-assigns a shelf; remove it first so we can test the 404 path.
     client.delete(f"/api/books/{book_id}/shelf", headers=auth_headers)
 
     response = client.delete(f"/api/books/{book_id}/shelf", headers=auth_headers)
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
-def test_reading_status_requires_auth(client, created_book):
-    """Test that reading status endpoints require authentication."""
+def test_shelf_endpoints_require_auth(client, created_book):
+    """Test that the shelf endpoints require authentication."""
     book_id = created_book["id"]
 
     client.cookies.clear()

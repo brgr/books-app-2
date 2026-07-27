@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { getBook, setReadingStatus, getBookEvents, addBookProgress } from "../api/books";
+import { getBook, setShelf, getBookEvents, addBookProgress } from "../api/books";
 import { getMediaUrl } from "../api/client";
 import BookNotes from "../components/book/BookNotes.vue";
 import BookSearchModal from "../components/modals/BookSearchModal.vue";
-import BookStatusButton from "../components/book/BookStatusButton.vue";
+import BookShelfButton from "../components/book/BookShelfButton.vue";
 import BookReadingCard from "../components/book/BookReadingCard.vue";
 import NavigationBar from "../components/ui/NavigationBar.vue";
 import CollapsibleText from "../components/ui/CollapsibleText.vue";
 import BookMetadata from "../components/book/BookMetadata.vue";
 import EventTimeline from "../components/book/EventTimeline.vue";
-import { ReadingStatus, type Book, type BookEvent, type BookProgressUpdate } from "../api/types";
+import { ShelfName, type Book, type BookEvent, type BookProgressUpdate } from "../api/types";
 import { formatShortDate } from "../utils/date";
 import { useCachedQuery } from "../composables/useCachedQuery";
 import { useAddBook } from "../composables/useAddBook";
@@ -48,7 +48,7 @@ const error = computed(() => {
   if (e instanceof Error) return e.message;
   return "Failed to load book. Please try again.";
 });
-const updatingStatus = ref(false);
+const updatingShelf = ref(false);
 const notesSaving = ref(false);
 const progressSaving = ref(false);
 
@@ -59,33 +59,29 @@ async function loadBook() {
   await refreshEvents();
 }
 
-const canUpdateProgress = computed(() => book.value?.user_status?.shelf === ReadingStatus.STARTED);
+const canUpdateProgress = computed(() => book.value?.user_book?.shelf === ShelfName.STARTED);
 
-async function changeStatus(shelf: ReadingStatus, occurredAt?: string) {
+async function changeShelf(shelf: ShelfName, occurredAt?: string) {
   if (!book.value) return;
-  updatingStatus.value = true;
+  updatingShelf.value = true;
   try {
-    await setReadingStatus(book.value.id, { shelf, occurred_at: occurredAt });
+    await setShelf(book.value.id, { shelf, occurred_at: occurredAt });
     await cacheInvalidateByPrefix(cacheKeys.shelvesPrefix());
     await loadBook();
   } catch (err) {
-    console.error("Failed to update reading status:", err);
-    alert("Failed to update reading status");
+    console.error("Failed to update shelf:", err);
+    alert("Failed to update shelf");
   } finally {
-    updatingStatus.value = false;
+    updatingShelf.value = false;
   }
-}
-
-function handleStatusChange(status: ReadingStatus, occurredAt?: string) {
-  return changeStatus(status, occurredAt);
 }
 
 async function handleSaveNotes(notes: string) {
   if (!book.value) return;
   notesSaving.value = true;
   try {
-    const shelf = book.value.user_status?.shelf ?? ReadingStatus.WANT_TO_READ;
-    book.value.user_status = await setReadingStatus(book.value.id, { shelf, notes });
+    const shelf = book.value.user_book?.shelf ?? ShelfName.WANT_TO_READ;
+    book.value.user_book = await setShelf(book.value.id, { shelf, notes });
     await cacheDel(cacheKeys.bookEvents(book.value.id));
     await refreshEvents();
   } catch (error) {
@@ -100,7 +96,7 @@ async function handleSaveProgress(progress: BookProgressUpdate) {
   if (!book.value || !canUpdateProgress.value) return;
   progressSaving.value = true;
   try {
-    book.value.user_status = await addBookProgress(book.value.id, progress);
+    book.value.user_book = await addBookProgress(book.value.id, progress);
     await cacheDel(cacheKeys.bookEvents(book.value.id));
     await refreshEvents();
   } catch (error) {
@@ -146,35 +142,35 @@ const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(() =
             <h1>{{ book.title }}</h1>
             <p class="book-author">by {{ book.author }}</p>
 
-            <div class="book-status-section">
-              <BookStatusButton
+            <div class="book-shelf-section">
+              <BookShelfButton
                 v-if="!canUpdateProgress"
-                :status="book.user_status?.shelf ?? null"
-                :updating="updatingStatus"
-                @change="handleStatusChange"
+                :shelf="book.user_book?.shelf ?? null"
+                :updating="updatingShelf"
+                @change="changeShelf"
               />
 
               <BookReadingCard
                 v-else
-                :status="book.user_status?.shelf ?? null"
-                :updating="updatingStatus"
-                :current-page="book.user_status?.current_page ?? null"
-                :current-percent="book.user_status?.current_percent ?? null"
+                :shelf="book.user_book?.shelf ?? null"
+                :updating="updatingShelf"
+                :current-page="book.user_book?.current_page ?? null"
+                :current-percent="book.user_book?.current_percent ?? null"
                 :page-count="book.page_count ?? null"
-                :started-at="book.user_status?.started_at ?? null"
-                :finished-at="book.user_status?.finished_at ?? null"
+                :started-at="book.user_book?.started_at ?? null"
+                :finished-at="book.user_book?.finished_at ?? null"
                 :progress-saving="progressSaving"
-                @change="handleStatusChange"
+                @change="changeShelf"
                 @update-progress="handleSaveProgress"
               />
             </div>
 
-            <div v-if="book.user_status && !canUpdateProgress" class="book-dates">
-              <div v-if="book.user_status.started_at" class="date-item">
-                <strong>Started:</strong> {{ formatShortDate(book.user_status.started_at) }}
+            <div v-if="book.user_book && !canUpdateProgress" class="book-dates">
+              <div v-if="book.user_book.started_at" class="date-item">
+                <strong>Started:</strong> {{ formatShortDate(book.user_book.started_at) }}
               </div>
-              <div v-if="book.user_status.finished_at" class="date-item">
-                <strong>Finished:</strong> {{ formatShortDate(book.user_status.finished_at) }}
+              <div v-if="book.user_book.finished_at" class="date-item">
+                <strong>Finished:</strong> {{ formatShortDate(book.user_book.finished_at) }}
               </div>
             </div>
           </div>
@@ -186,7 +182,7 @@ const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(() =
             <CollapsibleText :text="book.description" />
           </div>
 
-          <BookNotes :notes="book.user_status?.notes ?? ''" :saving="notesSaving" @save="handleSaveNotes" />
+          <BookNotes :notes="book.user_book?.notes ?? ''" :saving="notesSaving" @save="handleSaveNotes" />
 
           <BookMetadata :book="book" />
 
@@ -299,7 +295,7 @@ const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(() =
   width: auto;
 }
 
-.book-status-section {
+.book-shelf-section {
   margin-bottom: var(--spacing-lg);
   padding: 0;
   background-color: transparent;
@@ -390,11 +386,11 @@ const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(() =
     flex: 0 0 auto;
   }
 
-  .book-status-section {
+  .book-shelf-section {
     align-items: center;
   }
 
-  .book-status-section select {
+  .book-shelf-section select {
     max-width: 100%;
   }
 

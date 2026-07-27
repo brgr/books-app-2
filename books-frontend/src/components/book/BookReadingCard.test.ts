@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { mount } from "@vue/test-utils";
 import BookReadingCard from "./BookReadingCard.vue";
-import { ReadingStatus } from "../../api/types";
+import { ShelfName } from "../../api/types";
 
 function makeProps(
   overrides: Partial<{
-    status: ReadingStatus | null;
+    shelf: ShelfName | null;
     updating: boolean;
     currentPage: number | null;
     currentPercent: number | null;
@@ -16,7 +16,7 @@ function makeProps(
   }> = {},
 ) {
   return {
-    status: ReadingStatus.STARTED,
+    shelf: ShelfName.STARTED,
     updating: false,
     currentPage: 10,
     currentPercent: null,
@@ -116,15 +116,15 @@ describe("BookReadingCard", () => {
     expect(wrapper.find('[data-test="progress-input"]').exists()).toBe(false);
   });
 
-  it('re-emits "change" from the status button', () => {
+  it('re-emits "change" from the shelf button', () => {
     const wrapper = mount(BookReadingCard, { props: makeProps() });
-    wrapper.findComponent({ name: "BookStatusButton" }).vm.$emit("change", ReadingStatus.FINISHED);
-    expect(wrapper.emitted("change")?.[0]?.[0]).toBe(ReadingStatus.FINISHED);
+    wrapper.findComponent({ name: "BookShelfButton" }).vm.$emit("change", ShelfName.FINISHED);
+    expect(wrapper.emitted("change")?.[0]?.[0]).toBe(ShelfName.FINISHED);
   });
 
   it('shows a "Finish" action while reading', () => {
-    const wrapper = mount(BookReadingCard, { props: makeProps({ status: ReadingStatus.STARTED }) });
-    expect(wrapper.find('[data-test="status-button"]').text()).toBe("Finish");
+    const wrapper = mount(BookReadingCard, { props: makeProps({ shelf: ShelfName.STARTED }) });
+    expect(wrapper.find('[data-test="shelf-button"]').text()).toBe("Finish");
   });
 
   it("shows started and finished dates when provided", () => {

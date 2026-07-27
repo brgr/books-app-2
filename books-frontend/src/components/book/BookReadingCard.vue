@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import BookStatusButton from "./BookStatusButton.vue";
-import { type BookProgressUpdate, ReadingStatus } from "../../api/types";
+import BookShelfButton from "./BookShelfButton.vue";
+import { type BookProgressUpdate, ShelfName } from "../../api/types";
 import { formatShortDate } from "../../utils/date";
 
 type ProgressUnit = "page" | "percent";
 
 const props = defineProps<{
-  status: ReadingStatus | null;
+  shelf: ShelfName | null;
   updating?: boolean;
   currentPage?: number | null;
   currentPercent?: number | null;
@@ -18,7 +18,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  change: [status: ReadingStatus, occurredAt?: string];
+  change: [shelf: ShelfName, occurredAt?: string];
   "update-progress": [progress: BookProgressUpdate];
 }>();
 
@@ -39,9 +39,9 @@ const displayPercent = computed<number | null>(() => {
 });
 
 // While actively reading, show the start date beside the pill ("since …")
-// rather than in the bottom dates row, so the status and its timeline read
+// rather than in the bottom dates row, so the shelf and its timeline read
 // together. Finished books keep their dates in the bottom row.
-const showStartedInHeader = computed(() => props.status === ReadingStatus.STARTED && !!props.startedAt);
+const showStartedInHeader = computed(() => props.shelf === ShelfName.STARTED && !!props.startedAt);
 
 // The unit the user last tracked in, so re-opening the editor defaults to it.
 const lastUnit = computed<ProgressUnit>(() => (hasPercent.value ? "percent" : "page"));
@@ -109,9 +109,9 @@ function cancelEditingProgress() {
 </script>
 
 <template>
-  <div class="status-card" data-test="status-card">
-    <div class="status-header">
-      <span class="status-label">Currently Reading</span>
+  <div class="reading-card" data-test="reading-card">
+    <div class="reading-header">
+      <span class="reading-label">Currently Reading</span>
       <span v-if="showStartedInHeader" class="since">since {{ formatShortDate(startedAt ?? null) }}</span>
     </div>
 
@@ -193,18 +193,18 @@ function cancelEditingProgress() {
       <span v-if="finishedAt">· Finished {{ formatShortDate(finishedAt) }}</span>
     </div>
 
-    <div class="status-actions">
-      <BookStatusButton
-        :status="status"
+    <div class="reading-actions">
+      <BookShelfButton
+        :shelf="shelf"
         :updating="updating ?? false"
-        @change="(status, occurredAt) => emit('change', status, occurredAt)"
+        @change="(shelf, occurredAt) => emit('change', shelf, occurredAt)"
       />
     </div>
   </div>
 </template>
 
 <style scoped>
-.status-card {
+.reading-card {
   background: rgba(12, 8, 16, 0.03);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
@@ -218,21 +218,21 @@ function cancelEditingProgress() {
 }
 
 @media (prefers-color-scheme: dark) {
-  .status-card {
+  .reading-card {
     background: rgba(12, 8, 16, 0.45);
     border: 1px solid rgba(255, 255, 255, 0.12);
     box-shadow: 0 10px 20px rgba(7, 5, 8, 0.2);
   }
 }
 
-.status-header {
+.reading-header {
   display: flex;
   align-items: baseline;
   gap: var(--spacing-sm);
   flex-wrap: wrap;
 }
 
-.status-label {
+.reading-label {
   font-weight: 600;
 }
 
@@ -241,7 +241,7 @@ function cancelEditingProgress() {
   font-size: 0.8rem;
 }
 
-.status-actions {
+.reading-actions {
   display: flex;
   margin-top: var(--spacing-xs);
 }

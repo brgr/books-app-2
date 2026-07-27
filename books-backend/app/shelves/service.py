@@ -59,7 +59,7 @@ class ShelfService:
     def list_books(
         self, shelf_id: int, page: int, page_size: int
     ) -> tuple[list[Book], int]:
-        """Return one page of a shelf's books (status attached) and the total.
+        """Return one page of a shelf's books and the total.
 
         Raises ShelfNotFoundError if the shelf is not owned by the acting user.
         """
@@ -82,7 +82,7 @@ class ShelfService:
         books = []
         for book, user_book in book_pairs:
             project_user_book_state(self.db, user_book)
-            book.user_status = build_user_book_response(self.db, user_book)
+            book.user_book = build_user_book_response(self.db, user_book)
             books.append(book)
         return books, total
 

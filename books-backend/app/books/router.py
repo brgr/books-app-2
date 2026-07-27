@@ -176,7 +176,7 @@ def list_books(
     page: int = 1,
     page_size: int = 20,
 ):
-    """List all books with pagination. Includes user's reading status for each book."""
+    """List all books with pagination. Includes the user's shelf entry for each book."""
     if page < 1:
         page = 1
     if page_size < 1 or page_size > 100:
@@ -199,8 +199,8 @@ def get_book(
     book: Annotated[Book, Depends(get_library_book)],
     service: Annotated[BookService, Depends(get_book_service)],
 ):
-    """Get a single book from the user's library. Includes reading status."""
-    return service.attach_status(book)
+    """Get a single book from the user's library. Includes the user's shelf entry."""
+    return service.attach_user_book(book)
 
 
 @router.put("/books/{book_id}", response_model=BookResponse)

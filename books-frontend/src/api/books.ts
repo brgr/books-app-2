@@ -62,12 +62,12 @@ export async function deleteAllBooks(): Promise<void> {
   await apiClient.delete("/books");
 }
 
-export async function setReadingStatus(bookId: number, data: UserBookShelfUpdate): Promise<UserBook> {
+export async function setShelf(bookId: number, data: UserBookShelfUpdate): Promise<UserBook> {
   const response = await apiClient.put<UserBook>(`/books/${bookId}/shelf`, data);
   return response.data;
 }
 
-export async function removeReadingStatus(bookId: number): Promise<void> {
+export async function removeFromLibrary(bookId: number): Promise<void> {
   await apiClient.delete(`/books/${bookId}/shelf`);
 }
 

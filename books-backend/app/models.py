@@ -60,7 +60,7 @@ class User(Base):
 
 class Book(Base):
     __tablename__ = "books"
-    # Permit the non-Mapped ``user_status`` annotation below; it's a transient
+    # Permit the non-Mapped ``user_book`` annotation below; it's a transient
     # instance attribute the service layer sets, not a mapped column.
     __allow_unmapped__ = True
 
@@ -79,9 +79,7 @@ class Book(Base):
         back_populates="book", cascade="all, delete-orphan"
     )
 
-    # Transient, non-persisted: the acting user's reading state (a response DTO),
-    # attached by the service layer for serialization. Not a mapped column.
-    user_status: "UserBookResponse | None" = None
+    user_book: "UserBookResponse | None" = None
 
     @classmethod
     def from_create(cls, data: "BookCreate") -> "Book":
@@ -142,7 +140,7 @@ class UserBook(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     current_page: Mapped[int | None] = mapped_column(Integer, nullable=True)
     current_percent: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
-    # Hand-arranged position on whichever shelf the book's status puts it. Null until the
+    # Hand-arranged position on whichever shelf the book is on. Null until the
     # book is first placed; app.shelves assigns and rebalances it.
     sort_order: Mapped[Decimal | None] = mapped_column(Numeric(20, 10), nullable=True)
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { mount } from "@vue/test-utils";
 import BookCoverTile from "./BookCoverTile.vue";
-import { ReadingStatus, type Book } from "../../api/types";
+import { ShelfName, type Book } from "../../api/types";
 
 function makeBook(overrides: Partial<Book> = {}): Book {
   return {
@@ -16,7 +16,7 @@ function makeBook(overrides: Partial<Book> = {}): Book {
     cover_thumbnail_url: null,
     created_at: "",
     updated_at: "",
-    user_status: null,
+    user_book: null,
     ...overrides,
   };
 }
@@ -57,10 +57,10 @@ describe("BookCoverTile", () => {
       props: {
         book: makeBook({
           page_count: 200,
-          user_status: {
-            shelf: ReadingStatus.STARTED,
+          user_book: {
+            shelf: ShelfName.STARTED,
             current_page: 50,
-          } as Book["user_status"],
+          } as Book["user_book"],
         }),
       },
     });
@@ -73,10 +73,10 @@ describe("BookCoverTile", () => {
         showProgress: true,
         book: makeBook({
           page_count: 200,
-          user_status: {
-            shelf: ReadingStatus.STARTED,
+          user_book: {
+            shelf: ShelfName.STARTED,
             current_page: 50,
-          } as Book["user_status"],
+          } as Book["user_book"],
         }),
       },
     });
@@ -85,16 +85,16 @@ describe("BookCoverTile", () => {
     expect(badge.text()).toContain("25%");
   });
 
-  it("hides progress badge when showProgress=true but status is not STARTED", () => {
+  it("hides progress badge when showProgress=true but shelf is not STARTED", () => {
     const wrapper = mount(BookCoverTile, {
       props: {
         showProgress: true,
         book: makeBook({
           page_count: 200,
-          user_status: {
-            shelf: ReadingStatus.WANT_TO_READ,
+          user_book: {
+            shelf: ShelfName.WANT_TO_READ,
             current_page: 50,
-          } as Book["user_status"],
+          } as Book["user_book"],
         }),
       },
     });

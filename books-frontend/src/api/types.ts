@@ -1,11 +1,11 @@
-export const ReadingStatus = {
+export const ShelfName = {
   WANT_TO_READ: "want_to_read",
   STARTED: "started",
   FINISHED: "finished",
   ABANDONED: "abandoned",
 } as const;
 
-export type ReadingStatus = (typeof ReadingStatus)[keyof typeof ReadingStatus];
+export type ShelfName = (typeof ShelfName)[keyof typeof ShelfName];
 
 export interface User {
   id: number;
@@ -17,7 +17,7 @@ export interface UserBook {
   id: number;
   user_id: number;
   book_id: number;
-  shelf: ReadingStatus;
+  shelf: ShelfName;
   started_at: string | null;
   finished_at: string | null;
   notes: string | null;
@@ -29,7 +29,7 @@ export interface UserBook {
 
 export interface Shelf {
   id: number;
-  name: ReadingStatus;
+  name: ShelfName;
   display_name: string;
 }
 
@@ -51,7 +51,7 @@ export interface Book {
   cover_thumbnail_url: string | null;
   created_at: string;
   updated_at: string;
-  user_status: UserBook | null;
+  user_book: UserBook | null;
 }
 
 export interface PaginatedBooks {
@@ -83,7 +83,7 @@ export interface BookUpdate {
 }
 
 export interface UserBookShelfUpdate {
-  shelf: ReadingStatus;
+  shelf: ShelfName;
   notes?: string;
   occurred_at?: string;
 }

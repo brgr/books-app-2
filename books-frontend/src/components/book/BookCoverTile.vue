@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount } from "vue";
-import { type Book, ReadingStatus } from "../../api/types";
+import { type Book, ShelfName } from "../../api/types";
 import { getMediaUrl } from "../../api/client";
 
 const props = withDefaults(
@@ -89,27 +89,27 @@ onBeforeUnmount(clearPressTimer);
 const coverUrl = computed(() => getMediaUrl(props.book.cover_thumbnail_url || props.book.cover_image_url));
 
 const hasPercent = computed(() => {
-  const value = props.book.user_status?.current_percent;
+  const value = props.book.user_book?.current_percent;
   return value !== null && value !== undefined;
 });
 
 const showBadge = computed(() => {
   if (!props.showProgress) return false;
-  const status = props.book.user_status;
-  if (status?.shelf !== ReadingStatus.STARTED) return false;
+  const userBook = props.book.user_book;
+  if (userBook?.shelf !== ShelfName.STARTED) return false;
   // A percent-tracked book carries progress even without a page count.
   return (
     hasPercent.value ||
-    (Boolean(props.book.page_count) && status?.current_page !== null && status?.current_page !== undefined)
+    (Boolean(props.book.page_count) && userBook?.current_page !== null && userBook?.current_page !== undefined)
   );
 });
 
 const progressPercent = computed(() => {
   if (hasPercent.value) {
-    return Math.min(100, Math.max(0, Math.round(props.book.user_status!.current_percent as number)));
+    return Math.min(100, Math.max(0, Math.round(props.book.user_book!.current_percent as number)));
   }
   const pageCount = props.book.page_count ?? 0;
-  const currentPage = props.book.user_status?.current_page ?? 0;
+  const currentPage = props.book.user_book?.current_page ?? 0;
   if (pageCount <= 0) return 0;
   const percent = Math.round((currentPage / pageCount) * 100);
   return Math.min(100, Math.max(0, percent));

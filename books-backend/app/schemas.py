@@ -65,9 +65,7 @@ class BookUpdate(BaseModel):
 class BookResponse(BookBase):
     id: int
     cover_thumbnail_url: Optional[str] = None
-    user_status: Optional["UserBookResponse"] = (
-        None  # Include user's reading status if available
-    )
+    user_book: Optional["UserBookResponse"] = None
 
     model_config = ConfigDict(from_attributes=True)
 

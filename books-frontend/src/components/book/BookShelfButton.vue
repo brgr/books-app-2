@@ -1,33 +1,33 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { ReadingStatus } from "../../api/types";
+import { ShelfName } from "../../api/types";
 
 const props = defineProps<{
-  status: ReadingStatus | null;
+  shelf: ShelfName | null;
   updating: boolean;
 }>();
 
 const emit = defineEmits<{
-  change: [status: ReadingStatus, occurredAt?: string];
+  change: [shelf: ShelfName, occurredAt?: string];
 }>();
 
-type Action = { label: string; target: ReadingStatus };
+type Action = { label: string; target: ShelfName };
 
-// The single next action for the current status. Not-yet-started and abandoned
+// The single next action for the current shelf. Not-yet-started and abandoned
 // books both offer "Start Reading"; a finished book can be read again.
 const action = computed<Action>(() => {
-  switch (props.status) {
-    case ReadingStatus.STARTED:
-      return { label: "Finish", target: ReadingStatus.FINISHED };
-    case ReadingStatus.FINISHED:
-      return { label: "Read Again", target: ReadingStatus.STARTED };
+  switch (props.shelf) {
+    case ShelfName.STARTED:
+      return { label: "Finish", target: ShelfName.FINISHED };
+    case ShelfName.FINISHED:
+      return { label: "Read Again", target: ShelfName.STARTED };
     default:
-      return { label: "Start Reading", target: ReadingStatus.STARTED };
+      return { label: "Start Reading", target: ShelfName.STARTED };
   }
 });
 
 const pastDateLabel = computed(() =>
-  action.value.target === ReadingStatus.FINISHED ? "Finish on a past date…" : "Start on a past date…",
+  action.value.target === ShelfName.FINISHED ? "Finish on a past date…" : "Start on a past date…",
 );
 
 // Today in the input's yyyy-mm-dd format, used to bar future dates client-side
@@ -82,33 +82,33 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="rootEl" class="status-control">
-    <div class="status-split">
-      <button type="button" class="status-button" :disabled="updating" data-test="status-button" @click="activate">
+  <div ref="rootEl" class="shelf-control">
+    <div class="shelf-split">
+      <button type="button" class="shelf-button" :disabled="updating" data-test="shelf-button" @click="activate">
         {{ updating ? "Saving…" : action.label }}
       </button>
       <button
         type="button"
-        class="status-caret"
+        class="shelf-caret"
         :disabled="updating"
         :aria-expanded="menuOpen"
         aria-label="Choose a date"
-        data-test="status-caret"
+        data-test="shelf-caret"
         @click="toggleMenu"
       >
         ▾
       </button>
     </div>
 
-    <div v-if="menuOpen" class="status-menu" role="dialog" :aria-label="pastDateLabel">
-      <label class="status-menu-label">{{ pastDateLabel }}</label>
-      <div class="status-menu-row">
-        <input v-model="chosenDate" type="date" :max="today" class="status-date-input" data-test="status-date-input" />
+    <div v-if="menuOpen" class="shelf-menu" role="dialog" :aria-label="pastDateLabel">
+      <label class="shelf-menu-label">{{ pastDateLabel }}</label>
+      <div class="shelf-menu-row">
+        <input v-model="chosenDate" type="date" :max="today" class="shelf-date-input" data-test="shelf-date-input" />
         <button
           type="button"
-          class="status-button"
+          class="shelf-button"
           :disabled="updating || !chosenDate"
-          data-test="status-date-confirm"
+          data-test="shelf-date-confirm"
           @click="confirmDate"
         >
           {{ action.label }}
@@ -119,16 +119,16 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.status-control {
+.shelf-control {
   position: relative;
   align-self: flex-start;
 }
 
-.status-split {
+.shelf-split {
   display: inline-flex;
 }
 
-.status-button {
+.shelf-button {
   display: inline-flex;
   align-items: center;
   padding: 8px 16px;
@@ -143,22 +143,22 @@ onBeforeUnmount(() => {
   line-height: 1.2;
 }
 
-.status-button:hover:not(:disabled) {
+.shelf-button:hover:not(:disabled) {
   filter: brightness(1.1);
 }
 
-.status-button:disabled {
+.shelf-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
 /* The caret shares the pill with the main button: round only the outer
    corners of each so the two read as one control. */
-.status-split .status-button {
+.shelf-split .shelf-button {
   border-radius: 999px 0 0 999px;
 }
 
-.status-caret {
+.shelf-caret {
   display: inline-flex;
   align-items: center;
   padding: 8px 12px;
@@ -173,16 +173,16 @@ onBeforeUnmount(() => {
   line-height: 1.2;
 }
 
-.status-caret:hover:not(:disabled) {
+.shelf-caret:hover:not(:disabled) {
   filter: brightness(1.1);
 }
 
-.status-caret:disabled {
+.shelf-caret:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.status-menu {
+.shelf-menu {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
@@ -198,18 +198,18 @@ onBeforeUnmount(() => {
   gap: 8px;
 }
 
-.status-menu-label {
+.shelf-menu-label {
   font-size: 0.85rem;
   color: var(--color-text-secondary);
 }
 
-.status-menu-row {
+.shelf-menu-row {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.status-date-input {
+.shelf-date-input {
   flex: 1;
   padding: 6px 8px;
   border-radius: var(--border-radius);
