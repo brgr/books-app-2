@@ -36,7 +36,7 @@ test("currently-reading book below the first page shows in 'Reading now'", async
 
   // The "Reading now" section must contain the currently-reading book, even though it sorts
   // far down the "To Read" list and is not on the first loaded page.
-  const readingNow = page.locator(".shelf-section", {
+  const readingNow = page.locator(".book-shelf", {
     has: page.getByRole("heading", { name: "Reading now" }),
   });
 

@@ -1,79 +1,209 @@
 <script setup lang="ts">
+import { computed, nextTick, ref, type Ref, watch } from "vue";
+import { useRouter } from "vue-router";
 import draggable from "vuedraggable";
 import BookCard from "./BookCard/BookCard.vue";
+import BookContextMenu from "./BookContextMenu.vue";
 import BookCoverTile from "./BookCoverTile.vue";
-import type { Book } from "../../api/types";
+import ShelfViewModeToggle from "./ShelfViewModeToggle.vue";
+import { getShelfBooks } from "../../api/books";
+import type { Book, ShelfName } from "../../api/types";
+import { cacheKeys } from "../../cache/keys";
+import { useContextMenu } from "../../composables/useContextMenu";
+import { useInfiniteScroll } from "../../composables/useInfiniteScroll";
+import { useLibraryPage } from "../../composables/useLibraryPage";
+import { usePaginatedList } from "../../composables/usePaginatedList";
+import { useShelfReorder } from "../../composables/useShelfReorder";
+import { useShelfViewMode, type ViewMode } from "../../composables/useShelfViewMode";
 
-/**
- * One shelf as rendered on the library page: an optional heading plus its books, laid out
- * either as a list of cards or as a draggable cover grid. Reordering is grid-only.
- * The parent persists the new order against the shelf this component shows.
- */
-withDefaults(
+const props = withDefaults(
   defineProps<{
-    books: Book[];
-    viewMode: "list" | "grid";
+    shelf: ShelfName;
     /** Heading above the shelf. Omitted when the page shows a single, self-evident shelf. */
     title?: string | null;
     showProgress?: boolean;
-    /** Whether covers can be dragged. Off while the shelf shows a subset the parent can't persist. */
-    reorderable?: boolean;
+    /** Whether to page in more books as the shelf's end scrolls into view. */
+    paginated?: boolean;
+    pageSize?: number;
+    /** Layout this shelf starts in, until the reader picks one; theirs is then remembered. */
+    defaultViewMode?: ViewMode;
   }>(),
-  { title: null, showProgress: false, reorderable: false },
+  { title: null, showProgress: false, paginated: false, pageSize: 30, defaultViewMode: "list" },
 );
 
-const dragOptions = {
-  animation: 150,
-  delay: 120,
-  "delay-on-touch-only": true,
-  "ghost-class": "grid-ghost",
-  "drag-class": "grid-drag",
-  "chosen-class": "grid-chosen",
-};
+const router = useRouter();
+const { searchQuery, shelves, refreshToken, registerShelf } = useLibraryPage();
 
-defineEmits<{
-  (e: "dragstart"): void;
-  (e: "dragend", event: { newIndex?: number; oldIndex?: number }): void;
-  (e: "select", bookId: number): void;
-  (e: "menu", payload: { bookId: number; x: number; y: number }): void;
-}>();
+// Deliberately this shelf's own, not the page's: shelves on one page can be laid out differently.
+const viewMode = useShelfViewMode(props.shelf, props.defaultViewMode);
+
+const shelfId = computed(() => shelves.value.find((shelf) => shelf.name === props.shelf)?.id ?? null);
+
+const {
+  items,
+  replaceItems,
+  hasMore,
+  isLoadingMore,
+  loaded,
+  error: loadError,
+  loadMore,
+  reload,
+} = usePaginatedList<Book>({
+  resourceId: shelfId,
+  cacheKey: (id, page) => cacheKeys.shelfBooks(id, page, props.pageSize),
+  cacheKeyPrefix: (id) => cacheKeys.shelfBooksPrefix(id),
+  fetchPage: (id, page) => getShelfBooks(id, page, props.pageSize),
+  itemKey: (book) => book.id,
+});
+
+// The page reloads its shelves after mutating the library (e.g. adding a book)
+watch(refreshToken, () => void reload());
+
+const error = computed(() => {
+  const e = loadError.value;
+  if (!e) return "";
+  if (e instanceof Error) return e.message;
+  return "Failed to load books. Please try again.";
+});
+
+const filteredBooks = computed(() => {
+  const query = searchQuery.value.toLowerCase().trim();
+  if (!query) return items.value;
+
+  return items.value.filter(
+    (book) => book.title.toLowerCase().includes(query) || book.author.toLowerCase().includes(query),
+  );
+});
+
+/**
+ * vuedraggable reorders the array it renders from in place, so the shelf draws from a mutable
+ * copy that re-syncs whenever the filtered list changes.
+ */
+const books = ref<Book[]>([]) as Ref<Book[]>;
+
+watch(
+  filteredBooks,
+  (next) => {
+    books.value = [...next];
+  },
+  { immediate: true },
+);
+
+registerShelf(computed(() => ({ loaded: loaded.value, count: filteredBooks.value.length })));
+
+// Reordering persists positions against the shelf, which only makes sense while the full shelf is
+// on screen (i.e., no search filter is active)
+const isReorderable = computed(() => !searchQuery.value.trim());
+
+const { dragOptions, ignoresClick, handleDragStart, handleDragEnd, moveBookToEdge } = useShelfReorder({
+  books,
+  shelfId,
+  enabled: isReorderable,
+  onPersisted: replaceItems,
+});
+
+const showSentinel = computed(() => props.paginated && (hasMore.value || isLoadingMore.value));
+
+const sentinelEl = ref<HTMLElement | null>(null);
+const { reobserve } = useInfiniteScroll(sentinelEl, loadMore);
+
+// Re-observe once a fresh page has rendered, so the sentinel keeps triggering.
+watch(items, () => void nextTick(reobserve));
+
+const { contextMenu, openContextMenu, closeContextMenu } = useContextMenu();
+
+function startDrag() {
+  // Starting a drag dismisses any open long-press menu, revealing the book being
+  // moved (the drag was already armed underneath the menu).
+  closeContextMenu();
+  handleDragStart();
+}
+
+function handleCoverClick(bookId: number) {
+  if (ignoresClick()) return;
+  router.push({ name: "book-detail", params: { id: bookId } });
+}
+
+function handleContextView() {
+  const bookId = contextMenu.value.bookId;
+  closeContextMenu();
+  if (bookId !== null) router.push({ name: "book-detail", params: { id: bookId } });
+}
+
+function handleContextMove(edge: "top" | "bottom") {
+  const bookId = contextMenu.value.bookId;
+  closeContextMenu();
+  if (bookId !== null) void moveBookToEdge(bookId, edge);
+}
 </script>
 
 <template>
-  <section class="shelf-section">
-    <h2 v-if="title" class="shelf-section-title">{{ title }}</h2>
-
-    <draggable
-      v-if="viewMode === 'grid'"
-      class="books-container books-grid"
-      :list="books"
-      item-key="id"
-      :disabled="!reorderable"
-      v-bind="dragOptions"
-      @start="$emit('dragstart')"
-      @end="$emit('dragend', $event)"
-    >
-      <template #item="{ element: book }">
-        <BookCoverTile
-          :book="book"
-          :show-progress="showProgress"
-          @click="$emit('select', $event)"
-          @menu="$emit('menu', $event)"
-        />
-      </template>
-    </draggable>
-
-    <div v-else class="books-container books-list">
-      <div v-for="book in books" :key="book.id">
-        <BookCard :book="book" @menu="$emit('menu', $event)" />
-      </div>
+  <!-- Nothing to show at all (an empty shelf, still loading) leaves no box behind, so the page's
+       spacing between shelves never has to account for invisible ones. -->
+  <section v-if="books.length || error || showSentinel" class="book-shelf">
+    <div v-if="error" class="error">
+      {{ error }}
     </div>
+
+    <template v-if="books.length">
+      <!-- Titleless shelves still get the shelf header row, so their toggle stays where a titled shelf's would be. -->
+      <header class="book-shelf-header">
+        <h2 v-if="title" class="book-shelf-title">{{ title }}</h2>
+        <ShelfViewModeToggle v-model="viewMode" />
+      </header>
+
+      <draggable
+        v-if="viewMode === 'grid'"
+        class="books-container books-grid"
+        :list="books"
+        item-key="id"
+        :disabled="!isReorderable"
+        v-bind="dragOptions"
+        @start="startDrag"
+        @end="handleDragEnd"
+      >
+        <template #item="{ element: book }">
+          <BookCoverTile :book="book" :show-progress="showProgress" @click="handleCoverClick" @menu="openContextMenu" />
+        </template>
+      </draggable>
+
+      <div v-else class="books-container books-list">
+        <div v-for="book in books" :key="book.id">
+          <BookCard :book="book" @menu="openContextMenu" />
+        </div>
+      </div>
+    </template>
+
+    <div v-if="showSentinel" ref="sentinelEl" class="infinite-sentinel">
+      <span v-if="isLoadingMore" class="infinite-loading">Loading more…</span>
+    </div>
+
+    <BookContextMenu
+      v-if="contextMenu.visible && contextMenu.bookId !== null"
+      :x="contextMenu.x"
+      :y="contextMenu.y"
+      @view="handleContextView"
+      @move="handleContextMove"
+      @close="closeContextMenu"
+    />
   </section>
 </template>
 
 <style scoped>
-.shelf-section-title {
-  margin: 0 0 var(--spacing-sm);
+.book-shelf-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-height: 30px;
+  margin-bottom: var(--spacing-sm);
+}
+
+.book-shelf-header > :last-child {
+  margin-left: auto;
+}
+
+.book-shelf-title {
+  margin: 0;
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--color-text);
@@ -139,5 +269,18 @@ defineEmits<{
 .grid-drag,
 .grid-chosen {
   opacity: 1 !important;
+}
+
+.infinite-sentinel {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--spacing-lg) 0;
+  min-height: 48px;
+}
+
+.infinite-loading {
+  color: var(--color-text-secondary);
+  font-size: 14px;
 }
 </style>

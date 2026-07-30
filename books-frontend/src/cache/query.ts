@@ -17,7 +17,13 @@ export async function cachedQuery<T>(options: CachedQueryOptions<T>): Promise<vo
 
   const cached = await cacheGet<T>(key);
   if (cached && stillCurrent()) {
-    onData(cached.data, "cache");
+    try {
+      onData(cached.data, "cache");
+    } catch (err) {
+      // An entry written by an older build can have a shape this caller no longer understands.
+      // In that case, fall through to the network rather than take the caller down.
+      console.warn(`Discarding unreadable cache entry for "${key}":`, err);
+    }
   }
 
   try {
