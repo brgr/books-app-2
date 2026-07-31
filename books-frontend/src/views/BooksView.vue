@@ -1,17 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { getShelves } from "../api/books";
 import BookShelf from "../components/book/BookShelf.vue";
 import BookSearchModal from "../components/modals/BookSearchModal.vue";
 import BooksSearchHeader from "../components/ui/BooksSearchHeader.vue";
 import LibraryNav from "../components/ui/LibraryNav.vue";
 import NavigationBar from "../components/ui/NavigationBar.vue";
-import { ShelfName, type Shelf } from "../api/types";
-import { useCachedQuery } from "../composables/useCachedQuery";
+import { ShelfName } from "../api/types";
 import { useAddBook } from "../composables/useAddBook";
 import { provideLibraryPage } from "../composables/useLibraryPage";
-import { cacheKeys } from "../cache/keys";
 
 const route = useRoute();
 const router = useRouter();
@@ -26,11 +23,7 @@ function goToShelf(shelf: "to-read" | "finished") {
   router.push({ name: "shelf", params: { shelf } });
 }
 
-const { data: shelvesData } = useCachedQuery<Shelf[]>(cacheKeys.shelves(), () => getShelves());
-
-const shelves = computed(() => shelvesData.value ?? []);
-
-const { allShelvesEmpty, refreshShelves } = provideLibraryPage({ searchQuery, shelves });
+const { allShelvesEmpty, refreshShelves } = provideLibraryPage({ searchQuery });
 
 const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(refreshShelves);
 </script>

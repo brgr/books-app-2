@@ -1,5 +1,4 @@
 import { computed, inject, onBeforeUnmount, provide, ref, shallowRef, type InjectionKey, type Ref } from "vue";
-import type { Shelf } from "../api/types";
 
 /** What a shelf reports back to the page, so the page can tell when everything it shows is empty. */
 export interface ShelfState {
@@ -13,8 +12,6 @@ export interface ShelfState {
 export interface LibraryPageContext {
   /** The one search box driving all shelves on the page. */
   searchQuery: Ref<string>;
-  /** All shelves that exist, so a shelf can resolve its own id from its name. */
-  shelves: Ref<Shelf[]>;
   /** Bumped when the page mutates the library (e.g. a book was added); shelves reload off it. */
   refreshToken: Ref<number>;
   registerShelf: (state: Ref<ShelfState>) => void;
@@ -27,7 +24,7 @@ const libraryPageKey = Symbol("library-page") as InjectionKey<LibraryPageContext
  * (a tab) that renders one or more `<BookShelf>`; it returns the page's own view of those
  * shelves collectively.
  */
-export function provideLibraryPage(state: Pick<LibraryPageContext, "searchQuery" | "shelves">) {
+export function provideLibraryPage(state: Pick<LibraryPageContext, "searchQuery">) {
   // Shelves come and go with the page's own v-ifs, so the registry is rebuilt by reassignment
   // rather than mutated: a shallowRef keeps the reported state refs intact instead of unwrapping them.
   const registered = shallowRef<Ref<ShelfState>[]>([]);

@@ -6,13 +6,11 @@ import BookCard from "./BookCard/BookCard.vue";
 import BookContextMenu from "./BookContextMenu.vue";
 import BookCoverTile from "./BookCoverTile.vue";
 import ShelfViewModeToggle from "./ShelfViewModeToggle.vue";
-import { getShelfBooks } from "../../api/books";
 import type { Book, ShelfName } from "../../api/types";
-import { cacheKeys } from "../../cache/keys";
 import { useContextMenu } from "../../composables/useContextMenu";
 import { useInfiniteScroll } from "../../composables/useInfiniteScroll";
 import { useLibraryPage } from "../../composables/useLibraryPage";
-import { usePaginatedList } from "../../composables/usePaginatedList";
+import { useShelfBooks } from "../../composables/useShelfBooks";
 import { useShelfReorder } from "../../composables/useShelfReorder";
 import { useShelfViewMode, type ViewMode } from "../../composables/useShelfViewMode";
 
@@ -32,48 +30,12 @@ const props = withDefaults(
 );
 
 const router = useRouter();
-const { searchQuery, shelves, refreshToken, registerShelf } = useLibraryPage();
+const { searchQuery } = useLibraryPage();
 
 // Deliberately this shelf's own, not the page's: shelves on one page can be laid out differently.
 const viewMode = useShelfViewMode(props.shelf, props.defaultViewMode);
 
-const shelfId = computed(() => shelves.value.find((shelf) => shelf.name === props.shelf)?.id ?? null);
-
-const {
-  items,
-  replaceItems,
-  hasMore,
-  isLoadingMore,
-  loaded,
-  error: loadError,
-  loadMore,
-  reload,
-} = usePaginatedList<Book>({
-  resourceId: shelfId,
-  cacheKey: (id, page) => cacheKeys.shelfBooks(id, page, props.pageSize),
-  cacheKeyPrefix: (id) => cacheKeys.shelfBooksPrefix(id),
-  fetchPage: (id, page) => getShelfBooks(id, page, props.pageSize),
-  itemKey: (book) => book.id,
-});
-
-// The page reloads its shelves after mutating the library (e.g. adding a book)
-watch(refreshToken, () => void reload());
-
-const error = computed(() => {
-  const e = loadError.value;
-  if (!e) return "";
-  if (e instanceof Error) return e.message;
-  return "Failed to load books. Please try again.";
-});
-
-const filteredBooks = computed(() => {
-  const query = searchQuery.value.toLowerCase().trim();
-  if (!query) return items.value;
-
-  return items.value.filter(
-    (book) => book.title.toLowerCase().includes(query) || book.author.toLowerCase().includes(query),
-  );
-});
+const { books: filteredBooks, shelfId, error, hasMore, isLoadingMore, loadMore, replaceItems } = useShelfBooks(props);
 
 /**
  * vuedraggable reorders the array it renders from in place, so the shelf draws from a mutable
@@ -88,8 +50,6 @@ watch(
   },
   { immediate: true },
 );
-
-registerShelf(computed(() => ({ loaded: loaded.value, count: filteredBooks.value.length })));
 
 // Reordering persists positions against the shelf, which only makes sense while the full shelf is
 // on screen (i.e., no search filter is active)
@@ -108,7 +68,7 @@ const sentinelEl = ref<HTMLElement | null>(null);
 const { reobserve } = useInfiniteScroll(sentinelEl, loadMore);
 
 // Re-observe once a fresh page has rendered, so the sentinel keeps triggering.
-watch(items, () => void nextTick(reobserve));
+watch(filteredBooks, () => void nextTick(reobserve));
 
 const { contextMenu, openContextMenu, closeContextMenu } = useContextMenu();
 
