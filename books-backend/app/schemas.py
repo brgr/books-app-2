@@ -131,14 +131,6 @@ class UserBookResponse(UserBookBase):
 
 
 # Shelf schemas
-class ShelfResponse(BaseModel):
-    id: int
-    name: ShelfName
-    display_name: str
-
-    model_config = ConfigDict(from_attributes=True)
-
-
 class ShelfItemReorderRequest(BaseModel):
     moved_book_id: int
     before_book_id: Optional[int] = None

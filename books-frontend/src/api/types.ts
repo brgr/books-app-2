@@ -27,12 +27,6 @@ export interface UserBook {
   updated_at: string;
 }
 
-export interface Shelf {
-  id: number;
-  name: ShelfName;
-  display_name: string;
-}
-
 export interface ShelfReorderRequest {
   moved_book_id: number;
   before_book_id?: number | null;

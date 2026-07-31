@@ -4,7 +4,6 @@ import type { Book, ShelfName } from "../api/types";
 import { cacheKeys } from "../cache/keys";
 import { useLibraryPage } from "./useLibraryPage.ts";
 import { usePaginatedList } from "./usePaginatedList.ts";
-import { useShelves } from "./useShelves.ts";
 
 export interface ShelfBooksOptions {
   shelf: ShelfName;
@@ -13,9 +12,6 @@ export interface ShelfBooksOptions {
 
 export function useShelfBooks(options: ShelfBooksOptions) {
   const { searchQuery, refreshToken, registerShelf } = useLibraryPage();
-  const { shelves } = useShelves();
-
-  const shelfId = computed(() => shelves.value.find((shelf) => shelf.name === options.shelf)?.id ?? null);
 
   const {
     items,
@@ -26,11 +22,11 @@ export function useShelfBooks(options: ShelfBooksOptions) {
     error: loadError,
     loadMore,
     reload,
-  } = usePaginatedList<Book>({
-    resourceId: shelfId,
-    cacheKey: (id, page) => cacheKeys.shelfBooks(id, page, options.pageSize),
-    cacheKeyPrefix: (id) => cacheKeys.shelfBooksPrefix(id),
-    fetchPage: (id, page) => getShelfBooks(id, page, options.pageSize),
+  } = usePaginatedList<Book, ShelfName>({
+    resourceId: options.shelf,
+    cacheKey: (shelf, page) => cacheKeys.shelfBooks(shelf, page, options.pageSize),
+    cacheKeyPrefix: (shelf) => cacheKeys.shelfBooksPrefix(shelf),
+    fetchPage: (shelf, page) => getShelfBooks(shelf, page, options.pageSize),
     itemKey: (book) => book.id,
   });
 
@@ -55,5 +51,5 @@ export function useShelfBooks(options: ShelfBooksOptions) {
 
   registerShelf(computed(() => ({ loaded: loaded.value, count: books.value.length })));
 
-  return { books, shelfId, error, hasMore, isLoadingMore, loadMore, replaceItems };
+  return { books, error, hasMore, isLoadingMore, loadMore, replaceItems };
 }

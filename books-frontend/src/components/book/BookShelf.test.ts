@@ -7,16 +7,13 @@ import BookCoverTile from "./BookCoverTile.vue";
 import { ShelfName, type Book, type PaginatedBooks } from "../../api/types";
 import { cacheClear } from "../../cache/store";
 import { provideLibraryPage } from "../../composables/useLibraryPage";
-import { resetShelves } from "../../composables/useShelves";
 
 const push = vi.fn();
 vi.mock("vue-router", () => ({ useRouter: () => ({ push }) }));
 
 const getShelfBooks = vi.fn();
-const getShelves = vi.fn();
 vi.mock("../../api/books", () => ({
   getShelfBooks: (...args: unknown[]) => getShelfBooks(...args),
-  getShelves: () => getShelves(),
   reorderShelfItem: vi.fn(async () => ({})),
 }));
 
@@ -71,10 +68,6 @@ describe("BookShelf", () => {
     await cacheClear();
     localStorage.clear();
     push.mockClear();
-    // The shelf list is fetched once per app, so each test starts it over
-    resetShelves();
-    getShelves.mockReset();
-    getShelves.mockResolvedValue([{ id: 7, name: ShelfName.STARTED, display_name: "Reading" }]);
     getShelfBooks.mockReset();
     getShelfBooks.mockResolvedValue(page(books));
   });

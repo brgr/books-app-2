@@ -10,7 +10,7 @@ import type {
   GoogleBookResult,
   ImportRecord,
   PaginatedBooks,
-  Shelf,
+  ShelfName,
   ShelfReorderRequest,
   UserBook,
   UserBookShelfUpdate,
@@ -23,20 +23,15 @@ export async function getBooks(page = 1, pageSize = 20): Promise<PaginatedBooks>
   return response.data;
 }
 
-export async function getShelves(): Promise<Shelf[]> {
-  const response = await apiClient.get<Shelf[]>("/shelves");
-  return response.data;
-}
-
-export async function getShelfBooks(shelfId: number, page = 1, pageSize = 20): Promise<PaginatedBooks> {
-  const response = await apiClient.get<PaginatedBooks>(`/shelves/${shelfId}/books`, {
+export async function getShelfBooks(shelf: ShelfName, page = 1, pageSize = 20): Promise<PaginatedBooks> {
+  const response = await apiClient.get<PaginatedBooks>(`/shelves/${shelf}/books`, {
     params: { page, page_size: pageSize },
   });
   return response.data;
 }
 
-export async function reorderShelfItem(shelfId: number, payload: ShelfReorderRequest): Promise<void> {
-  await apiClient.post(`/shelves/${shelfId}/items/reorder`, payload);
+export async function reorderShelfItem(shelf: ShelfName, payload: ShelfReorderRequest): Promise<void> {
+  await apiClient.post(`/shelves/${shelf}/items/reorder`, payload);
 }
 
 export async function getBook(id: number): Promise<Book> {

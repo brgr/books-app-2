@@ -6,14 +6,9 @@ from typing import NamedTuple
 from sqlalchemy.orm import Session
 
 from app.book_events import build_user_book_response, project_user_book_state
-from app.models import Book, Shelf, ShelfName, User, UserBook
+from app.models import Book, ShelfName, User, UserBook
 from app.schemas import ShelfItemReorderRequest
-from app.shelves.shelves import (
-    DEFAULT_SHELVES,
-    SORT_ORDER_GAP,
-    ensure_shelf_position,
-    get_or_create_default_shelves,
-)
+from app.shelves.shelves import SORT_ORDER_GAP, ensure_shelf_position
 
 
 class Neighbour(NamedTuple):
@@ -23,10 +18,6 @@ class Neighbour(NamedTuple):
 
 class ShelfError(Exception):
     """Base for shelf domain errors."""
-
-
-class ShelfNotFoundError(ShelfError):
-    """The requested shelf does not exist for the acting user (maps to 404)."""
 
 
 class BookNotInLibraryError(ShelfError):
@@ -48,23 +39,10 @@ class ShelfService:
     def _user_id(self) -> int:
         return self.user.id
 
-    def get_shelves(self) -> list[Shelf]:
-        """Return the user's shelves in default order."""
-        shelves_by_name = get_or_create_default_shelves(self.db, self._user_id)
-        self.db.commit()
-        return [
-            shelves_by_name[name] for name in DEFAULT_SHELVES if name in shelves_by_name
-        ]
-
     def list_books(
-        self, shelf_id: int, page: int, page_size: int
+        self, shelf_name: ShelfName, page: int, page_size: int
     ) -> tuple[list[Book], int]:
-        """Return one page of a shelf's books and the total.
-
-        Raises ShelfNotFoundError if the shelf is not owned by the acting user.
-        """
-        shelf_name = self._shelf_name(shelf_id)
-
+        """Return one page of a shelf's books and the total."""
         books_query = (
             self.db.query(Book, UserBook)
             .join(UserBook, UserBook.book_id == Book.id)
@@ -86,14 +64,12 @@ class ShelfService:
             books.append(book)
         return books, total
 
-    def reorder(self, shelf_id: int, payload: ShelfItemReorderRequest) -> None:
+    def reorder(self, shelf_name: ShelfName, payload: ShelfItemReorderRequest) -> None:
         """Reposition a book on a shelf using fractional sort orders.
 
-        Raises ShelfNotFoundError / BookNotInLibraryError (404) or
-        ShelfReorderError (400) on any ownership or reference violation.
+        Raises BookNotInLibraryError (404) or ShelfReorderError (400) on any
+        ownership or reference violation.
         """
-        shelf_name = self._shelf_name(shelf_id)
-
         moved_user_book = self._get_user_book(payload.moved_book_id)
         if not moved_user_book:
             raise BookNotInLibraryError("Book not in your library")
@@ -131,19 +107,6 @@ class ShelfService:
 
         for index, user_book in enumerate(user_books, start=1):
             user_book.sort_order = SORT_ORDER_GAP * Decimal(index)
-
-    def _shelf_name(self, shelf_id: int) -> ShelfName:
-        """Return the ShelfName an owned shelf represents, or raise if it isn't ours."""
-        shelf = (
-            self.db.query(Shelf)
-            .filter(Shelf.id == shelf_id, Shelf.user_id == self._user_id)
-            .first()
-        )
-
-        if not shelf:
-            raise ShelfNotFoundError("Shelf not found")
-
-        return shelf.name
 
     def _get_user_book(self, book_id: int) -> UserBook | None:
         return (

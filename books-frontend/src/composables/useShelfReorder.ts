@@ -1,6 +1,6 @@
 import { ref, type Ref } from "vue";
 import { reorderShelfItem } from "../api/books";
-import type { Book } from "../api/types";
+import type { Book, ShelfName } from "../api/types";
 
 export interface ShelfReorderOptions {
   /**
@@ -8,8 +8,8 @@ export interface ShelfReorderOptions {
    * splices it directly, so this has to be the same ref the shelf draws from.
    */
   books: Ref<Book[]>;
-  /** Positions are persisted against this shelf; `null` (unresolved shelf) disables persisting. */
-  shelfId: Ref<number | null>;
+  /** Positions are persisted against this shelf. */
+  shelf: ShelfName;
   /** Whether reordering is allowed at all. Normally off while the shelf shows only part of itself. */
   enabled: Ref<boolean>;
   /** Mirrors a persisted order back into the caller's accumulated items. */
@@ -24,7 +24,7 @@ const clickGraceMs = 200;
  * click is really the tail of a drag rather than a tap on a book.
  */
 export function useShelfReorder(options: ShelfReorderOptions) {
-  const { books, shelfId, enabled, onPersisted } = options;
+  const { books, shelf, enabled, onPersisted } = options;
 
   const isDragging = ref(false);
   const lastDragTime = ref(0);
@@ -49,10 +49,8 @@ export function useShelfReorder(options: ShelfReorderOptions) {
   // Persists a reorder against the shelf, then mirrors the new order back into the accumulated
   // items so it survives future page loads
   async function persist(order: Book[], movedId: number, beforeId: number | null, afterId: number | null) {
-    if (shelfId.value === null) return;
-
     try {
-      await reorderShelfItem(shelfId.value, {
+      await reorderShelfItem(shelf, {
         moved_book_id: movedId,
         before_book_id: beforeId,
         after_book_id: afterId,

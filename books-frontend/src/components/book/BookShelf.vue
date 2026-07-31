@@ -35,7 +35,7 @@ const { searchQuery } = useLibraryPage();
 // Deliberately this shelf's own, not the page's: shelves on one page can be laid out differently.
 const viewMode = useShelfViewMode(props.shelf, props.defaultViewMode);
 
-const { books: filteredBooks, shelfId, error, hasMore, isLoadingMore, loadMore, replaceItems } = useShelfBooks(props);
+const { books: filteredBooks, error, hasMore, isLoadingMore, loadMore, replaceItems } = useShelfBooks(props);
 
 /**
  * vuedraggable reorders the array it renders from in place, so the shelf draws from a mutable
@@ -57,7 +57,7 @@ const isReorderable = computed(() => !searchQuery.value.trim());
 
 const { dragOptions, ignoresClick, handleDragStart, handleDragEnd, moveBookToEdge } = useShelfReorder({
   books,
-  shelfId,
+  shelf: props.shelf,
   enabled: isReorderable,
   onPersisted: replaceItems,
 });
