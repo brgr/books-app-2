@@ -13,5 +13,4 @@ export const cacheKeys = {
 
   // Prefixes for bulk invalidation
   shelvesPrefix: () => SHELVES_PREFIX,
-  bookPrefix,
 };

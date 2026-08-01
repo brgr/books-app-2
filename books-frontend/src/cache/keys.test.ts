@@ -17,7 +17,8 @@ describe("cacheKeys", () => {
 
   it("generates invalidation prefixes that cover the matching keys", () => {
     expect(cacheKeys.shelfBooks(ShelfName.STARTED, 1, 20).startsWith(cacheKeys.shelvesPrefix())).toBe(true);
-    expect(cacheKeys.book(42).startsWith(cacheKeys.bookPrefix(42))).toBe(true);
-    expect(cacheKeys.bookEvents(42).startsWith(cacheKeys.bookPrefix(42))).toBe(true);
+    expect(
+      cacheKeys.shelfBooks(ShelfName.STARTED, 1, 20).startsWith(cacheKeys.shelfBooksPrefix(ShelfName.STARTED)),
+    ).toBe(true);
   });
 });

@@ -16,7 +16,7 @@ import { formatShortDate } from "../utils/date";
 import { useCachedQuery } from "../composables/useCachedQuery";
 import { useAddBook } from "../composables/useAddBook";
 import { cacheKeys } from "../cache/keys";
-import { cacheDel, cacheInvalidateByPrefix } from "../cache/store";
+import { invalidateCache } from "../cache/invalidate";
 
 const router = useRouter();
 const route = useRoute();
@@ -53,13 +53,6 @@ const updatingShelf = ref(false);
 const notesSaving = ref(false);
 const progressSaving = ref(false);
 
-async function loadBook() {
-  await cacheDel(cacheKeys.book(bookId.value));
-  await cacheDel(cacheKeys.bookEvents(bookId.value));
-  await refreshBook();
-  await refreshEvents();
-}
-
 const canUpdateProgress = computed(() => book.value?.user_book?.shelf === ShelfName.STARTED);
 
 async function changeShelf(shelf: ShelfName, occurredAt?: string) {
@@ -67,8 +60,10 @@ async function changeShelf(shelf: ShelfName, occurredAt?: string) {
   updatingShelf.value = true;
   try {
     await setShelf(book.value.id, { shelf, occurred_at: occurredAt });
-    await cacheInvalidateByPrefix(cacheKeys.shelvesPrefix());
-    await loadBook();
+    await invalidateCache.shelfChanged(book.value.id);
+
+    await refreshBook();
+    await refreshEvents();
   } catch (err) {
     console.error("Failed to update shelf:", err);
     alert("Failed to update shelf");
@@ -85,7 +80,7 @@ async function handleSaveNotes(notes: string) {
     const userBook = await setShelf(book.value.id, { shelf, notes });
 
     await setBook({ ...book.value, user_book: userBook });
-    await cacheDel(cacheKeys.bookEvents(book.value.id));
+    await invalidateCache.notesSaved(book.value.id);
 
     await refreshEvents();
   } catch (error) {
@@ -103,9 +98,8 @@ async function handleSaveProgress(progress: BookProgressUpdate) {
     const userBook = await addBookProgress(book.value.id, progress);
 
     await setBook({ ...book.value, user_book: userBook });
-    await cacheDel(cacheKeys.bookEvents(book.value.id));
-    // We need to make sure the cached book data is updated, so we invalidate the cache for this book
-    await cacheInvalidateByPrefix(cacheKeys.shelvesPrefix());
+    await invalidateCache.progressSaved(book.value.id);
+
     await refreshEvents();
   } catch (error) {
     console.error("Failed to save progress:", error);

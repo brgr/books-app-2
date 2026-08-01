@@ -1,8 +1,7 @@
 import { ref } from "vue";
 import { createBook } from "../api/books";
 import type { GoogleBookResult } from "../api/types";
-import { cacheKeys } from "../cache/keys";
-import { cacheInvalidateByPrefix } from "../cache/store";
+import { invalidateCache } from "../cache/invalidate";
 
 /**
  * Drives the "add a book" flow shared by the book list and detail views:
@@ -36,7 +35,7 @@ export function useAddBook(onAdded?: () => unknown | Promise<unknown>) {
         page_count: book.page_count ?? undefined,
         cover_image_url: book.thumbnail || undefined,
       });
-      await cacheInvalidateByPrefix(cacheKeys.shelvesPrefix());
+      await invalidateCache.bookAdded();
       await onAdded?.();
       showSearchModal.value = false;
     } catch (err: any) {

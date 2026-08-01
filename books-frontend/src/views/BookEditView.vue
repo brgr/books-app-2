@@ -8,7 +8,7 @@ import NavigationBar from "../components/ui/NavigationBar.vue";
 import CoverEditField from "../components/book/CoverEditField.vue";
 import { useCachedQuery } from "../composables/useCachedQuery";
 import { cacheKeys } from "../cache/keys";
-import { cacheDel, cacheInvalidateByPrefix } from "../cache/store";
+import { invalidateCache } from "../cache/invalidate";
 
 const route = useRoute();
 const router = useRouter();
@@ -87,8 +87,7 @@ async function handleSubmit() {
     }
 
     await updateBook(book.value.id, bookData);
-    await cacheDel(cacheKeys.book(book.value.id));
-    await cacheInvalidateByPrefix(cacheKeys.shelvesPrefix());
+    await invalidateCache.bookUpdated(book.value.id);
 
     router.push({ name: "book-detail", params: { id: book.value.id } });
   } catch (err: any) {
@@ -115,8 +114,7 @@ async function handleDelete() {
   loading.value = true;
   try {
     await deleteBook(book.value.id);
-    await cacheInvalidateByPrefix(cacheKeys.bookPrefix(book.value.id));
-    await cacheInvalidateByPrefix(cacheKeys.shelvesPrefix());
+    await invalidateCache.bookDeleted(book.value.id);
 
     router.push({ name: "books" });
   } catch (err: any) {
