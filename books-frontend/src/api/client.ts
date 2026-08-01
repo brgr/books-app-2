@@ -1,4 +1,5 @@
 import axios from "axios";
+import { cacheClear } from "../cache/store";
 
 // The backend origin. Empty means same-origin.
 // In dev, the Vite proxy (vite.config.ts) forwards /api and /uploads to the backend, which keeps covers and cookies on
@@ -36,6 +37,14 @@ export function isAuthenticated(): boolean {
   return authenticated;
 }
 
+/**
+ * Ends the session locally: drops the authenticated flag and the cached API data with it.
+ */
+export async function endSession(): Promise<void> {
+  setAuthenticated(false);
+  await cacheClear();
+}
+
 async function tryRefreshAccessToken(): Promise<boolean> {
   try {
     // Refresh endpoint reads refresh token from HttpOnly cookie
@@ -67,8 +76,8 @@ export function setupAuthInterceptor(router: any) {
           }
         }
 
-        // Clear authentication state after refresh failure
-        authenticated = false;
+        // Clear authentication state (and cached data) after refresh failure
+        await endSession();
 
         // Redirect to login page if not already there
         if (router.currentRoute.value.name !== "login") {

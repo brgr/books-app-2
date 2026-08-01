@@ -1,4 +1,4 @@
-import { apiClient, isAuthenticated, setAuthenticated } from "./client";
+import { apiClient, endSession, isAuthenticated, setAuthenticated } from "./client";
 import type { User } from "./types";
 
 export { isAuthenticated };
@@ -25,7 +25,7 @@ export async function logout(): Promise<void> {
     // Server clears HttpOnly cookies
     await apiClient.post("/auth/logout");
   } finally {
-    setAuthenticated(false);
+    await endSession();
   }
 }
 
@@ -40,7 +40,7 @@ export async function checkAuthStatus(): Promise<boolean> {
     setAuthenticated(true);
     return true;
   } catch {
-    setAuthenticated(false);
+    await endSession();
     return false;
   }
 }
