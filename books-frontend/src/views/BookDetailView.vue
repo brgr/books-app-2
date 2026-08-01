@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { useRouter, useRoute } from "vue-router";
-import { getBook, setShelf, getBookEvents, addBookProgress } from "../api/books";
+import { useRoute, useRouter } from "vue-router";
+import { addBookProgress, getBook, getBookEvents, setShelf } from "../api/books";
 import { getMediaUrl } from "../api/client";
 import BookNotes from "../components/book/BookNotes.vue";
 import BookSearchModal from "../components/modals/BookSearchModal.vue";
@@ -11,7 +11,7 @@ import NavigationBar from "../components/ui/NavigationBar.vue";
 import CollapsibleText from "../components/ui/CollapsibleText.vue";
 import BookMetadata from "../components/book/BookMetadata.vue";
 import EventTimeline from "../components/book/EventTimeline.vue";
-import { ShelfName, type Book, type BookEvent, type BookProgressUpdate } from "../api/types";
+import { type Book, type BookEvent, type BookProgressUpdate, ShelfName } from "../api/types";
 import { formatShortDate } from "../utils/date";
 import { useCachedQuery } from "../composables/useCachedQuery";
 import { useAddBook } from "../composables/useAddBook";
@@ -30,6 +30,7 @@ const {
   data: book,
   error: bookError,
   refresh: refreshBook,
+  setData: setBook,
 } = useCachedQuery<Book>(
   computed(() => (bookId.value ? cacheKeys.book(bookId.value) : "")),
   () => getBook(bookId.value),
@@ -81,8 +82,11 @@ async function handleSaveNotes(notes: string) {
   notesSaving.value = true;
   try {
     const shelf = book.value.user_book?.shelf ?? ShelfName.WANT_TO_READ;
-    book.value.user_book = await setShelf(book.value.id, { shelf, notes });
+    const userBook = await setShelf(book.value.id, { shelf, notes });
+
+    await setBook({ ...book.value, user_book: userBook });
     await cacheDel(cacheKeys.bookEvents(book.value.id));
+
     await refreshEvents();
   } catch (error) {
     console.error("Failed to save notes:", error);
@@ -96,8 +100,12 @@ async function handleSaveProgress(progress: BookProgressUpdate) {
   if (!book.value || !canUpdateProgress.value) return;
   progressSaving.value = true;
   try {
-    book.value.user_book = await addBookProgress(book.value.id, progress);
+    const userBook = await addBookProgress(book.value.id, progress);
+
+    await setBook({ ...book.value, user_book: userBook });
     await cacheDel(cacheKeys.bookEvents(book.value.id));
+    // We need to make sure the cached book data is updated, so we invalidate the cache for this book
+    await cacheInvalidateByPrefix(cacheKeys.shelvesPrefix());
     await refreshEvents();
   } catch (error) {
     console.error("Failed to save progress:", error);
