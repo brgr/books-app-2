@@ -48,7 +48,7 @@ class ReadingService:
         """
         user_book = ensure_added_event(self.db, user_id=self._user_id, book_id=book_id)
         project_user_book_state(self.db, user_book)
-        previous_shelf = user_book.shelf
+        previous_shelf = user_book.reading_shelf
 
         occurred_at = self._normalize_occurred_at(shelf_data.occurred_at)
         self._apply_shelf_transition(user_book, shelf_data.shelf, occurred_at)
@@ -103,7 +103,7 @@ class ReadingService:
             raise ValueError("Cannot record progress before starting reading")
 
         project_user_book_state(self.db, user_book)
-        if user_book.shelf != ShelfName.STARTED:
+        if user_book.reading_shelf != ShelfName.STARTED:
             raise ValueError("Cannot record progress before starting reading")
 
         user_book = apply_progress_event(
@@ -134,18 +134,22 @@ class ReadingService:
         user_book_id = user_book.id
         if (
             target_shelf == ShelfName.WANT_TO_READ
-            and user_book.shelf != ShelfName.WANT_TO_READ
+            and user_book.reading_shelf != ShelfName.WANT_TO_READ
         ):
             raise ValueError(
                 "Cannot revert to 'want_to_read' after reading has started"
             )
 
-        if target_shelf == ShelfName.STARTED and user_book.shelf != ShelfName.STARTED:
+        if (
+            target_shelf == ShelfName.STARTED
+            and user_book.reading_shelf != ShelfName.STARTED
+        ):
             record_started_reading(
                 self.db, user_book_id=user_book_id, occurred_at=occurred_at
             )
         elif (
-            target_shelf == ShelfName.FINISHED and user_book.shelf != ShelfName.FINISHED
+            target_shelf == ShelfName.FINISHED
+            and user_book.reading_shelf != ShelfName.FINISHED
         ):
             record_finished_reading(
                 self.db, user_book_id=user_book_id, occurred_at=occurred_at
@@ -172,7 +176,7 @@ class ReadingService:
         self, user_book: UserBook, previous_shelf: ShelfName
     ) -> None:
         """Keep the book's position sensible after a shelf change."""
-        if previous_shelf != user_book.shelf:
+        if previous_shelf != user_book.reading_shelf:
             move_to_end_of_shelf(self.db, user_book)
         else:
             ensure_shelf_position(self.db, user_book)

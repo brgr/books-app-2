@@ -97,7 +97,9 @@ def _ensure_user_book(session: Session, user_id: int, book_id: int) -> UserBook:
     if user_book is not None:
         return user_book
 
-    user_book = UserBook(user_id=user_id, book_id=book_id, shelf=ShelfName.WANT_TO_READ)
+    user_book = UserBook(
+        user_id=user_id, book_id=book_id, reading_shelf=ShelfName.WANT_TO_READ
+    )
     session.add(user_book)
     session.flush()
 
@@ -346,11 +348,11 @@ def project_user_book_state(session: Session, user_book: UserBook) -> UserBook:
     latest_progress = _latest_event(session, user_book_id, BookEventCode.PROGRESS_SET)
 
     if finished_at is not None:
-        user_book.shelf = ShelfName.FINISHED
+        user_book.reading_shelf = ShelfName.FINISHED
     elif started_at is not None:
-        user_book.shelf = ShelfName.STARTED
+        user_book.reading_shelf = ShelfName.STARTED
     else:
-        user_book.shelf = ShelfName.WANT_TO_READ
+        user_book.reading_shelf = ShelfName.WANT_TO_READ
 
     if latest_progress:
         progress_entry = (

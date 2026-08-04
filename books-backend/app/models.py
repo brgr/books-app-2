@@ -134,7 +134,9 @@ class UserBook(Base):
     book_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("books.id"), nullable=False
     )
-    shelf: Mapped[ShelfName] = mapped_column(
+    # The default shelf the book's reading state puts it on. Derived from the event
+    # stream (see ``project_user_book_state``), never assigned directly.
+    reading_shelf: Mapped[ShelfName] = mapped_column(
         Enum(ShelfName), nullable=False, default=ShelfName.WANT_TO_READ
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -152,7 +154,10 @@ class UserBook(Base):
     )
 
     def __repr__(self):
-        return f"<UserBook(user_id={self.user_id}, book_id={self.book_id}, shelf='{self.shelf.value}')>"
+        return (
+            f"<UserBook(user_id={self.user_id}, book_id={self.book_id}, "
+            f"reading_shelf='{self.reading_shelf.value}')>"
+        )
 
 
 class BookEventType(Base):
@@ -309,7 +314,7 @@ class BookEventCover(Base):
 
 class Shelf(Base):
     """A row per built-in shelf per user. Gives each shelf a stable id for the
-    API. Membership is derived from ``UserBook.shelf``, not stored here."""
+    API. Membership is derived from ``UserBook.reading_shelf``, not stored here."""
 
     __tablename__ = "shelves"
 

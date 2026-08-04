@@ -115,7 +115,7 @@ def test_import_creates_user_book(client, auth_headers, db_session):
     assert resp.status_code == status.HTTP_200_OK
 
     ub = db_session.query(UserBook).one()
-    assert ub.shelf == ShelfName.WANT_TO_READ
+    assert ub.reading_shelf == ShelfName.WANT_TO_READ
 
 
 # --- Status mapping ---
@@ -138,7 +138,7 @@ def test_import_status_finished(client, auth_headers, db_session):
     assert resp.status_code == status.HTTP_200_OK
 
     ub = db_session.query(UserBook).one()
-    assert ub.shelf == ShelfName.FINISHED
+    assert ub.reading_shelf == ShelfName.FINISHED
 
 
 def test_import_status_abandoned(client, auth_headers, db_session):
@@ -157,7 +157,7 @@ def test_import_status_abandoned(client, auth_headers, db_session):
     assert resp.status_code == status.HTTP_200_OK
 
     ub = db_session.query(UserBook).one()
-    assert ub.shelf == ShelfName.ABANDONED
+    assert ub.reading_shelf == ShelfName.ABANDONED
 
 
 def test_import_status_started(client, auth_headers, db_session):
@@ -176,7 +176,7 @@ def test_import_status_started(client, auth_headers, db_session):
     assert resp.status_code == status.HTTP_200_OK
 
     ub = db_session.query(UserBook).one()
-    assert ub.shelf == ShelfName.STARTED
+    assert ub.reading_shelf == ShelfName.STARTED
 
 
 # --- Notes and progress ---
@@ -331,7 +331,7 @@ def test_import_puts_books_in_default_shelves(client, auth_headers, db_session):
             book.title
             for book in db_session.query(Book)
             .join(UserBook, UserBook.book_id == Book.id)
-            .filter(UserBook.shelf == shelf)
+            .filter(UserBook.reading_shelf == shelf)
             .all()
         }
 
@@ -493,15 +493,21 @@ def test_import_real_export_counts_match_csv(client, auth_headers, db_session):
     assert db_session.query(UserBook).count() == expected_imported
 
     assert (
-        db_session.query(UserBook).filter(UserBook.shelf == ShelfName.FINISHED).count()
+        db_session.query(UserBook)
+        .filter(UserBook.reading_shelf == ShelfName.FINISHED)
+        .count()
         == expected_finished
     )
     assert (
-        db_session.query(UserBook).filter(UserBook.shelf == ShelfName.STARTED).count()
+        db_session.query(UserBook)
+        .filter(UserBook.reading_shelf == ShelfName.STARTED)
+        .count()
         == expected_started
     )
     assert (
-        db_session.query(UserBook).filter(UserBook.shelf == ShelfName.ABANDONED).count()
+        db_session.query(UserBook)
+        .filter(UserBook.reading_shelf == ShelfName.ABANDONED)
+        .count()
         == expected_abandoned
     )
     assert (
@@ -531,7 +537,7 @@ def test_import_real_export_currently_reading(client, auth_headers, db_session):
     started = (
         db_session.query(Book, UserBook)
         .join(UserBook, UserBook.book_id == Book.id)
-        .filter(UserBook.shelf == ShelfName.STARTED)
+        .filter(UserBook.reading_shelf == ShelfName.STARTED)
         .all()
     )
 

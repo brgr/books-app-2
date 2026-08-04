@@ -143,7 +143,7 @@ def import_reading_list_from_bytes(
         user_book = UserBook(
             user_id=user_id,
             book_id=book_id,
-            shelf=derived_shelf,
+            reading_shelf=derived_shelf,
             notes=notes,
             current_page=current_page,
         )

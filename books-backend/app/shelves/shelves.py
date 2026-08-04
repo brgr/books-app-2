@@ -55,7 +55,7 @@ def move_to_end_of_shelf(db: Session, user_book: UserBook) -> None:
         db.query(func.max(UserBook.sort_order))
         .filter(
             UserBook.user_id == user_book.user_id,
-            UserBook.shelf == user_book.shelf,
+            UserBook.reading_shelf == user_book.reading_shelf,
             UserBook.id != user_book.id,
         )
         .scalar()

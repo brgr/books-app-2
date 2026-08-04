@@ -46,7 +46,9 @@ class ShelfService:
         books_query = (
             self.db.query(Book, UserBook)
             .join(UserBook, UserBook.book_id == Book.id)
-            .filter(UserBook.user_id == self._user_id, UserBook.shelf == shelf_name)
+            .filter(
+                UserBook.user_id == self._user_id, UserBook.reading_shelf == shelf_name
+            )
         )
 
         total = books_query.count()
@@ -100,7 +102,9 @@ class ShelfService:
         """Respread the positions on one shelf, so fractional inserts have room again."""
         user_books = (
             self.db.query(UserBook)
-            .filter(UserBook.user_id == self._user_id, UserBook.shelf == shelf_name)
+            .filter(
+                UserBook.user_id == self._user_id, UserBook.reading_shelf == shelf_name
+            )
             .order_by(UserBook.sort_order.asc(), UserBook.id.asc())
             .all()
         )
@@ -126,7 +130,7 @@ class ShelfService:
         if not user_book:
             raise ShelfReorderError("Referenced book is not in your library")
 
-        if user_book.shelf != shelf_name:
+        if user_book.reading_shelf != shelf_name:
             raise ShelfReorderError("Referenced book is not on this shelf")
 
         sort_order = ensure_shelf_position(self.db, user_book)
