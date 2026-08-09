@@ -8,8 +8,12 @@ from app.auth import router as auth
 from app.shelves import router as shelves
 from app.imports import router as imports
 from app.reading import router as reading
+from app.shelves.service import ShelfError
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
+
+# TODO: We should probably do this type of error handling for the other routes / domains too
+app.add_exception_handler(ShelfError, shelves.shelf_error_handler)
 
 
 @app.middleware("http")

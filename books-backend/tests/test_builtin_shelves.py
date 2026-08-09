@@ -47,15 +47,15 @@ def test_shelves_default_and_books_ordering(client, auth_headers, sample_book_da
     assert any(item["id"] == book_two_id for item in finished_items)
 
 
-def test_only_built_in_shelf_names_are_accepted(client, auth_headers):
-    """Anything but the built-in shelves is refused at the path, before any lookup."""
+def test_a_ref_naming_no_shelf_is_not_found(client, auth_headers):
+    """A ref is a built-in name or a custom shelf's id; anything else is a 404.
+
+    Both forms share one path slot, so a bad ref can no longer be rejected by
+    the enum at the path -- it has to be looked up first.
+    """
     for shelf in ("sommerbuecher", "7"):
         response = client.get(f"/api/shelves/{shelf}/books", headers=auth_headers)
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
-
-        error = response.json()["detail"][0]
-        assert error["loc"] == ["path", "shelf_name"]
-        assert "want_to_read" in error["msg"]
+        assert response.status_code == status.HTTP_404_NOT_FOUND
 
     reorder = client.post(
         "/api/shelves/7/items/reorder",
@@ -63,7 +63,7 @@ def test_only_built_in_shelf_names_are_accepted(client, auth_headers):
         headers=auth_headers,
     )
 
-    assert reorder.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert reorder.status_code == status.HTTP_404_NOT_FOUND
 
 
 def test_shelf_reorder_updates_order(client, auth_headers, sample_book_data):
@@ -122,6 +122,43 @@ def test_shelf_reorder_between_two_items(client, auth_headers, sample_book_data)
             "moved_book_id": book_c_id,
             "before_book_id": book_a_id,
             "after_book_id": book_b_id,
+        },
+        headers=auth_headers,
+    )
+    assert reorder_response.status_code == status.HTTP_204_NO_CONTENT
+
+    books_response = client.get("/api/shelves/want_to_read/books", headers=auth_headers)
+    ordered_ids = [item["id"] for item in books_response.json()["items"]]
+    assert ordered_ids == [book_a_id, book_c_id, book_b_id]
+
+
+def test_shelf_reorder_with_inverted_neighbours_rebalances(
+    client, auth_headers, sample_book_data
+):
+    """Neighbors given in the wrong order force a rebalance before the insert.
+
+    When ``before`` sits at or past ``after``, there's no space left to slot
+    the moved book into, so the shelf respreads its positions and the book
+    lands at the midpoint of the respread neighbors.
+    """
+    book_a_id = _create_book(client, auth_headers, sample_book_data, "A", "20")
+    book_b_id = _create_book(client, auth_headers, sample_book_data, "B", "21")
+    book_c_id = _create_book(client, auth_headers, sample_book_data, "C", "22")
+
+    for book_id in (book_a_id, book_b_id, book_c_id):
+        client.put(
+            f"/api/books/{book_id}/shelf",
+            json={"shelf": "want_to_read"},
+            headers=auth_headers,
+        )
+
+    # Initial order: A, B, C. Ask for C between B and A (i.e. inverted)
+    reorder_response = client.post(
+        "/api/shelves/want_to_read/items/reorder",
+        json={
+            "moved_book_id": book_c_id,
+            "before_book_id": book_b_id,
+            "after_book_id": book_a_id,
         },
         headers=auth_headers,
     )

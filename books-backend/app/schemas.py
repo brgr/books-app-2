@@ -1,6 +1,12 @@
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    ConfigDict,
+    StringConstraints,
+    model_validator,
+)
 from datetime import datetime
-from typing import Literal, Optional, cast
+from typing import Annotated, Literal, Optional, cast
 from app.models import Book, BookEvent, ShelfName, BookEventCode, UserBook
 
 
@@ -135,6 +141,32 @@ class ShelfItemReorderRequest(BaseModel):
     moved_book_id: int
     before_book_id: Optional[int] = None
     after_book_id: Optional[int] = None
+
+
+class ShelfNamePayload(BaseModel):
+    """Body of both shelf create and shelf rename."""
+
+    name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
+    ]
+
+
+class ShelfBookAdd(BaseModel):
+    book_id: int
+
+
+class ShelfResponse(BaseModel):
+    """One shelf, of either kind.
+
+    ``ref`` is how the shelf is addressed in a URL: the ``ShelfName`` value for
+    a built-in shelf, the id for a custom one. It is always a string so callers
+    need not branch on the kind to build a path.
+    """
+
+    ref: str
+    kind: Literal["default", "custom"]
+    display_name: str
+    book_count: int
 
 
 # Pagination

@@ -1,19 +1,21 @@
-from decimal import Decimal
-from sqlalchemy import (
-    Integer,
-    String,
-    DateTime,
-    Text,
-    ForeignKey,
-    Enum,
-    UniqueConstraint,
-    Numeric,
-)
-from sqlalchemy.orm import declarative_base, mapped_column, relationship, Mapped
-from datetime import datetime, UTC
-from typing import TYPE_CHECKING
 import enum
 import uuid
+from datetime import UTC, datetime
+from decimal import Decimal
+from typing import TYPE_CHECKING
+
+from sqlalchemy import (
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 
 if TYPE_CHECKING:
     from app.schemas import BookCreate, BookUpdate, UserBookResponse
@@ -22,7 +24,9 @@ Base = declarative_base()
 
 
 class ShelfName(enum.Enum):
-    """The book's shelf. Fixed and built-in for now; no user-created shelves yet."""
+    """A built-in shelf. These four are fixed, and membership in them is derived
+    from reading state rather than assigned; user-created shelves are ``Shelf``
+    rows and work the other way round."""
 
     WANT_TO_READ = "want_to_read"
     STARTED = "started"
@@ -142,14 +146,17 @@ class UserBook(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     current_page: Mapped[int | None] = mapped_column(Integer, nullable=True)
     current_percent: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
-    # Hand-arranged position on whichever shelf the book is on. Null until the
-    # book is first placed; app.shelves assigns and rebalances it.
+    # The position on which this book is on, in a built-in shelf. Null by default, until the user places it once
+    # manually.
     sort_order: Mapped[Decimal | None] = mapped_column(Numeric(20, 10), nullable=True)
 
     # Relationships
     user: Mapped["User"] = relationship(back_populates="user_books")
     book: Mapped["Book"] = relationship(back_populates="user_books")
     events: Mapped[list["BookEvent"]] = relationship(
+        back_populates="user_book", cascade="all, delete-orphan"
+    )
+    shelf_items: Mapped[list["ShelfItem"]] = relationship(
         back_populates="user_book", cascade="all, delete-orphan"
     )
 
@@ -313,8 +320,8 @@ class BookEventCover(Base):
 
 
 class Shelf(Base):
-    """A row per built-in shelf per user. Gives each shelf a stable id for the
-    API. Membership is derived from ``UserBook.reading_shelf``, not stored here."""
+    """A user-created shelf. See ``app.shelves.service`` for how the two kinds
+    of shelf differ."""
 
     __tablename__ = "shelves"
 
@@ -322,17 +329,44 @@ class Shelf(Base):
     user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    name: Mapped[ShelfName] = mapped_column(Enum(ShelfName), nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="shelves")
+    items: Mapped[list["ShelfItem"]] = relationship(
+        back_populates="shelf", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (UniqueConstraint("user_id", "name", name="uq_shelves_user_name"),)
 
-    @property
-    def display_name(self) -> str:
-        from app.shelves.shelves import SHELF_DISPLAY_NAMES
-
-        return SHELF_DISPLAY_NAMES[self.name]
-
     def __repr__(self):
         return f"<Shelf(user_id={self.user_id}, name='{self.name}')>"
+
+
+class ShelfItem(Base):
+    """A book's placement on a user-created shelf, carrying its position there."""
+
+    __tablename__ = "shelf_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    shelf_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("shelves.id", ondelete="CASCADE"), nullable=False
+    )
+    user_book_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("user_books.id", ondelete="CASCADE"), nullable=False
+    )
+    sort_order: Mapped[Decimal] = mapped_column(Numeric(20, 10), nullable=False)
+
+    shelf: Mapped["Shelf"] = relationship(back_populates="items")
+    user_book: Mapped["UserBook"] = relationship(back_populates="shelf_items")
+
+    __table_args__ = (
+        UniqueConstraint(
+            "shelf_id", "user_book_id", name="uq_shelf_items_shelf_user_book"
+        ),
+        Index("ix_shelf_items_shelf_sort", "shelf_id", "sort_order"),
+    )
+
+    def __repr__(self):
+        return (
+            f"<ShelfItem(shelf_id={self.shelf_id}, user_book_id={self.user_book_id})>"
+        )
