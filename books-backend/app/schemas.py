@@ -164,7 +164,7 @@ class ShelfResponse(BaseModel):
     """
 
     ref: str
-    kind: Literal["default", "custom"]
+    kind: Literal["reading", "custom"]
     display_name: str
     book_count: int
 

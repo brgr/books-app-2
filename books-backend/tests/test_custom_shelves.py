@@ -40,7 +40,7 @@ def test_list_shelves_returns_reading_and_custom(client, auth_headers):
         "finished",
         "abandoned",
     ]
-    assert all(shelf["kind"] == "default" for shelf in shelves)
+    assert all(shelf["kind"] == "reading" for shelf in shelves)
     assert shelves[0]["display_name"] == "Want to Read"
 
     _create_shelf(client, auth_headers, "Beach reads")
@@ -90,7 +90,7 @@ def test_shelves_are_scoped_to_their_owner(client, auth_headers, db_session):
     other_headers = {"Authorization": f"Bearer {other_token}"}
 
     shelves = client.get("/api/shelves", headers=other_headers).json()
-    assert all(shelf["kind"] == "default" for shelf in shelves)
+    assert all(shelf["kind"] == "reading" for shelf in shelves)
 
     response = client.get(f"/api/shelves/{shelf_ref}/books", headers=other_headers)
     assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -221,10 +221,6 @@ def test_add_and_remove_books(client, auth_headers, sample_book_data):
     assert [item["id"] for item in books["items"]] == [book_id]
     assert books["total"] == 1
 
-    # TODO: For the following, we need to think about that a bit better. UserBook.shelf is basically
-    #  the reading state. That's a bad name, because a book is on muliple shelves, actually.
-    #  The thing we need to think about more is how reading state is kind of like a shelf (a book
-    #  has a position on that shelf), but also not, in a way...
     # The shelf view carries the same reading-state payload as any other listing
     assert books["items"][0]["user_book"]["shelf"] == "want_to_read"
 

@@ -174,7 +174,7 @@ class ShelfService:
         reading_shelves = [
             ShelfResponse(
                 ref=name.value,
-                kind="default",
+                kind="reading",
                 display_name=READING_SHELF_DISPLAY_NAMES[name],
                 book_count=reading_shelf_counts.get(name, 0),
             )
