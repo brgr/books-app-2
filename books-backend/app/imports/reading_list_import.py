@@ -11,7 +11,7 @@ from app.book_events import (
     record_started_reading,
 )
 from app.image_utils import store_cover_image
-from app.models import Book, Import, ShelfName, UserBook
+from app.models import Book, Import, ReadingShelf, UserBook
 from app.shelves.shelves import ensure_shelf_position
 
 
@@ -27,14 +27,14 @@ def _parse_author(raw: str) -> str:
     return raw.strip()
 
 
-def _derive_shelf(row: dict) -> ShelfName:
+def _derive_shelf(row: dict) -> ReadingShelf:
     if row.get("Finished Reading"):
-        return ShelfName.FINISHED
+        return ReadingShelf.FINISHED
     if row.get("Did Not Finish"):
-        return ShelfName.ABANDONED
+        return ReadingShelf.ABANDONED
     if row.get("Started Reading"):
-        return ShelfName.STARTED
-    return ShelfName.WANT_TO_READ
+        return ReadingShelf.STARTED
+    return ReadingShelf.WANT_TO_READ
 
 
 def _parse_date(val: str) -> datetime | None:
@@ -151,13 +151,13 @@ def import_reading_list_from_bytes(
         db.flush()
 
         ensure_added_event(db, user_id=user_id, book_id=book_id, import_id=import_id)
-        if derived_shelf in (ShelfName.STARTED, ShelfName.FINISHED):
+        if derived_shelf in (ReadingShelf.STARTED, ReadingShelf.FINISHED):
             record_started_reading(
                 db,
                 user_book_id=user_book.id,
                 occurred_at=started_at,
             )
-        if derived_shelf == ShelfName.FINISHED:
+        if derived_shelf == ReadingShelf.FINISHED:
             record_finished_reading(
                 db,
                 user_book_id=user_book.id,
@@ -167,7 +167,7 @@ def import_reading_list_from_bytes(
         ensure_shelf_position(db, user_book)
 
         # The export's "Lists" column is ignored: a book sits on exactly one
-        # built-in shelf, the one its ShelfName puts it on.
+        # reading shelf, the one its ReadingShelf puts it on.
 
         imported += 1
 

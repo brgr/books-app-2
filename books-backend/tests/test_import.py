@@ -14,8 +14,8 @@ from app.models import (
     BookEventImportSource,
     BookEventType,
     Import,
-    Shelf,
-    ShelfName,
+    CustomShelf,
+    ReadingShelf,
     UserBook,
 )
 
@@ -115,7 +115,7 @@ def test_import_creates_user_book(client, auth_headers, db_session):
     assert resp.status_code == status.HTTP_200_OK
 
     ub = db_session.query(UserBook).one()
-    assert ub.reading_shelf == ShelfName.WANT_TO_READ
+    assert ub.reading_shelf == ReadingShelf.WANT_TO_READ
 
 
 # --- Status mapping ---
@@ -138,7 +138,7 @@ def test_import_status_finished(client, auth_headers, db_session):
     assert resp.status_code == status.HTTP_200_OK
 
     ub = db_session.query(UserBook).one()
-    assert ub.reading_shelf == ShelfName.FINISHED
+    assert ub.reading_shelf == ReadingShelf.FINISHED
 
 
 def test_import_status_abandoned(client, auth_headers, db_session):
@@ -157,7 +157,7 @@ def test_import_status_abandoned(client, auth_headers, db_session):
     assert resp.status_code == status.HTTP_200_OK
 
     ub = db_session.query(UserBook).one()
-    assert ub.reading_shelf == ShelfName.ABANDONED
+    assert ub.reading_shelf == ReadingShelf.ABANDONED
 
 
 def test_import_status_started(client, auth_headers, db_session):
@@ -176,7 +176,7 @@ def test_import_status_started(client, auth_headers, db_session):
     assert resp.status_code == status.HTTP_200_OK
 
     ub = db_session.query(UserBook).one()
-    assert ub.reading_shelf == ShelfName.STARTED
+    assert ub.reading_shelf == ReadingShelf.STARTED
 
 
 # --- Notes and progress ---
@@ -299,7 +299,7 @@ def test_import_duplicate_isbn_is_skipped(client, auth_headers, db_session):
 
 
 def test_import_puts_books_in_default_shelves(client, auth_headers, db_session):
-    """Imported books must appear on the default built-in shelves.
+    """Imported books must appear on the default reading shelves.
 
     The frontend loads the main shelf by querying these shelves, so books not on
     them show up as 'No books yet' even though rows exist in user_books.
@@ -326,7 +326,7 @@ def test_import_puts_books_in_default_shelves(client, auth_headers, db_session):
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
 
-    def titles_on(shelf: ShelfName) -> set[str]:
+    def titles_on(shelf: ReadingShelf) -> set[str]:
         return {
             book.title
             for book in db_session.query(Book)
@@ -335,9 +335,9 @@ def test_import_puts_books_in_default_shelves(client, auth_headers, db_session):
             .all()
         }
 
-    assert titles_on(ShelfName.WANT_TO_READ) == {"Queued"}
-    assert titles_on(ShelfName.STARTED) == {"Reading"}
-    assert titles_on(ShelfName.FINISHED) == {"Done"}
+    assert titles_on(ReadingShelf.WANT_TO_READ) == {"Queued"}
+    assert titles_on(ReadingShelf.STARTED) == {"Reading"}
+    assert titles_on(ReadingShelf.FINISHED) == {"Done"}
 
 
 # --- Import provenance ---
@@ -494,19 +494,19 @@ def test_import_real_export_counts_match_csv(client, auth_headers, db_session):
 
     assert (
         db_session.query(UserBook)
-        .filter(UserBook.reading_shelf == ShelfName.FINISHED)
+        .filter(UserBook.reading_shelf == ReadingShelf.FINISHED)
         .count()
         == expected_finished
     )
     assert (
         db_session.query(UserBook)
-        .filter(UserBook.reading_shelf == ShelfName.STARTED)
+        .filter(UserBook.reading_shelf == ReadingShelf.STARTED)
         .count()
         == expected_started
     )
     assert (
         db_session.query(UserBook)
-        .filter(UserBook.reading_shelf == ShelfName.ABANDONED)
+        .filter(UserBook.reading_shelf == ReadingShelf.ABANDONED)
         .count()
         == expected_abandoned
     )
@@ -537,7 +537,7 @@ def test_import_real_export_currently_reading(client, auth_headers, db_session):
     started = (
         db_session.query(Book, UserBook)
         .join(UserBook, UserBook.book_id == Book.id)
-        .filter(UserBook.reading_shelf == ShelfName.STARTED)
+        .filter(UserBook.reading_shelf == ReadingShelf.STARTED)
         .all()
     )
 
@@ -571,7 +571,7 @@ def test_import_real_export_creates_no_custom_shelves(client, auth_headers, db_s
     resp = _upload_zip(client, auth_headers, _zip_from_csv(csv_path))
     assert resp.status_code == status.HTTP_200_OK
 
-    assert db_session.query(Shelf).count() == 0
+    assert db_session.query(CustomShelf).count() == 0
 
     # Every imported book still got a position (sort_order) on the shelf its status puts it on.
     positions = [ub.sort_order for ub in db_session.query(UserBook).all()]

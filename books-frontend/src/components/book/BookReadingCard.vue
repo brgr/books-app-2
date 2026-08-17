@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import BookShelfButton from "./BookShelfButton.vue";
-import { type BookProgressUpdate, ShelfName } from "../../api/types";
+import { type BookProgressUpdate, ReadingShelf } from "../../api/types";
 import { formatShortDate } from "../../utils/date";
 
 type ProgressUnit = "page" | "percent";
 
 const props = defineProps<{
-  shelf: ShelfName | null;
+  shelf: ReadingShelf | null;
   updating?: boolean;
   currentPage?: number | null;
   currentPercent?: number | null;
@@ -18,7 +18,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  change: [shelf: ShelfName, occurredAt?: string];
+  change: [shelf: ReadingShelf, occurredAt?: string];
   "update-progress": [progress: BookProgressUpdate];
 }>();
 
@@ -41,7 +41,7 @@ const displayPercent = computed<number | null>(() => {
 // While actively reading, show the start date beside the pill ("since …")
 // rather than in the bottom dates row, so the shelf and its timeline read
 // together. Finished books keep their dates in the bottom row.
-const showStartedInHeader = computed(() => props.shelf === ShelfName.STARTED && !!props.startedAt);
+const showStartedInHeader = computed(() => props.shelf === ReadingShelf.STARTED && !!props.startedAt);
 
 // The unit the user last tracked in, so re-opening the editor defaults to it.
 const lastUnit = computed<ProgressUnit>(() => (hasPercent.value ? "percent" : "page"));

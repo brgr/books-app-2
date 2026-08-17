@@ -7,7 +7,7 @@ from pydantic import (
 )
 from datetime import datetime
 from typing import Annotated, Literal, Optional, cast
-from app.models import Book, BookEvent, ShelfName, BookEventCode, UserBook
+from app.models import Book, BookEvent, ReadingShelf, BookEventCode, UserBook
 
 
 # User schemas
@@ -78,7 +78,7 @@ class BookResponse(BookBase):
 
 # UserBook schemas
 class UserBookBase(BaseModel):
-    shelf: ShelfName
+    shelf: ReadingShelf
     notes: Optional[str] = None
 
 
@@ -87,14 +87,14 @@ class UserBookCreate(UserBookBase):
 
 
 class UserBookUpdate(BaseModel):
-    shelf: Optional[ShelfName] = None
+    shelf: Optional[ReadingShelf] = None
     notes: Optional[str] = None
 
 
 class UserBookShelfUpdate(BaseModel):
     """Schema for updating just the shelf via PUT endpoint."""
 
-    shelf: ShelfName
+    shelf: ReadingShelf
     notes: Optional[str] = None
     occurred_at: Optional[datetime] = None
 
@@ -137,13 +137,13 @@ class UserBookResponse(UserBookBase):
 
 
 # Shelf schemas
-class ShelfItemReorderRequest(BaseModel):
+class ShelfReorderRequest(BaseModel):
     moved_book_id: int
     before_book_id: Optional[int] = None
     after_book_id: Optional[int] = None
 
 
-class ShelfNamePayload(BaseModel):
+class CustomShelfNamePayload(BaseModel):
     """Body of both shelf create and shelf rename."""
 
     name: Annotated[
@@ -151,15 +151,15 @@ class ShelfNamePayload(BaseModel):
     ]
 
 
-class ShelfBookAdd(BaseModel):
+class CustomShelfBookAdd(BaseModel):
     book_id: int
 
 
 class ShelfResponse(BaseModel):
     """One shelf, of either kind.
 
-    ``ref`` is how the shelf is addressed in a URL: the ``ShelfName`` value for
-    a built-in shelf, the id for a custom one. It is always a string so callers
+    ``ref`` is how the shelf is addressed in a URL: the ``ReadingShelf`` value for
+    a reading shelf, the id for a custom one. It is always a string so callers
     need not branch on the kind to build a path.
     """
 
@@ -232,7 +232,7 @@ class ExportBookEntry(BaseModel):
     description: Optional[str] = None
     published_date: Optional[datetime] = None
     page_count: Optional[int] = None
-    shelf: ShelfName
+    shelf: ReadingShelf
     notes: Optional[str] = None
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None

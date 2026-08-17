@@ -1,6 +1,6 @@
 """User-created shelves: CRUD, membership and ordering.
 
-The built-in shelves are covered by ``test_builtin_shelves``.
+The reading shelves are covered by ``test_reading_shelves``.
 The tests here test custom shelves and the rules that keep the two kinds apart.
 """
 
@@ -29,7 +29,7 @@ def _create_shelf(client, auth_headers, name):
 # Listing
 
 
-def test_list_shelves_returns_built_ins_and_custom(client, auth_headers):
+def test_list_shelves_returns_reading_and_custom(client, auth_headers):
     response = client.get("/api/shelves", headers=auth_headers)
     assert response.status_code == status.HTTP_200_OK
 
@@ -69,7 +69,7 @@ def test_list_shelves_reports_book_counts(client, auth_headers, sample_book_data
         for shelf in client.get("/api/shelves", headers=auth_headers).json()
     }
     assert shelves[shelf_ref]["book_count"] == 1
-    # The book stays on its built-in shelf as well; the two are independent.
+    # The book stays on its reading shelf as well; the two are independent.
     assert shelves["want_to_read"]["book_count"] == 1
 
 
@@ -169,10 +169,10 @@ def test_unknown_shelf_ref_is_not_found(client, auth_headers):
     )
 
 
-# Built-in shelves are not user-owned objects
+# Reading shelves are not user-owned objects
 
 
-def test_built_in_shelves_reject_lifecycle_changes(client, auth_headers):
+def test_reading_shelves_reject_lifecycle_changes(client, auth_headers):
     assert (
         client.patch(
             "/api/shelves/finished", json={"name": "Done"}, headers=auth_headers
@@ -185,10 +185,10 @@ def test_built_in_shelves_reject_lifecycle_changes(client, auth_headers):
     )
 
 
-def test_built_in_shelf_membership_is_derived_not_assigned(
+def test_reading_shelf_membership_is_derived_not_assigned(
     client, auth_headers, sample_book_data
 ):
-    """Membership of a built-in shelf follows reading state, so it is read-only here."""
+    """Membership of a reading shelf follows reading state, so it is read-only here."""
     book_id = _create_book(client, auth_headers, sample_book_data, "Derived", "1")
 
     response = client.post(
@@ -307,7 +307,7 @@ def test_removing_a_book_from_the_library_clears_its_shelf_entries(
 
 
 def test_custom_shelf_keeps_its_own_order(client, auth_headers, sample_book_data):
-    """Position on a custom shelf is independent of position on a built-in one."""
+    """Position on a custom shelf is independent of position on a reading shelf."""
     book_a = _create_book(client, auth_headers, sample_book_data, "A", "1")
     book_b = _create_book(client, auth_headers, sample_book_data, "B", "2")
     shelf_ref = _create_shelf(client, auth_headers, "Beach reads")
@@ -333,11 +333,11 @@ def test_custom_shelf_keeps_its_own_order(client, auth_headers, sample_book_data
     books = client.get(f"/api/shelves/{shelf_ref}/books", headers=auth_headers).json()
     assert [item["id"] for item in books["items"]] == [book_b, book_a]
 
-    # The built-in shelf both books also sit on is untouched.
-    built_in = client.get(
+    # The reading shelf both books also sit on is untouched.
+    reading_shelf = client.get(
         "/api/shelves/want_to_read/books", headers=auth_headers
     ).json()
-    assert [item["id"] for item in built_in["items"]] == [book_a, book_b]
+    assert [item["id"] for item in reading_shelf["items"]] == [book_a, book_b]
 
 
 def test_reorder_between_two_books_on_a_custom_shelf(

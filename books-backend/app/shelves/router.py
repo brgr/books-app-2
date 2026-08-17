@@ -9,15 +9,15 @@ from app.database import get_db
 from app.models import User
 from app.schemas import (
     PaginatedBooks,
-    ShelfBookAdd,
-    ShelfItemReorderRequest,
-    ShelfNamePayload,
+    CustomShelfBookAdd,
+    ShelfReorderRequest,
+    CustomShelfNamePayload,
     ShelfResponse,
 )
 from app.shelves.service import (
     BookNotInLibraryError,
-    BuiltInShelfError,
-    ShelfNameTakenError,
+    ReadingShelfError,
+    CustomShelfNameTakenError,
     ShelfNotFoundError,
     ShelfReorderError,
     ShelfService,
@@ -30,9 +30,9 @@ async def shelf_error_handler(_request: Request, exception: Exception) -> JSONRe
     match exception:
         case ShelfNotFoundError() | BookNotInLibraryError():
             status_code = status.HTTP_404_NOT_FOUND
-        case ShelfReorderError() | BuiltInShelfError():
+        case ShelfReorderError() | ReadingShelfError():
             status_code = status.HTTP_400_BAD_REQUEST
-        case ShelfNameTakenError():
+        case CustomShelfNameTakenError():
             status_code = status.HTTP_409_CONFLICT
         case _:
             raise exception
@@ -52,19 +52,19 @@ ShelfServiceDep = Annotated[ShelfService, Depends(get_shelf_service)]
 
 @router.get("/shelves", response_model=list[ShelfResponse])
 def list_shelves(service: ShelfServiceDep):
-    """Every shelf the user has: the four built-in ones, then their own."""
+    """Every shelf the user has: the four reading shelves, then their custom ones."""
     return service.list_shelves()
 
 
 @router.post(
     "/shelves", response_model=ShelfResponse, status_code=status.HTTP_201_CREATED
 )
-def create_shelf(payload: ShelfNamePayload, service: ShelfServiceDep):
+def create_shelf(payload: CustomShelfNamePayload, service: ShelfServiceDep):
     return service.create_shelf(payload)
 
 
 @router.patch("/shelves/{ref}", response_model=ShelfResponse)
-def update_shelf(ref: str, payload: ShelfNamePayload, service: ShelfServiceDep):
+def update_shelf(ref: str, payload: CustomShelfNamePayload, service: ShelfServiceDep):
     return service.update_shelf(ref, payload)
 
 
@@ -83,7 +83,7 @@ def list_books_in_shelf(
 ):
     """Return one page of a shelf's books.
 
-    ``ref`` names a built-in shelf by its ShelfName value or a custom one by id.
+    ``ref`` names a reading shelf by its ReadingShelf value or a custom one by id.
     """
     if page < 1:
         page = 1
@@ -104,7 +104,7 @@ def list_books_in_shelf(
 
 
 @router.post("/shelves/{ref}/books", status_code=status.HTTP_204_NO_CONTENT)
-def add_book_to_shelf(ref: str, payload: ShelfBookAdd, service: ShelfServiceDep):
+def add_book_to_shelf(ref: str, payload: CustomShelfBookAdd, service: ShelfServiceDep):
     """Put a book on a custom shelf."""
     service.add_book(ref, payload.book_id)
     return None
@@ -119,7 +119,7 @@ def remove_book_from_shelf(ref: str, book_id: int, service: ShelfServiceDep):
 @router.post("/shelves/{ref}/items/reorder", status_code=status.HTTP_204_NO_CONTENT)
 def reorder_shelf_item(
     ref: str,
-    payload: ShelfItemReorderRequest,
+    payload: ShelfReorderRequest,
     service: ShelfServiceDep,
 ):
     service.reorder(service.resolve(ref), payload)

@@ -2,10 +2,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { invalidateCache } from "./invalidate";
 import { cacheKeys } from "./keys";
 import { cacheClear, cacheGet, cacheSet } from "./store";
-import { ShelfName } from "../api/types";
+import { ReadingShelf } from "../api/types";
 
-const shelfPage = cacheKeys.shelfBooks(ShelfName.STARTED, 1, 20);
-const otherShelfPage = cacheKeys.shelfBooks(ShelfName.FINISHED, 1, 20);
+const shelfPage = cacheKeys.shelfBooks(ReadingShelf.STARTED, 1, 20);
+const otherShelfPage = cacheKeys.shelfBooks(ReadingShelf.FINISHED, 1, 20);
 
 /** Everything a mutation could plausibly touch, so each case can assert what survives as well as what goes. */
 async function seed() {

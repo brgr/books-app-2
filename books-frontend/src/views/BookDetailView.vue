@@ -11,7 +11,7 @@ import NavigationBar from "../components/ui/NavigationBar.vue";
 import CollapsibleText from "../components/ui/CollapsibleText.vue";
 import BookMetadata from "../components/book/BookMetadata.vue";
 import EventTimeline from "../components/book/EventTimeline.vue";
-import { type Book, type BookEvent, type BookProgressUpdate, ShelfName } from "../api/types";
+import { type Book, type BookEvent, type BookProgressUpdate, ReadingShelf } from "../api/types";
 import { formatShortDate } from "../utils/date";
 import { useCachedQuery } from "../composables/useCachedQuery";
 import { useAddBook } from "../composables/useAddBook";
@@ -53,9 +53,9 @@ const updatingShelf = ref(false);
 const notesSaving = ref(false);
 const progressSaving = ref(false);
 
-const canUpdateProgress = computed(() => book.value?.user_book?.shelf === ShelfName.STARTED);
+const canUpdateProgress = computed(() => book.value?.user_book?.shelf === ReadingShelf.STARTED);
 
-async function changeShelf(shelf: ShelfName, occurredAt?: string) {
+async function changeShelf(shelf: ReadingShelf, occurredAt?: string) {
   if (!book.value) return;
   updatingShelf.value = true;
   try {
@@ -76,7 +76,7 @@ async function handleSaveNotes(notes: string) {
   if (!book.value) return;
   notesSaving.value = true;
   try {
-    const shelf = book.value.user_book?.shelf ?? ShelfName.WANT_TO_READ;
+    const shelf = book.value.user_book?.shelf ?? ReadingShelf.WANT_TO_READ;
     const userBook = await setShelf(book.value.id, { shelf, notes });
 
     await setBook({ ...book.value, user_book: userBook });

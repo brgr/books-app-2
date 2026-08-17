@@ -1,6 +1,6 @@
 import { ref, type Ref } from "vue";
 import { reorderShelfItem } from "../api/books";
-import type { Book, ShelfName } from "../api/types";
+import type { Book, ReadingShelf } from "../api/types";
 
 export interface ShelfReorderOptions {
   /**
@@ -9,7 +9,7 @@ export interface ShelfReorderOptions {
    */
   books: Ref<Book[]>;
   /** Positions are persisted against this shelf. */
-  shelf: ShelfName;
+  shelf: ReadingShelf;
   /** Whether reordering is allowed at all. Normally off while the shelf shows only part of itself. */
   enabled: Ref<boolean>;
   /** Mirrors a persisted order back into the caller's accumulated items. */

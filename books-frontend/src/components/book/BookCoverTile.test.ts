@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { mount } from "@vue/test-utils";
 import BookCoverTile from "./BookCoverTile.vue";
-import { ShelfName, type Book } from "../../api/types";
+import { ReadingShelf, type Book } from "../../api/types";
 
 function makeBook(overrides: Partial<Book> = {}): Book {
   return {
@@ -58,7 +58,7 @@ describe("BookCoverTile", () => {
         book: makeBook({
           page_count: 200,
           user_book: {
-            shelf: ShelfName.STARTED,
+            shelf: ReadingShelf.STARTED,
             current_page: 50,
           } as Book["user_book"],
         }),
@@ -74,7 +74,7 @@ describe("BookCoverTile", () => {
         book: makeBook({
           page_count: 200,
           user_book: {
-            shelf: ShelfName.STARTED,
+            shelf: ReadingShelf.STARTED,
             current_page: 50,
           } as Book["user_book"],
         }),
@@ -92,7 +92,7 @@ describe("BookCoverTile", () => {
         book: makeBook({
           page_count: 200,
           user_book: {
-            shelf: ShelfName.WANT_TO_READ,
+            shelf: ReadingShelf.WANT_TO_READ,
             current_page: 50,
           } as Book["user_book"],
         }),

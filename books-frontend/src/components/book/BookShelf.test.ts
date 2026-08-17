@@ -4,7 +4,7 @@ import { defineComponent, h, nextTick, ref } from "vue";
 import BookShelf from "./BookShelf.vue";
 import BookCard from "./BookCard/BookCard.vue";
 import BookCoverTile from "./BookCoverTile.vue";
-import { ShelfName, type Book, type PaginatedBooks } from "../../api/types";
+import { ReadingShelf, type Book, type PaginatedBooks } from "../../api/types";
 import { cacheClear } from "../../cache/store";
 import { provideLibraryPage } from "../../composables/useLibraryPage";
 
@@ -55,7 +55,7 @@ function mountShelf(props: { title?: string | null; showProgress?: boolean; defa
   const Host = defineComponent({
     setup() {
       provideLibraryPage({ searchQuery: ref("") });
-      return () => h(BookShelf, { shelf: ShelfName.STARTED, ...props });
+      return () => h(BookShelf, { shelf: ReadingShelf.STARTED, ...props });
     },
   });
 
@@ -106,7 +106,7 @@ describe("BookShelf", () => {
     await wrapper.find('.view-btn[title="Grid view"]').trigger("click");
 
     expect(wrapper.find(".books-grid").exists()).toBe(true);
-    expect(localStorage.getItem(`shelfViewMode:${ShelfName.STARTED}`)).toBe("grid");
+    expect(localStorage.getItem(`shelfViewMode:${ReadingShelf.STARTED}`)).toBe("grid");
   });
 
   it("passes showProgress down to its tiles", async () => {

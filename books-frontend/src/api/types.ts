@@ -1,11 +1,11 @@
-export const ShelfName = {
+export const ReadingShelf = {
   WANT_TO_READ: "want_to_read",
   STARTED: "started",
   FINISHED: "finished",
   ABANDONED: "abandoned",
 } as const;
 
-export type ShelfName = (typeof ShelfName)[keyof typeof ShelfName];
+export type ReadingShelf = (typeof ReadingShelf)[keyof typeof ReadingShelf];
 
 export interface User {
   id: number;
@@ -17,7 +17,7 @@ export interface UserBook {
   id: number;
   user_id: number;
   book_id: number;
-  shelf: ShelfName;
+  shelf: ReadingShelf;
   started_at: string | null;
   finished_at: string | null;
   notes: string | null;
@@ -77,7 +77,7 @@ export interface BookUpdate {
 }
 
 export interface UserBookShelfUpdate {
-  shelf: ShelfName;
+  shelf: ReadingShelf;
   notes?: string;
   occurred_at?: string;
 }

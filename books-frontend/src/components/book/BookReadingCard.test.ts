@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { mount } from "@vue/test-utils";
 import BookReadingCard from "./BookReadingCard.vue";
-import { ShelfName } from "../../api/types";
+import { ReadingShelf } from "../../api/types";
 
 function makeProps(
   overrides: Partial<{
-    shelf: ShelfName | null;
+    shelf: ReadingShelf | null;
     updating: boolean;
     currentPage: number | null;
     currentPercent: number | null;
@@ -16,7 +16,7 @@ function makeProps(
   }> = {},
 ) {
   return {
-    shelf: ShelfName.STARTED,
+    shelf: ReadingShelf.STARTED,
     updating: false,
     currentPage: 10,
     currentPercent: null,
@@ -118,12 +118,12 @@ describe("BookReadingCard", () => {
 
   it('re-emits "change" from the shelf button', () => {
     const wrapper = mount(BookReadingCard, { props: makeProps() });
-    wrapper.findComponent({ name: "BookShelfButton" }).vm.$emit("change", ShelfName.FINISHED);
-    expect(wrapper.emitted("change")?.[0]?.[0]).toBe(ShelfName.FINISHED);
+    wrapper.findComponent({ name: "BookShelfButton" }).vm.$emit("change", ReadingShelf.FINISHED);
+    expect(wrapper.emitted("change")?.[0]?.[0]).toBe(ReadingShelf.FINISHED);
   });
 
   it('shows a "Finish" action while reading', () => {
-    const wrapper = mount(BookReadingCard, { props: makeProps({ shelf: ShelfName.STARTED }) });
+    const wrapper = mount(BookReadingCard, { props: makeProps({ shelf: ReadingShelf.STARTED }) });
     expect(wrapper.find('[data-test="shelf-button"]').text()).toBe("Finish");
   });
 

@@ -1,33 +1,33 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { ShelfName } from "../../api/types";
+import { ReadingShelf } from "../../api/types";
 
 const props = defineProps<{
-  shelf: ShelfName | null;
+  shelf: ReadingShelf | null;
   updating: boolean;
 }>();
 
 const emit = defineEmits<{
-  change: [shelf: ShelfName, occurredAt?: string];
+  change: [shelf: ReadingShelf, occurredAt?: string];
 }>();
 
-type Action = { label: string; target: ShelfName };
+type Action = { label: string; target: ReadingShelf };
 
 // The single next action for the current shelf. Not-yet-started and abandoned
 // books both offer "Start Reading"; a finished book can be read again.
 const action = computed<Action>(() => {
   switch (props.shelf) {
-    case ShelfName.STARTED:
-      return { label: "Finish", target: ShelfName.FINISHED };
-    case ShelfName.FINISHED:
-      return { label: "Read Again", target: ShelfName.STARTED };
+    case ReadingShelf.STARTED:
+      return { label: "Finish", target: ReadingShelf.FINISHED };
+    case ReadingShelf.FINISHED:
+      return { label: "Read Again", target: ReadingShelf.STARTED };
     default:
-      return { label: "Start Reading", target: ShelfName.STARTED };
+      return { label: "Start Reading", target: ReadingShelf.STARTED };
   }
 });
 
 const pastDateLabel = computed(() =>
-  action.value.target === ShelfName.FINISHED ? "Finish on a past date…" : "Start on a past date…",
+  action.value.target === ReadingShelf.FINISHED ? "Finish on a past date…" : "Start on a past date…",
 );
 
 // Today in the input's yyyy-mm-dd format, used to bar future dates client-side

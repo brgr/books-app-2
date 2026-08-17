@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount } from "vue";
-import { type Book, ShelfName } from "../../api/types";
+import { type Book, ReadingShelf } from "../../api/types";
 import { getMediaUrl } from "../../api/client";
 
 const props = withDefaults(
@@ -96,7 +96,7 @@ const hasPercent = computed(() => {
 const showBadge = computed(() => {
   if (!props.showProgress) return false;
   const userBook = props.book.user_book;
-  if (userBook?.shelf !== ShelfName.STARTED) return false;
+  if (userBook?.shelf !== ReadingShelf.STARTED) return false;
   // A percent-tracked book carries progress even without a page count.
   return (
     hasPercent.value ||

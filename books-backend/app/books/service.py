@@ -102,7 +102,7 @@ class BookService:
     def remove_from_library(self, book: Book) -> None:
         """Remove the book from the acting user's library.
 
-        Deleting the UserBook cascades to its events and list items via the
+        Deleting the UserBook cascades to its events and custom-shelf placements via the
         ORM relationship.
         """
         # noinspection PyTypeChecker

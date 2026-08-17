@@ -1,23 +1,23 @@
-import { ShelfName } from "../api/types";
+import { ReadingShelf } from "../api/types";
 
-const SHELF_LABELS: Record<ShelfName, string> = {
-  [ShelfName.WANT_TO_READ]: "Want to read",
-  [ShelfName.STARTED]: "Started",
-  [ShelfName.FINISHED]: "Finished",
-  [ShelfName.ABANDONED]: "Abandoned",
+const SHELF_LABELS: Record<ReadingShelf, string> = {
+  [ReadingShelf.WANT_TO_READ]: "Want to read",
+  [ReadingShelf.STARTED]: "Started",
+  [ReadingShelf.FINISHED]: "Finished",
+  [ReadingShelf.ABANDONED]: "Abandoned",
 };
 
-const SHELF_COLORS: Record<ShelfName, string> = {
-  [ShelfName.WANT_TO_READ]: "var(--color-primary)",
-  [ShelfName.STARTED]: "var(--color-warning)",
-  [ShelfName.FINISHED]: "var(--color-success)",
-  [ShelfName.ABANDONED]: "var(--color-text-secondary)",
+const SHELF_COLORS: Record<ReadingShelf, string> = {
+  [ReadingShelf.WANT_TO_READ]: "var(--color-primary)",
+  [ReadingShelf.STARTED]: "var(--color-warning)",
+  [ReadingShelf.FINISHED]: "var(--color-success)",
+  [ReadingShelf.ABANDONED]: "var(--color-text-secondary)",
 };
 
-export function getShelfLabel(shelf: ShelfName | null): string {
+export function getShelfLabel(shelf: ReadingShelf | null): string {
   return shelf ? SHELF_LABELS[shelf] : "N/A";
 }
 
-export function getShelfColor(shelf: ShelfName | null): string {
+export function getShelfColor(shelf: ReadingShelf | null): string {
   return shelf ? SHELF_COLORS[shelf] : "var(--color-text-secondary)";
 }

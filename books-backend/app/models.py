@@ -23,9 +23,9 @@ if TYPE_CHECKING:
 Base = declarative_base()
 
 
-class ShelfName(enum.Enum):
-    """A built-in shelf. These four are fixed, and membership in them is derived
-    from reading state rather than assigned; user-created shelves are ``Shelf``
+class ReadingShelf(enum.Enum):
+    """A reading shelf. These four are fixed, and membership in them is derived
+    from reading state rather than assigned; user-created shelves are ``CustomShelf``
     rows and work the other way round."""
 
     WANT_TO_READ = "want_to_read"
@@ -54,7 +54,7 @@ class User(Base):
     user_books: Mapped[list["UserBook"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
-    shelves: Mapped[list["Shelf"]] = relationship(
+    custom_shelves: Mapped[list["CustomShelf"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 
@@ -138,15 +138,17 @@ class UserBook(Base):
     book_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("books.id"), nullable=False
     )
-    # The default shelf the book's reading state puts it on. Derived from the event
+    # The reading shelf the book's state puts it on. Derived from the event
     # stream (see ``project_user_book_state``), never assigned directly.
-    reading_shelf: Mapped[ShelfName] = mapped_column(
-        Enum(ShelfName), nullable=False, default=ShelfName.WANT_TO_READ
+    reading_shelf: Mapped[ReadingShelf] = mapped_column(
+        Enum(ReadingShelf, name="shelfname"),
+        nullable=False,
+        default=ReadingShelf.WANT_TO_READ,
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     current_page: Mapped[int | None] = mapped_column(Integer, nullable=True)
     current_percent: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
-    # The position on which this book is on, in a built-in shelf. Null by default, until the user places it once
+    # The position of this book on a reading shelf. Null by default, until the user places it once
     # manually.
     sort_order: Mapped[Decimal | None] = mapped_column(Numeric(20, 10), nullable=True)
 
@@ -156,7 +158,7 @@ class UserBook(Base):
     events: Mapped[list["BookEvent"]] = relationship(
         back_populates="user_book", cascade="all, delete-orphan"
     )
-    shelf_items: Mapped[list["ShelfItem"]] = relationship(
+    custom_shelf_placements: Mapped[list["CustomShelfPlacement"]] = relationship(
         back_populates="user_book", cascade="all, delete-orphan"
     )
 
@@ -319,7 +321,7 @@ class BookEventCover(Base):
         return f"<BookEventCover(event_id='{self.event_id}')>"
 
 
-class Shelf(Base):
+class CustomShelf(Base):
     """A user-created shelf. See ``app.shelves.service`` for how the two kinds
     of shelf differ."""
 
@@ -331,18 +333,18 @@ class Shelf(Base):
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
 
-    user: Mapped["User"] = relationship(back_populates="shelves")
-    items: Mapped[list["ShelfItem"]] = relationship(
+    user: Mapped["User"] = relationship(back_populates="custom_shelves")
+    placements: Mapped[list["CustomShelfPlacement"]] = relationship(
         back_populates="shelf", cascade="all, delete-orphan"
     )
 
     __table_args__ = (UniqueConstraint("user_id", "name", name="uq_shelves_user_name"),)
 
     def __repr__(self):
-        return f"<Shelf(user_id={self.user_id}, name='{self.name}')>"
+        return f"<CustomShelf(user_id={self.user_id}, name='{self.name}')>"
 
 
-class ShelfItem(Base):
+class CustomShelfPlacement(Base):
     """A book's placement on a user-created shelf, carrying its position there."""
 
     __tablename__ = "shelf_items"
@@ -356,8 +358,10 @@ class ShelfItem(Base):
     )
     sort_order: Mapped[Decimal] = mapped_column(Numeric(20, 10), nullable=False)
 
-    shelf: Mapped["Shelf"] = relationship(back_populates="items")
-    user_book: Mapped["UserBook"] = relationship(back_populates="shelf_items")
+    shelf: Mapped["CustomShelf"] = relationship(back_populates="placements")
+    user_book: Mapped["UserBook"] = relationship(
+        back_populates="custom_shelf_placements"
+    )
 
     __table_args__ = (
         UniqueConstraint(
@@ -367,6 +371,4 @@ class ShelfItem(Base):
     )
 
     def __repr__(self):
-        return (
-            f"<ShelfItem(shelf_id={self.shelf_id}, user_book_id={self.user_book_id})>"
-        )
+        return f"<CustomShelfPlacement(shelf_id={self.shelf_id}, user_book_id={self.user_book_id})>"

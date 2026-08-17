@@ -48,7 +48,7 @@ def test_shelves_default_and_books_ordering(client, auth_headers, sample_book_da
 
 
 def test_a_ref_naming_no_shelf_is_not_found(client, auth_headers):
-    """A ref is a built-in name or a custom shelf's id; anything else is a 404.
+    """A ref is a reading-shelf name or a custom shelf's id; anything else is a 404.
 
     Both forms share one path slot, so a bad ref can no longer be rejected by
     the enum at the path -- it has to be looked up first.

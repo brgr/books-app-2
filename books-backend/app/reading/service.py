@@ -17,7 +17,7 @@ from app.books.queries import get_user_book
 from app.models import (
     BookEvent,
     BookEventCode,
-    ShelfName,
+    ReadingShelf,
     User,
     UserBook,
 )
@@ -103,7 +103,7 @@ class ReadingService:
             raise ValueError("Cannot record progress before starting reading")
 
         project_user_book_state(self.db, user_book)
-        if user_book.reading_shelf != ShelfName.STARTED:
+        if user_book.reading_shelf != ReadingShelf.STARTED:
             raise ValueError("Cannot record progress before starting reading")
 
         user_book = apply_progress_event(
@@ -128,28 +128,28 @@ class ReadingService:
     def _apply_shelf_transition(
         self,
         user_book: UserBook,
-        target_shelf: ShelfName,
+        target_shelf: ReadingShelf,
         occurred_at: datetime | None,
     ) -> None:
         user_book_id = user_book.id
         if (
-            target_shelf == ShelfName.WANT_TO_READ
-            and user_book.reading_shelf != ShelfName.WANT_TO_READ
+            target_shelf == ReadingShelf.WANT_TO_READ
+            and user_book.reading_shelf != ReadingShelf.WANT_TO_READ
         ):
             raise ValueError(
                 "Cannot revert to 'want_to_read' after reading has started"
             )
 
         if (
-            target_shelf == ShelfName.STARTED
-            and user_book.reading_shelf != ShelfName.STARTED
+            target_shelf == ReadingShelf.STARTED
+            and user_book.reading_shelf != ReadingShelf.STARTED
         ):
             record_started_reading(
                 self.db, user_book_id=user_book_id, occurred_at=occurred_at
             )
         elif (
-            target_shelf == ShelfName.FINISHED
-            and user_book.reading_shelf != ShelfName.FINISHED
+            target_shelf == ReadingShelf.FINISHED
+            and user_book.reading_shelf != ReadingShelf.FINISHED
         ):
             record_finished_reading(
                 self.db, user_book_id=user_book_id, occurred_at=occurred_at
@@ -173,7 +173,7 @@ class ReadingService:
             user_book.notes = normalized_notes
 
     def _sync_shelf_position(
-        self, user_book: UserBook, previous_shelf: ShelfName
+        self, user_book: UserBook, previous_shelf: ReadingShelf
     ) -> None:
         """Keep the book's position sensible after a shelf change."""
         if previous_shelf != user_book.reading_shelf:
