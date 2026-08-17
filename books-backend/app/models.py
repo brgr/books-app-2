@@ -141,7 +141,7 @@ class UserBook(Base):
     # The reading shelf the book's state puts it on. Derived from the event
     # stream (see ``project_user_book_state``), never assigned directly.
     reading_shelf: Mapped[ReadingShelf] = mapped_column(
-        Enum(ReadingShelf, name="shelfname"),
+        Enum(ReadingShelf, name="reading_shelf"),
         nullable=False,
         default=ReadingShelf.WANT_TO_READ,
     )
@@ -325,7 +325,7 @@ class CustomShelf(Base):
     """A user-created shelf. See ``app.shelves.service`` for how the two kinds
     of shelf differ."""
 
-    __tablename__ = "shelves"
+    __tablename__ = "custom_shelves"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(
@@ -338,7 +338,9 @@ class CustomShelf(Base):
         back_populates="shelf", cascade="all, delete-orphan"
     )
 
-    __table_args__ = (UniqueConstraint("user_id", "name", name="uq_shelves_user_name"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "name", name="uq_custom_shelves_user_name"),
+    )
 
     def __repr__(self):
         return f"<CustomShelf(user_id={self.user_id}, name='{self.name}')>"
@@ -347,11 +349,11 @@ class CustomShelf(Base):
 class CustomShelfPlacement(Base):
     """A book's placement on a user-created shelf, carrying its position there."""
 
-    __tablename__ = "shelf_items"
+    __tablename__ = "custom_shelf_placements"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     shelf_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("shelves.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("custom_shelves.id", ondelete="CASCADE"), nullable=False
     )
     user_book_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("user_books.id", ondelete="CASCADE"), nullable=False
@@ -365,9 +367,11 @@ class CustomShelfPlacement(Base):
 
     __table_args__ = (
         UniqueConstraint(
-            "shelf_id", "user_book_id", name="uq_shelf_items_shelf_user_book"
+            "shelf_id",
+            "user_book_id",
+            name="uq_custom_shelf_placements_shelf_user_book",
         ),
-        Index("ix_shelf_items_shelf_sort", "shelf_id", "sort_order"),
+        Index("ix_custom_shelf_placements_shelf_sort", "shelf_id", "sort_order"),
     )
 
     def __repr__(self):

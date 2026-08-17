@@ -24,7 +24,7 @@ test("finished book is visible on the Finished shelf", async ({
 
   await page.goto("/");
 
-  // The default "To Read" shelf must be fully loaded first, so booksData holds a multi-page result and the
+  // The "To Read" reading shelf must be fully loaded first, so booksData holds a multi-page result and the
   // infinite-scroll sentinel is live (hasMore === true). This mirrors the real user flow: browse To Read, then tap
   // Finished.
   await expect(
