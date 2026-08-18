@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -22,6 +22,7 @@ from app.shelves.service import (
     ShelfReorderError,
     ShelfService,
 )
+from app.shelves.refs import InvalidShelfRefError, ShelfRef, parse_shelf_ref
 
 router = APIRouter()
 
@@ -50,6 +51,20 @@ def get_shelf_service(
 ShelfServiceDep = Annotated[ShelfService, Depends(get_shelf_service)]
 
 
+def get_shelf_ref(ref: str) -> ShelfRef:
+    """Parse the route's shelf ref before it reaches the service layer."""
+    try:
+        return parse_shelf_ref(ref)
+    except InvalidShelfRefError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(error),
+        ) from None
+
+
+ShelfRefDep = Annotated[ShelfRef, Depends(get_shelf_ref)]
+
+
 @router.get("/shelves", response_model=list[ShelfResponse])
 def list_shelves(service: ShelfServiceDep):
     """Every shelf the user has: the four reading shelves, then their custom ones."""
@@ -64,33 +79,37 @@ def create_shelf(payload: CustomShelfNamePayload, service: ShelfServiceDep):
 
 
 @router.patch("/shelves/{ref}", response_model=ShelfResponse)
-def update_shelf(ref: str, payload: CustomShelfNamePayload, service: ShelfServiceDep):
-    return service.update_shelf(ref, payload)
+def update_shelf(
+    shelf_ref: ShelfRefDep,
+    payload: CustomShelfNamePayload,
+    service: ShelfServiceDep,
+):
+    return service.update_shelf(shelf_ref, payload)
 
 
 @router.delete("/shelves/{ref}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_shelf(ref: str, service: ShelfServiceDep):
-    service.delete_shelf(ref)
+def delete_shelf(shelf_ref: ShelfRefDep, service: ShelfServiceDep):
+    service.delete_shelf(shelf_ref)
     return None
 
 
 @router.get("/shelves/{ref}/books", response_model=PaginatedBooks)
 def list_books_in_shelf(
-    ref: str,
+    shelf_ref: ShelfRefDep,
     service: ShelfServiceDep,
     page: int = 1,
     page_size: int = 20,
 ):
     """Return one page of a shelf's books.
 
-    ``ref`` names a reading shelf by its ReadingShelf value or a custom one by id.
+    ``ref`` names a shelf as ``reading:<ReadingShelf value>`` or ``custom:<id>``.
     """
     if page < 1:
         page = 1
     if page_size < 1 or page_size > 100:
         page_size = 20
 
-    books, total = service.list_books(service.resolve(ref), page, page_size)
+    books, total = service.list_books(service.resolve(shelf_ref), page, page_size)
 
     pages = (total + page_size - 1) // page_size
 
@@ -104,23 +123,29 @@ def list_books_in_shelf(
 
 
 @router.post("/shelves/{ref}/books", status_code=status.HTTP_204_NO_CONTENT)
-def add_book_to_shelf(ref: str, payload: CustomShelfBookAdd, service: ShelfServiceDep):
+def add_book_to_shelf(
+    shelf_ref: ShelfRefDep,
+    payload: CustomShelfBookAdd,
+    service: ShelfServiceDep,
+):
     """Put a book on a custom shelf."""
-    service.add_book(ref, payload.book_id)
+    service.add_book(shelf_ref, payload.book_id)
     return None
 
 
 @router.delete("/shelves/{ref}/books/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remove_book_from_shelf(ref: str, book_id: int, service: ShelfServiceDep):
-    service.remove_book(ref, book_id)
+def remove_book_from_shelf(
+    shelf_ref: ShelfRefDep, book_id: int, service: ShelfServiceDep
+):
+    service.remove_book(shelf_ref, book_id)
     return None
 
 
 @router.post("/shelves/{ref}/items/reorder", status_code=status.HTTP_204_NO_CONTENT)
 def reorder_shelf_item(
-    ref: str,
+    shelf_ref: ShelfRefDep,
     payload: ShelfReorderRequest,
     service: ShelfServiceDep,
 ):
-    service.reorder(service.resolve(ref), payload)
+    service.reorder(service.resolve(shelf_ref), payload)
     return None

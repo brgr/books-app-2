@@ -35,30 +35,39 @@ def test_shelves_default_and_books_ordering(client, auth_headers, sample_book_da
     assert response.status_code == status.HTTP_200_OK
 
     want_to_read_response = client.get(
-        "/api/shelves/want_to_read/books", headers=auth_headers
+        "/api/shelves/reading:want_to_read/books", headers=auth_headers
     )
     assert want_to_read_response.status_code == status.HTTP_200_OK
     want_to_read_items = want_to_read_response.json()["items"]
     assert any(item["id"] == book_one_id for item in want_to_read_items)
 
-    finished_response = client.get("/api/shelves/finished/books", headers=auth_headers)
+    finished_response = client.get(
+        "/api/shelves/reading:finished/books", headers=auth_headers
+    )
     assert finished_response.status_code == status.HTTP_200_OK
     finished_items = finished_response.json()["items"]
     assert any(item["id"] == book_two_id for item in finished_items)
 
 
-def test_a_ref_naming_no_shelf_is_not_found(client, auth_headers):
-    """A ref is a reading-shelf name or a custom shelf's id; anything else is a 404.
-
-    Both forms share one path slot, so a bad ref can no longer be rejected by
-    the enum at the path -- it has to be looked up first.
-    """
-    for shelf in ("sommerbuecher", "7"):
+def test_an_invalid_shelf_ref_has_a_helpful_error(client, auth_headers):
+    """Malformed refs are rejected before any shelf lookup happens."""
+    invalid_refs = {
+        "sommerbuecher": "Shelf ref must be 'reading:<shelf>' or 'custom:<positive id>'",
+        "7": "Shelf ref must be 'reading:<shelf>' or 'custom:<positive id>'",
+        "want_to_read": "Shelf ref must be 'reading:<shelf>' or 'custom:<positive id>'",
+        "custom:abc": "Custom shelf id must be a positive decimal integer",
+        "reading:unknown": (
+            "Unknown reading shelf 'unknown'. Expected one of: "
+            "want_to_read, started, finished, abandoned"
+        ),
+    }
+    for shelf, detail in invalid_refs.items():
         response = client.get(f"/api/shelves/{shelf}/books", headers=auth_headers)
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+        assert response.json()["detail"] == detail
 
     reorder = client.post(
-        "/api/shelves/7/items/reorder",
+        "/api/shelves/custom:7/items/reorder",
         json={"moved_book_id": 1, "before_book_id": None, "after_book_id": None},
         headers=auth_headers,
     )
@@ -84,7 +93,7 @@ def test_shelf_reorder_updates_order(client, auth_headers, sample_book_data):
     assert response.status_code == status.HTTP_200_OK
 
     reorder_response = client.post(
-        "/api/shelves/want_to_read/items/reorder",
+        "/api/shelves/reading:want_to_read/items/reorder",
         json={
             "moved_book_id": book_two_id,
             "before_book_id": None,
@@ -95,7 +104,7 @@ def test_shelf_reorder_updates_order(client, auth_headers, sample_book_data):
     assert reorder_response.status_code == status.HTTP_204_NO_CONTENT
 
     want_to_read_response = client.get(
-        "/api/shelves/want_to_read/books", headers=auth_headers
+        "/api/shelves/reading:want_to_read/books", headers=auth_headers
     )
     assert want_to_read_response.status_code == status.HTTP_200_OK
     ordered_ids = [item["id"] for item in want_to_read_response.json()["items"]]
@@ -117,7 +126,7 @@ def test_shelf_reorder_between_two_items(client, auth_headers, sample_book_data)
 
     # Initial order: A, B, C. Move C between A and B.
     reorder_response = client.post(
-        "/api/shelves/want_to_read/items/reorder",
+        "/api/shelves/reading:want_to_read/items/reorder",
         json={
             "moved_book_id": book_c_id,
             "before_book_id": book_a_id,
@@ -127,7 +136,9 @@ def test_shelf_reorder_between_two_items(client, auth_headers, sample_book_data)
     )
     assert reorder_response.status_code == status.HTTP_204_NO_CONTENT
 
-    books_response = client.get("/api/shelves/want_to_read/books", headers=auth_headers)
+    books_response = client.get(
+        "/api/shelves/reading:want_to_read/books", headers=auth_headers
+    )
     ordered_ids = [item["id"] for item in books_response.json()["items"]]
     assert ordered_ids == [book_a_id, book_c_id, book_b_id]
 
@@ -154,7 +165,7 @@ def test_shelf_reorder_with_inverted_neighbours_rebalances(
 
     # Initial order: A, B, C. Ask for C between B and A (i.e. inverted)
     reorder_response = client.post(
-        "/api/shelves/want_to_read/items/reorder",
+        "/api/shelves/reading:want_to_read/items/reorder",
         json={
             "moved_book_id": book_c_id,
             "before_book_id": book_b_id,
@@ -164,7 +175,9 @@ def test_shelf_reorder_with_inverted_neighbours_rebalances(
     )
     assert reorder_response.status_code == status.HTTP_204_NO_CONTENT
 
-    books_response = client.get("/api/shelves/want_to_read/books", headers=auth_headers)
+    books_response = client.get(
+        "/api/shelves/reading:want_to_read/books", headers=auth_headers
+    )
     ordered_ids = [item["id"] for item in books_response.json()["items"]]
     assert ordered_ids == [book_a_id, book_c_id, book_b_id]
 
@@ -177,7 +190,7 @@ def test_create_book_adds_to_want_to_read_shelf(client, auth_headers, sample_boo
     book_id = create_response.json()["id"]
 
     want_to_read_response = client.get(
-        "/api/shelves/want_to_read/books", headers=auth_headers
+        "/api/shelves/reading:want_to_read/books", headers=auth_headers
     )
     assert want_to_read_response.status_code == status.HTTP_200_OK
     ordered_ids = [item["id"] for item in want_to_read_response.json()["items"]]

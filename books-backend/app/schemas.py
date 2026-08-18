@@ -156,15 +156,13 @@ class CustomShelfBookAdd(BaseModel):
 
 
 class ShelfResponse(BaseModel):
-    """One shelf, of either kind.
+    """One shelf.
 
-    ``ref`` is how the shelf is addressed in a URL: the ``ReadingShelf`` value for
-    a reading shelf, the id for a custom one. It is always a string so callers
-    need not branch on the kind to build a path.
+    ``ref`` is how the shelf is addressed in a URL: ``reading:<ReadingShelf
+    value>`` or ``custom:<id>``. Its tag identifies the shelf kind.
     """
 
     ref: str
-    kind: Literal["reading", "custom"]
     display_name: str
     book_count: int
 

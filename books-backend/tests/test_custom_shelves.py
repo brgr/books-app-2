@@ -35,12 +35,12 @@ def test_list_shelves_returns_reading_and_custom(client, auth_headers):
 
     shelves = response.json()
     assert [shelf["ref"] for shelf in shelves] == [
-        "want_to_read",
-        "started",
-        "finished",
-        "abandoned",
+        "reading:want_to_read",
+        "reading:started",
+        "reading:finished",
+        "reading:abandoned",
     ]
-    assert all(shelf["kind"] == "reading" for shelf in shelves)
+    assert all("kind" not in shelf for shelf in shelves)
     assert shelves[0]["display_name"] == "Want to Read"
 
     _create_shelf(client, auth_headers, "Beach reads")
@@ -49,9 +49,9 @@ def test_list_shelves_returns_reading_and_custom(client, auth_headers):
     assert len(shelves) == 5
 
     custom = shelves[-1]
-    assert custom["kind"] == "custom"
     assert custom["display_name"] == "Beach reads"
-    assert custom["ref"].isdigit()
+    assert custom["ref"].startswith("custom:")
+    assert custom["ref"].removeprefix("custom:").isdigit()
 
 
 def test_list_shelves_reports_book_counts(client, auth_headers, sample_book_data):
@@ -70,7 +70,7 @@ def test_list_shelves_reports_book_counts(client, auth_headers, sample_book_data
     }
     assert shelves[shelf_ref]["book_count"] == 1
     # The book stays on its reading shelf as well; the two are independent.
-    assert shelves["want_to_read"]["book_count"] == 1
+    assert shelves["reading:want_to_read"]["book_count"] == 1
 
 
 def test_shelves_are_scoped_to_their_owner(client, auth_headers, db_session):
@@ -90,7 +90,7 @@ def test_shelves_are_scoped_to_their_owner(client, auth_headers, db_session):
     other_headers = {"Authorization": f"Bearer {other_token}"}
 
     shelves = client.get("/api/shelves", headers=other_headers).json()
-    assert all(shelf["kind"] == "reading" for shelf in shelves)
+    assert all("kind" not in shelf for shelf in shelves)
 
     response = client.get(f"/api/shelves/{shelf_ref}/books", headers=other_headers)
     assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -107,7 +107,7 @@ def test_create_shelf(client, auth_headers):
 
     body = response.json()
     assert body["display_name"] == "Sommerbücher"
-    assert body["kind"] == "custom"
+    assert "kind" not in body
     assert body["book_count"] == 0
 
 
@@ -160,11 +160,11 @@ def test_delete_shelf(client, auth_headers, sample_book_data):
 
 def test_unknown_shelf_ref_is_not_found(client, auth_headers):
     assert (
-        client.get("/api/shelves/9999/books", headers=auth_headers).status_code
+        client.get("/api/shelves/custom:9999/books", headers=auth_headers).status_code
         == status.HTTP_404_NOT_FOUND
     )
     assert (
-        client.delete("/api/shelves/9999", headers=auth_headers).status_code
+        client.delete("/api/shelves/custom:9999", headers=auth_headers).status_code
         == status.HTTP_404_NOT_FOUND
     )
 
@@ -175,12 +175,14 @@ def test_unknown_shelf_ref_is_not_found(client, auth_headers):
 def test_reading_shelves_reject_lifecycle_changes(client, auth_headers):
     assert (
         client.patch(
-            "/api/shelves/finished", json={"name": "Done"}, headers=auth_headers
+            "/api/shelves/reading:finished",
+            json={"name": "Done"},
+            headers=auth_headers,
         ).status_code
         == status.HTTP_400_BAD_REQUEST
     )
     assert (
-        client.delete("/api/shelves/finished", headers=auth_headers).status_code
+        client.delete("/api/shelves/reading:finished", headers=auth_headers).status_code
         == status.HTTP_400_BAD_REQUEST
     )
 
@@ -192,13 +194,15 @@ def test_reading_shelf_membership_is_derived_not_assigned(
     book_id = _create_book(client, auth_headers, sample_book_data, "Derived", "1")
 
     response = client.post(
-        "/api/shelves/finished/books", json={"book_id": book_id}, headers=auth_headers
+        "/api/shelves/reading:finished/books",
+        json={"book_id": book_id},
+        headers=auth_headers,
     )
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "/shelf" in response.json()["detail"]
 
     response = client.delete(
-        f"/api/shelves/want_to_read/books/{book_id}", headers=auth_headers
+        f"/api/shelves/reading:want_to_read/books/{book_id}", headers=auth_headers
     )
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -331,7 +335,7 @@ def test_custom_shelf_keeps_its_own_order(client, auth_headers, sample_book_data
 
     # The reading shelf both books also sit on is untouched.
     reading_shelf = client.get(
-        "/api/shelves/want_to_read/books", headers=auth_headers
+        "/api/shelves/reading:want_to_read/books", headers=auth_headers
     ).json()
     assert [item["id"] for item in reading_shelf["items"]] == [book_a, book_b]
 

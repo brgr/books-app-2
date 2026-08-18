@@ -23,15 +23,19 @@ export async function getBooks(page = 1, pageSize = 20): Promise<PaginatedBooks>
   return response.data;
 }
 
+function readingShelfRef(shelf: ReadingShelf): string {
+  return `reading:${shelf}`;
+}
+
 export async function getShelfBooks(shelf: ReadingShelf, page = 1, pageSize = 20): Promise<PaginatedBooks> {
-  const response = await apiClient.get<PaginatedBooks>(`/shelves/${shelf}/books`, {
+  const response = await apiClient.get<PaginatedBooks>(`/shelves/${readingShelfRef(shelf)}/books`, {
     params: { page, page_size: pageSize },
   });
   return response.data;
 }
 
 export async function reorderShelfItem(shelf: ReadingShelf, payload: ShelfReorderRequest): Promise<void> {
-  await apiClient.post(`/shelves/${shelf}/items/reorder`, payload);
+  await apiClient.post(`/shelves/${readingShelfRef(shelf)}/items/reorder`, payload);
 }
 
 export async function getBook(id: number): Promise<Book> {

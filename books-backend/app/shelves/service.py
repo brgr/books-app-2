@@ -42,6 +42,7 @@ from app.shelves.shelves import (
     find_shelf_placement,
     place_on_custom_shelf,
 )
+from app.shelves.refs import CustomShelfRef, ReadingShelfRef, ShelfRef
 
 # Either kind of shelf an operation can target
 ShelfTarget = ReadingShelf | CustomShelf
@@ -105,30 +106,26 @@ class ShelfService:
 
     # Resolving a ref
 
-    def resolve(self, ref: str) -> ShelfTarget:
-        """Turn a URL ref into the shelf it names.
-
-        Reading shelves are addressed by ``ReadingShelf`` value and custom ones by
-        id, which never collide: no reading-shelf name is a number.
-        """
-        if ref.isdigit():
-            shelf = (
-                self.db.query(CustomShelf)
-                .filter(
-                    CustomShelf.id == int(ref), CustomShelf.user_id == self._user_id
+    def resolve(self, ref: ShelfRef) -> ShelfTarget:
+        """Resolve a typed ref to its shelf target for this user."""
+        match ref:
+            case CustomShelfRef(id=shelf_id):
+                shelf = (
+                    self.db.query(CustomShelf)
+                    .filter(
+                        CustomShelf.id == shelf_id,
+                        CustomShelf.user_id == self._user_id,
+                    )
+                    .first()
                 )
-                .first()
-            )
-            if shelf is None:
-                raise ShelfNotFoundError("Shelf not found")
-            return shelf
+                if shelf is None:
+                    raise ShelfNotFoundError("Shelf not found")
+                return shelf
 
-        try:
-            return ReadingShelf(ref)
-        except ValueError:
-            raise ShelfNotFoundError("Shelf not found") from None
+            case ReadingShelfRef(shelf=shelf):
+                return shelf
 
-    def _custom_shelf(self, ref: str) -> CustomShelf:
+    def _custom_shelf(self, ref: ShelfRef) -> CustomShelf:
         """Resolve a ref that must name a custom shelf."""
         shelf = self.resolve(ref)
         if isinstance(shelf, ReadingShelf):
@@ -173,8 +170,7 @@ class ShelfService:
 
         reading_shelves = [
             ShelfResponse(
-                ref=name.value,
-                kind="reading",
+                ref=str(ReadingShelfRef(name)),
                 display_name=READING_SHELF_DISPLAY_NAMES[name],
                 book_count=reading_shelf_counts.get(name, 0),
             )
@@ -182,8 +178,7 @@ class ShelfService:
         ]
         custom_shelves = [
             ShelfResponse(
-                ref=str(shelf.id),
-                kind="custom",
+                ref=str(CustomShelfRef(shelf.id)),
                 display_name=shelf.name,
                 book_count=custom_counts.get(shelf.id, 0),
             )
@@ -194,8 +189,7 @@ class ShelfService:
 
     def _to_response(self, shelf: CustomShelf) -> ShelfResponse:
         return ShelfResponse(
-            ref=str(shelf.id),
-            kind="custom",
+            ref=str(CustomShelfRef(shelf.id)),
             display_name=shelf.name,
             book_count=len(shelf.placements),
         )
@@ -208,13 +202,15 @@ class ShelfService:
         self._commit_unique_name(payload.name)
         return self._to_response(shelf)
 
-    def update_shelf(self, ref: str, payload: CustomShelfNamePayload) -> ShelfResponse:
+    def update_shelf(
+        self, ref: ShelfRef, payload: CustomShelfNamePayload
+    ) -> ShelfResponse:
         shelf = self._custom_shelf(ref)
         shelf.name = payload.name
         self._commit_unique_name(payload.name)
         return self._to_response(shelf)
 
-    def delete_shelf(self, ref: str) -> None:
+    def delete_shelf(self, ref: ShelfRef) -> None:
         """Delete a shelf. Its books stay in the library; only the placements go."""
         shelf = self._custom_shelf(ref)
         self.db.delete(shelf)
@@ -232,7 +228,7 @@ class ShelfService:
 
     # Membership
 
-    def add_book(self, ref: str, book_id: int) -> None:
+    def add_book(self, ref: ShelfRef, book_id: int) -> None:
         shelf = self._custom_shelf(ref)
         user_book = self._get_user_book(book_id)
         if user_book is None:
@@ -241,7 +237,7 @@ class ShelfService:
         place_on_custom_shelf(self.db, shelf, user_book)
         self.db.commit()
 
-    def remove_book(self, ref: str, book_id: int) -> None:
+    def remove_book(self, ref: ShelfRef, book_id: int) -> None:
         shelf = self._custom_shelf(ref)
         placement = find_shelf_placement(self.db, shelf, book_id)
         if placement is None:
