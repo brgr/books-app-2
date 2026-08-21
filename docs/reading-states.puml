@@ -1,0 +1,32 @@
+@startuml
+title Reading states and state-changing events
+
+left to right direction
+hide empty description
+skinparam shadowing false
+skinparam state {
+  BackgroundColor #F8FAFC
+  BorderColor #475569
+  FontColor #0F172A
+}
+
+[*] --> NotInLibrary
+NotInLibrary --> WantToRead : added_to_library
+
+state "Not in library" as NotInLibrary
+state "Want to Read" as WantToRead
+state "Reading" as Reading
+state "Paused" as Paused
+state "Finished" as Finished
+state "Abandoned" as Abandoned
+
+WantToRead --> Reading : started_reading
+Reading ---> Paused : paused_reading
+Paused --> Reading : resumed_reading
+Reading ---> Finished : finished_reading
+Reading --> Abandoned : abandoned_reading
+Paused --> Abandoned : abandoned_reading
+Finished --> Reading : started_reading\n(new cycle)
+Abandoned -> Reading : started_reading\n(new cycle)
+
+@enduml
