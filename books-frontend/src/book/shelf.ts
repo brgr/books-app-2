@@ -3,6 +3,7 @@ import { ReadingShelf } from "../api/types";
 const SHELF_LABELS: Record<ReadingShelf, string> = {
   [ReadingShelf.WANT_TO_READ]: "Want to read",
   [ReadingShelf.STARTED]: "Started",
+  [ReadingShelf.PAUSED]: "Paused",
   [ReadingShelf.FINISHED]: "Finished",
   [ReadingShelf.ABANDONED]: "Abandoned",
 };
@@ -10,6 +11,7 @@ const SHELF_LABELS: Record<ReadingShelf, string> = {
 const SHELF_COLORS: Record<ReadingShelf, string> = {
   [ReadingShelf.WANT_TO_READ]: "var(--color-primary)",
   [ReadingShelf.STARTED]: "var(--color-warning)",
+  [ReadingShelf.PAUSED]: "var(--color-warning)",
   [ReadingShelf.FINISHED]: "var(--color-success)",
   [ReadingShelf.ABANDONED]: "var(--color-text-secondary)",
 };

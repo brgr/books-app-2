@@ -1,6 +1,7 @@
 export const ReadingShelf = {
   WANT_TO_READ: "want_to_read",
   STARTED: "started",
+  PAUSED: "paused",
   FINISHED: "finished",
   ABANDONED: "abandoned",
 } as const;

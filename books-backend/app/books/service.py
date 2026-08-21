@@ -13,7 +13,6 @@ from app.cover_upgrade import CoverUpgradeJob, start_job
 from app.image_utils import download_cover_image
 from app.models import Book, User, UserBook
 from app.schemas import BookCreate, BookUpdate
-from app.shelves.shelves import ensure_shelf_position
 
 
 # noinspection bad-argument-type
@@ -158,8 +157,6 @@ class BookService:
     def _add_to_library(self, book: Book) -> None:
         user_book = ensure_added_event(self.db, user_id=self._user_id, book_id=book.id)
         project_user_book_state(self.db, user_book)
-
-        ensure_shelf_position(self.db, user_book)
 
     def _record_cover_change(
         self,

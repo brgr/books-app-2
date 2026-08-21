@@ -6,7 +6,7 @@ from pathlib import Path
 
 from fastapi import status
 
-from app.book_events import derive_reading_dates
+from app.book_events import current_reading_shelf, derive_reading_dates
 from app.models import (
     Book,
     BookEvent,
@@ -14,8 +14,10 @@ from app.models import (
     BookEventImportSource,
     BookEventType,
     Import,
-    CustomShelf,
     ReadingShelf,
+    Shelf,
+    ShelfKind,
+    ShelfPlacement,
     UserBook,
 )
 
@@ -115,7 +117,7 @@ def test_import_creates_user_book(client, auth_headers, db_session):
     assert resp.status_code == status.HTTP_200_OK
 
     ub = db_session.query(UserBook).one()
-    assert ub.reading_shelf == ReadingShelf.WANT_TO_READ
+    assert current_reading_shelf(db_session, ub.id) == ReadingShelf.WANT_TO_READ
 
 
 # --- Status mapping ---
@@ -138,7 +140,7 @@ def test_import_status_finished(client, auth_headers, db_session):
     assert resp.status_code == status.HTTP_200_OK
 
     ub = db_session.query(UserBook).one()
-    assert ub.reading_shelf == ReadingShelf.FINISHED
+    assert current_reading_shelf(db_session, ub.id) == ReadingShelf.FINISHED
 
 
 def test_import_status_abandoned(client, auth_headers, db_session):
@@ -157,7 +159,7 @@ def test_import_status_abandoned(client, auth_headers, db_session):
     assert resp.status_code == status.HTTP_200_OK
 
     ub = db_session.query(UserBook).one()
-    assert ub.reading_shelf == ReadingShelf.ABANDONED
+    assert current_reading_shelf(db_session, ub.id) == ReadingShelf.ABANDONED
 
 
 def test_import_status_started(client, auth_headers, db_session):
@@ -176,7 +178,7 @@ def test_import_status_started(client, auth_headers, db_session):
     assert resp.status_code == status.HTTP_200_OK
 
     ub = db_session.query(UserBook).one()
-    assert ub.reading_shelf == ReadingShelf.STARTED
+    assert current_reading_shelf(db_session, ub.id) == ReadingShelf.STARTED
 
 
 # --- Notes and progress ---
@@ -202,6 +204,17 @@ def test_import_notes_and_current_page(client, auth_headers, db_session):
     ub = db_session.query(UserBook).one()
     assert ub.notes == "Very insightful"
     assert ub.current_page == 42
+    progress = (
+        db_session.query(BookEvent)
+        .join(BookEventType)
+        .filter(
+            BookEvent.user_book_id == ub.id,
+            BookEventType.code == BookEventCode.PROGRESS_SET.value,
+        )
+        .one()
+    )
+    assert progress.progress_entry is not None
+    assert progress.progress_entry.page == 42
 
 
 # --- Cover images ---
@@ -331,7 +344,9 @@ def test_import_puts_books_in_default_shelves(client, auth_headers, db_session):
             book.title
             for book in db_session.query(Book)
             .join(UserBook, UserBook.book_id == Book.id)
-            .filter(UserBook.reading_shelf == shelf)
+            .join(ShelfPlacement, ShelfPlacement.user_book_id == UserBook.id)
+            .join(Shelf, Shelf.id == ShelfPlacement.shelf_id)
+            .filter(Shelf.kind == ShelfKind.READING, Shelf.name == shelf.value)
             .all()
         }
 
@@ -494,19 +509,31 @@ def test_import_real_export_counts_match_csv(client, auth_headers, db_session):
 
     assert (
         db_session.query(UserBook)
-        .filter(UserBook.reading_shelf == ReadingShelf.FINISHED)
+        .join(ShelfPlacement, ShelfPlacement.user_book_id == UserBook.id)
+        .join(Shelf, Shelf.id == ShelfPlacement.shelf_id)
+        .filter(
+            Shelf.kind == ShelfKind.READING, Shelf.name == ReadingShelf.FINISHED.value
+        )
         .count()
         == expected_finished
     )
     assert (
         db_session.query(UserBook)
-        .filter(UserBook.reading_shelf == ReadingShelf.STARTED)
+        .join(ShelfPlacement, ShelfPlacement.user_book_id == UserBook.id)
+        .join(Shelf, Shelf.id == ShelfPlacement.shelf_id)
+        .filter(
+            Shelf.kind == ShelfKind.READING, Shelf.name == ReadingShelf.STARTED.value
+        )
         .count()
         == expected_started
     )
     assert (
         db_session.query(UserBook)
-        .filter(UserBook.reading_shelf == ReadingShelf.ABANDONED)
+        .join(ShelfPlacement, ShelfPlacement.user_book_id == UserBook.id)
+        .join(Shelf, Shelf.id == ShelfPlacement.shelf_id)
+        .filter(
+            Shelf.kind == ShelfKind.READING, Shelf.name == ReadingShelf.ABANDONED.value
+        )
         .count()
         == expected_abandoned
     )
@@ -537,7 +564,11 @@ def test_import_real_export_currently_reading(client, auth_headers, db_session):
     started = (
         db_session.query(Book, UserBook)
         .join(UserBook, UserBook.book_id == Book.id)
-        .filter(UserBook.reading_shelf == ReadingShelf.STARTED)
+        .join(ShelfPlacement, ShelfPlacement.user_book_id == UserBook.id)
+        .join(Shelf, Shelf.id == ShelfPlacement.shelf_id)
+        .filter(
+            Shelf.kind == ShelfKind.READING, Shelf.name == ReadingShelf.STARTED.value
+        )
         .all()
     )
 
@@ -571,8 +602,13 @@ def test_import_real_export_creates_no_custom_shelves(client, auth_headers, db_s
     resp = _upload_zip(client, auth_headers, _zip_from_csv(csv_path))
     assert resp.status_code == status.HTTP_200_OK
 
-    assert db_session.query(CustomShelf).count() == 0
+    assert db_session.query(Shelf).filter(Shelf.kind == ShelfKind.CUSTOM).count() == 0
 
-    # Every imported book still got a position (sort_order) on the shelf its status puts it on.
-    positions = [ub.sort_order for ub in db_session.query(UserBook).all()]
+    # Every imported book has exactly one position on a reading shelf.
+    positions = (
+        db_session.query(ShelfPlacement)
+        .join(Shelf)
+        .filter(Shelf.kind == ShelfKind.READING)
+        .all()
+    )
     assert positions and all(position is not None for position in positions)

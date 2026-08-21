@@ -14,9 +14,13 @@ from app.models import (
     BookEventProgress,
     BookEventType,
     ReadingShelf,
+    Shelf,
+    ShelfKind,
+    ShelfPlacement,
     UserBook,
 )
 from app.schemas import UserBookResponse
+from app.shelves.shelves import place_on_shelf
 
 
 def _get_event_type(session: Session, code: BookEventCode) -> BookEventType:
@@ -87,7 +91,6 @@ def record_added_to_library(
 
 
 def _ensure_user_book(session: Session, user_id: int, book_id: int) -> UserBook:
-    # noinspection PyTypeChecker
     user_book: UserBook | None = (
         session.query(UserBook)
         .filter(UserBook.user_id == user_id, UserBook.book_id == book_id)
@@ -97,13 +100,21 @@ def _ensure_user_book(session: Session, user_id: int, book_id: int) -> UserBook:
     if user_book is not None:
         return user_book
 
-    user_book = UserBook(
-        user_id=user_id, book_id=book_id, reading_shelf=ReadingShelf.WANT_TO_READ
-    )
+    user_book = UserBook(user_id=user_id, book_id=book_id)
     session.add(user_book)
     session.flush()
+    wanted = (
+        session.query(Shelf)
+        .filter_by(
+            user_id=user_id,
+            kind=ShelfKind.READING,
+            name=ReadingShelf.WANT_TO_READ.value,
+        )
+        .one()
+    )
 
-    # noinspection PyTypeChecker
+    place_on_shelf(session, wanted, user_book)
+
     return user_book
 
 
@@ -141,6 +152,29 @@ def ensure_added_event(
         record_added_to_library(
             session, user_id=user_id, book_id=book_id, import_id=import_id
         )
+    # Imports may have created a legacy-style UserBook row first. Ensure it has
+    # exactly one initial reading placement as well.
+    has_reading_placement = (
+        session.query(ShelfPlacement)
+        .join(Shelf)
+        .filter(
+            ShelfPlacement.user_book_id == user_book.id, Shelf.kind == ShelfKind.READING
+        )
+        .first()
+    )
+
+    if has_reading_placement is None:
+        shelf = (
+            session.query(Shelf)
+            .filter_by(
+                user_id=user_id,
+                kind=ShelfKind.READING,
+                name=ReadingShelf.WANT_TO_READ.value,
+            )
+            .one()
+        )
+        place_on_shelf(session, shelf, user_book)
+
     return user_book
 
 
@@ -159,8 +193,20 @@ def record_started_reading(
 
     latest_start = _latest_event(session, user_book_id, BookEventCode.STARTED_READING)
     latest_finish = _latest_event(session, user_book_id, BookEventCode.FINISHED_READING)
+    latest_abandoned = _latest_event(
+        session, user_book_id, BookEventCode.ABANDONED_READING
+    )
+    latest_terminal = latest_finish
+    if latest_abandoned and (
+        latest_terminal is None or _is_after(latest_abandoned, latest_terminal)
+    ):
+        latest_terminal = latest_abandoned
 
-    if latest_start and not (latest_finish and _is_after(latest_finish, latest_start)):
+    # Validate against the event stream rather than the reading placement: an
+    # import constructs its historical events before projecting that placement.
+    if latest_start and not (
+        latest_terminal and _is_after(latest_terminal, latest_start)
+    ):
         raise ValueError(
             "Cannot start reading while a reading cycle is already in progress"
         )
@@ -189,9 +235,10 @@ def record_finished_reading(
     latest_start = _latest_event(session, user_book_id, BookEventCode.STARTED_READING)
     latest_finish = _latest_event(session, user_book_id, BookEventCode.FINISHED_READING)
 
+    # Validate against the event stream rather than the reading placement: an
+    # import constructs its historical events before projecting that placement.
     if not latest_start:
         raise ValueError("Cannot finish reading before starting")
-
     if latest_finish and _is_after(latest_finish, latest_start):
         raise ValueError("Cannot finish reading twice without a new start")
 
@@ -203,6 +250,34 @@ def record_finished_reading(
     )
     session.add(event)
     session.flush()
+    return event
+
+
+def record_reading_event(
+    session: Session,
+    user_book_id: int,
+    code: BookEventCode,
+    occurred_at: Optional[datetime] = None,
+) -> BookEvent:
+    """Append one of the pause/resume/abandon state events."""
+    if code not in {
+        BookEventCode.PAUSED_READING,
+        BookEventCode.RESUMED_READING,
+        BookEventCode.ABANDONED_READING,
+    }:
+        raise ValueError("Not a reading-state event")
+
+    if not _latest_event(session, user_book_id, BookEventCode.ADDED_TO_LIBRARY):
+        raise ValueError("Cannot change reading state before adding to library")
+
+    event = BookEvent(
+        user_book_id=user_book_id,
+        event_type_id=_get_event_type(session, code).id,
+        occurred_at=occurred_at or datetime.now(UTC),
+    )
+    session.add(event)
+    session.flush()
+
     return event
 
 
@@ -335,6 +410,49 @@ def derive_reading_dates(
     return started_at, finished_at
 
 
+def current_reading_shelf(session: Session, user_book_id: int) -> ReadingShelf:
+    """Read the current state from the book's sole reading-shelf placement."""
+    placement = (
+        session.query(ShelfPlacement)
+        .join(Shelf)
+        .filter(
+            ShelfPlacement.user_book_id == user_book_id,
+            Shelf.kind == ShelfKind.READING,
+        )
+        .one()
+    )
+
+    return ReadingShelf(placement.shelf.name)
+
+
+def move_reading_shelf_placement(
+    session: Session, user_book: UserBook, state: ReadingShelf
+) -> None:
+    """Move a book's sole reading placement to ``state`` without touching custom ones."""
+    current = (
+        session.query(ShelfPlacement)
+        .join(Shelf)
+        .filter(
+            ShelfPlacement.user_book_id == user_book.id, Shelf.kind == ShelfKind.READING
+        )
+        .one_or_none()
+    )
+    if current is not None and current.shelf.name == state.value:
+        return
+
+    if current is not None:
+        session.delete(current)
+        session.flush()
+
+    shelf = (
+        session.query(Shelf)
+        .filter_by(user_id=user_book.user_id, kind=ShelfKind.READING, name=state.value)
+        .one()
+    )
+
+    place_on_shelf(session, shelf, user_book)
+
+
 def project_user_book_state(session: Session, user_book: UserBook) -> UserBook:
     """Project the current reading state from the event stream onto the user_book snapshot fields.
 
@@ -344,15 +462,7 @@ def project_user_book_state(session: Session, user_book: UserBook) -> UserBook:
     """
     # noinspection PyTypeChecker
     user_book_id: int = user_book.id
-    started_at, finished_at = derive_reading_dates(session, user_book_id)
     latest_progress = _latest_event(session, user_book_id, BookEventCode.PROGRESS_SET)
-
-    if finished_at is not None:
-        user_book.reading_shelf = ReadingShelf.FINISHED
-    elif started_at is not None:
-        user_book.reading_shelf = ReadingShelf.STARTED
-    else:
-        user_book.reading_shelf = ReadingShelf.WANT_TO_READ
 
     if latest_progress:
         progress_entry = (
@@ -365,7 +475,6 @@ def project_user_book_state(session: Session, user_book: UserBook) -> UserBook:
     else:
         user_book.current_page = None
         user_book.current_percent = None
-    session.flush()
 
     return user_book
 
@@ -379,4 +488,6 @@ def build_user_book_response(session: Session, user_book: UserBook) -> UserBookR
     """
     # noinspection PyTypeChecker
     started_at, finished_at = derive_reading_dates(session, user_book.id)
-    return UserBookResponse.from_user_book(user_book, started_at, finished_at)
+    return UserBookResponse.from_user_book(
+        user_book, current_reading_shelf(session, user_book.id), started_at, finished_at
+    )

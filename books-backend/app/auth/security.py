@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.models import User
+from app.shelves.shelves import create_reading_shelves
 
 # Cookie names
 ACCESS_TOKEN_COOKIE = "access_token"
@@ -239,6 +240,8 @@ def create_user(db: Session, username: str, password: str) -> User:
     hashed_password = hash_password(password)
     user = User(username=username, hashed_password=hashed_password)
     db.add(user)
+    db.flush()
+    create_reading_shelves(db, user.id)
     db.commit()
     db.refresh(user)
     return user

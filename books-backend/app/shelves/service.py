@@ -1,18 +1,4 @@
-"""Orchestration layer for a user's shelves, their contents and their ordering.
-
-We have reading shelves and custom shelves.
-
-* A **reading** shelf (``ReadingShelf``) is derived from the reading state via ``UserBook.reading_shelf``.
-  It cannot be edited here, as that is the job of ``ReadingService``.
-  Since a book is on exactly one reading shelf, the position of a book on it is stored on the
-  ``UserBook.sort_order`` column.
-  (Small note 2026-08-08: I'm a bit unsure if this is a good design choice. It was so until now, because we didn't yet have
-  custom shelves. Now, however, we might want to switch this too, maybe. So far we haven't)
-* A **custom** shelf (``CustomShelf``), on the other hand is assigned manually by the user.
-  The user creates, renames and deletes it, and puts books on it when wanted.
-  Every time a book is placed on a custom shelf, that's a ``CustomShelfPlacement``.
-  It carries its own position, since a book may be on many.
-"""
+"""Operations over the single Shelf/ShelfPlacement model."""
 
 from decimal import Decimal
 
@@ -20,48 +6,16 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.book_events import build_user_book_response, project_user_book_state
-from app.models import (
-    Book,
-    CustomShelf,
-    CustomShelfPlacement,
-    ReadingShelf,
-    User,
-    UserBook,
-)
-from app.schemas import (
-    ShelfReorderRequest,
-    CustomShelfNamePayload,
-    ShelfResponse,
-)
+from app.book_events import build_user_book_response
+from app.models import Book, Shelf, ShelfKind, ShelfPlacement, User, UserBook
+from app.schemas import CustomShelfNamePayload, ShelfReorderRequest, ShelfResponse
+from app.shelves.refs import CustomShelfRef, ReadingShelfRef, ShelfRef
 from app.shelves.shelves import (
-    READING_SHELVES,
     READING_SHELF_DISPLAY_NAMES,
     SORT_ORDER_GAP,
-    ensure_shelf_position,
     find_shelf_placement,
-    place_on_custom_shelf,
+    place_on_shelf,
 )
-from app.shelves.refs import CustomShelfRef, ReadingShelfRef, ShelfRef
-
-# Either kind of shelf an operation can target
-ShelfTarget = ReadingShelf | CustomShelf
-
-# A row carrying a book's position on one shelf: the UserBook itself for a
-# reading shelf, the CustomShelfPlacement for a custom one.
-ShelfPlacement = UserBook | CustomShelfPlacement
-
-
-def position_of(row: ShelfPlacement) -> Decimal:
-    """Read a row's current position.
-
-    Only ``UserBook`` has a nullable ``sort_order``, and any row reached through
-    ``_position_of`` has been given one. Read through this rather than captured
-    up front: ``_rebalance_positions`` rewrites positions in place, and a
-    neighbor's value must reflect that.
-    """
-    assert row.sort_order is not None
-    return row.sort_order
 
 
 class ShelfError(Exception):
@@ -85,119 +39,109 @@ class CustomShelfNameTakenError(ShelfError):
 
 
 class ReadingShelfError(ShelfError):
-    """A reading shelf was asked to do something only custom shelves can do.
-
-    Covers both lifecycle (rename, delete) and membership: a book's reading
-    shelf follows its reading state, so it is set through the reading endpoints
-    rather than by putting the book on a shelf. Maps to 400.
-    """
+    pass
 
 
 class ShelfService:
-    """Shelf operations scoped to a single request's db session and user."""
-
     def __init__(self, db: Session, user: User):
-        self.db = db
-        self.user = user
+        self.db, self.user = db, user
 
     @property
     def _user_id(self) -> int:
         return self.user.id
 
-    # Resolving a ref
-
-    def resolve(self, ref: ShelfRef) -> ShelfTarget:
-        """Resolve a typed ref to its shelf target for this user."""
-        match ref:
-            case CustomShelfRef(id=shelf_id):
-                shelf = (
-                    self.db.query(CustomShelf)
-                    .filter(
-                        CustomShelf.id == shelf_id,
-                        CustomShelf.user_id == self._user_id,
-                    )
-                    .first()
+    def resolve(self, ref: ShelfRef) -> Shelf:
+        if isinstance(ref, ReadingShelfRef):
+            shelf = (
+                self.db.query(Shelf)
+                .filter_by(
+                    user_id=self._user_id, kind=ShelfKind.READING, name=ref.shelf.value
                 )
-                if shelf is None:
-                    raise ShelfNotFoundError("Shelf not found")
-                return shelf
-
-            case ReadingShelfRef(shelf=shelf):
-                return shelf
-
-    def _custom_shelf(self, ref: ShelfRef) -> CustomShelf:
-        """Resolve a ref that must name a custom shelf."""
-        shelf = self.resolve(ref)
-        if isinstance(shelf, ReadingShelf):
-            raise ReadingShelfError(
-                f"'{shelf.value}' is a reading shelf and cannot be changed. "
-                "A book's reading shelf follows its reading state; "
-                "set it via PUT /books/{book_id}/shelf."
+                .first()
             )
+        else:  # CustomShelfRef
+            shelf = (
+                self.db.query(Shelf)
+                .filter_by(id=ref.id, user_id=self._user_id, kind=ShelfKind.CUSTOM)
+                .first()
+            )
+
+        if shelf is None:
+            raise ShelfNotFoundError("Shelf not found")
+
         return shelf
 
-    # Listing shelves
+    def _custom_shelf(self, ref: ShelfRef) -> Shelf:
+        if isinstance(ref, ReadingShelfRef):
+            raise ReadingShelfError(
+                "Reading shelves cannot be changed; set a book's state via PUT /books/{book_id}/shelf."
+            )
+
+        return self.resolve(ref)
+
+    def _ref(self, shelf: Shelf) -> str:
+        if shelf.kind == ShelfKind.READING:
+            return str(
+                ReadingShelfRef(
+                    next(
+                        key
+                        for key in READING_SHELF_DISPLAY_NAMES
+                        if key.value == shelf.name
+                    )
+                )
+            )
+
+        return str(CustomShelfRef(shelf.id))
+
+    def _to_response(self, shelf: Shelf, count: int | None = None) -> ShelfResponse:
+        name = (
+            READING_SHELF_DISPLAY_NAMES[
+                next(
+                    key
+                    for key in READING_SHELF_DISPLAY_NAMES
+                    if key.value == shelf.name
+                )
+            ]
+            if shelf.kind == ShelfKind.READING
+            else shelf.name
+        )
+
+        shelf_ref = self._ref(shelf)
+        book_count = count if count is not None else len(shelf.placements)
+
+        return ShelfResponse(ref=shelf_ref, display_name=name, book_count=book_count)
 
     def list_shelves(self) -> list[ShelfResponse]:
-        """Every shelf the user has, reading shelves first and always present."""
-        reading_shelf_counts = {
-            name: count
-            for name, count in self.db.query(
-                UserBook.reading_shelf, func.count(UserBook.id)
-            )
-            .filter(UserBook.user_id == self._user_id)
-            .group_by(UserBook.reading_shelf)
-            .all()
-        }
-
-        custom_counts = {
-            shelf_id: count
-            for shelf_id, count in self.db.query(
-                CustomShelfPlacement.shelf_id, func.count(CustomShelfPlacement.id)
-            )
-            .join(CustomShelf, CustomShelf.id == CustomShelfPlacement.shelf_id)
-            .filter(CustomShelf.user_id == self._user_id)
-            .group_by(CustomShelfPlacement.shelf_id)
-            .all()
-        }
-
-        custom = (
-            self.db.query(CustomShelf)
-            .filter(CustomShelf.user_id == self._user_id)
-            .order_by(CustomShelf.id.asc())
+        shelves = (
+            self.db.query(Shelf)
+            .filter(Shelf.user_id == self._user_id)
+            .order_by(Shelf.kind.asc(), Shelf.id.asc())
             .all()
         )
-
-        reading_shelves = [
-            ShelfResponse(
-                ref=str(ReadingShelfRef(name)),
-                display_name=READING_SHELF_DISPLAY_NAMES[name],
-                book_count=reading_shelf_counts.get(name, 0),
+        count_rows = (
+            self.db.query(ShelfPlacement.shelf_id, func.count(ShelfPlacement.id))
+            .join(Shelf)
+            .filter(Shelf.user_id == self._user_id)
+            .group_by(ShelfPlacement.shelf_id)
+            .all()
+        )
+        counts: dict[int, int] = {
+            int(shelf_id): int(book_count) for shelf_id, book_count in count_rows
+        }
+        reading = [s for s in shelves if s.kind == ShelfKind.READING]
+        reading.sort(
+            key=lambda s: list(READING_SHELF_DISPLAY_NAMES).index(
+                next(k for k in READING_SHELF_DISPLAY_NAMES if k.value == s.name)
             )
-            for name in READING_SHELVES
-        ]
-        custom_shelves = [
-            ShelfResponse(
-                ref=str(CustomShelfRef(shelf.id)),
-                display_name=shelf.name,
-                book_count=custom_counts.get(shelf.id, 0),
-            )
-            for shelf in custom
-        ]
-
-        return reading_shelves + custom_shelves
-
-    def _to_response(self, shelf: CustomShelf) -> ShelfResponse:
-        return ShelfResponse(
-            ref=str(CustomShelfRef(shelf.id)),
-            display_name=shelf.name,
-            book_count=len(shelf.placements),
         )
 
-    # Shelf lifecycle
+        return [
+            self._to_response(s, counts.get(s.id, 0))
+            for s in reading + [s for s in shelves if s.kind == ShelfKind.CUSTOM]
+        ]
 
     def create_shelf(self, payload: CustomShelfNamePayload) -> ShelfResponse:
-        shelf = CustomShelf(user_id=self._user_id, name=payload.name)
+        shelf = Shelf(user_id=self._user_id, kind=ShelfKind.CUSTOM, name=payload.name)
         self.db.add(shelf)
         self._commit_unique_name(payload.name)
         return self._to_response(shelf)
@@ -211,13 +155,10 @@ class ShelfService:
         return self._to_response(shelf)
 
     def delete_shelf(self, ref: ShelfRef) -> None:
-        """Delete a shelf. Its books stay in the library; only the placements go."""
-        shelf = self._custom_shelf(ref)
-        self.db.delete(shelf)
+        self.db.delete(self._custom_shelf(ref))
         self.db.commit()
 
     def _commit_unique_name(self, name: str) -> None:
-        """Commit a create or rename, turning the name clash into a domain error."""
         try:
             self.db.commit()
         except IntegrityError:
@@ -226,163 +167,91 @@ class ShelfService:
                 f"You already have a shelf called '{name}'"
             ) from None
 
-    # Membership
+    def _get_user_book(self, book_id: int) -> UserBook | None:
+        return (
+            self.db.query(UserBook)
+            .filter_by(user_id=self._user_id, book_id=book_id)
+            .first()
+        )
 
     def add_book(self, ref: ShelfRef, book_id: int) -> None:
-        shelf = self._custom_shelf(ref)
         user_book = self._get_user_book(book_id)
         if user_book is None:
             raise BookNotInLibraryError("Book not in your library")
 
-        place_on_custom_shelf(self.db, shelf, user_book)
+        place_on_shelf(self.db, self._custom_shelf(ref), user_book)
         self.db.commit()
 
     def remove_book(self, ref: ShelfRef, book_id: int) -> None:
-        shelf = self._custom_shelf(ref)
-        placement = find_shelf_placement(self.db, shelf, book_id)
+        placement = find_shelf_placement(self.db, self._custom_shelf(ref), book_id)
         if placement is None:
             raise BookNotInLibraryError("Book is not on this shelf")
 
         self.db.delete(placement)
         self.db.commit()
 
-    # Contents
-
     def list_books(
-        self, shelf: ShelfTarget, page: int, page_size: int
+        self, shelf: Shelf, page: int, page_size: int
     ) -> tuple[list[Book], int]:
-        """Return one page of a shelf's books and the total."""
-        pairs_query = self.db.query(Book, UserBook).join(
-            UserBook, UserBook.book_id == Book.id
+        query = (
+            self.db.query(Book, UserBook)
+            .join(UserBook, UserBook.book_id == Book.id)
+            .join(ShelfPlacement, ShelfPlacement.user_book_id == UserBook.id)
+            .filter(ShelfPlacement.shelf_id == shelf.id)
+            .order_by(ShelfPlacement.sort_order.asc(), ShelfPlacement.id.asc())
         )
-        if isinstance(shelf, ReadingShelf):
-            pairs_query = pairs_query.filter(
-                UserBook.user_id == self._user_id,
-                UserBook.reading_shelf == shelf,
-            ).order_by(UserBook.sort_order.asc(), UserBook.id.asc())
-        else:
-            pairs_query = (
-                pairs_query.join(
-                    CustomShelfPlacement,
-                    CustomShelfPlacement.user_book_id == UserBook.id,
-                )
-                .filter(CustomShelfPlacement.shelf_id == shelf.id)
-                .order_by(
-                    CustomShelfPlacement.sort_order.asc(),
-                    CustomShelfPlacement.id.asc(),
-                )
-            )
-
-        total = pairs_query.count()
-        book_pairs = pairs_query.offset((page - 1) * page_size).limit(page_size).all()
+        total = query.count()
 
         books = []
-        for book, user_book in book_pairs:
-            project_user_book_state(self.db, user_book)
+        for book, user_book in (
+            query.offset((page - 1) * page_size).limit(page_size).all()
+        ):
             book.user_book = build_user_book_response(self.db, user_book)
             books.append(book)
+
         return books, total
 
-    # Ordering
-
-    def reorder(self, shelf: ShelfTarget, payload: ShelfReorderRequest) -> None:
-        """Reposition a book on a shelf using fractional sort orders.
-
-        Raises BookNotInLibraryError (404) or ShelfReorderError (400) on any
-        ownership or reference violation.
-        """
+    def reorder(self, shelf: Shelf, payload: ShelfReorderRequest) -> None:
         if self._get_user_book(payload.moved_book_id) is None:
             raise BookNotInLibraryError("Book not in your library")
 
-        moved = self._position_of(shelf, payload.moved_book_id)
+        moved = find_shelf_placement(self.db, shelf, payload.moved_book_id)
         if moved is None:
             raise ShelfReorderError("Moved book is not on this shelf")
 
-        before = self._resolve_neighbour(shelf, payload.before_book_id)
-        after = self._resolve_neighbour(shelf, payload.after_book_id)
-
-        if before is not None and after is not None:
-            if position_of(before) >= position_of(after):
-                self._rebalance_positions(shelf)
+        before = self._neighbour(shelf, payload.before_book_id)
+        after = self._neighbour(shelf, payload.after_book_id)
+        if before and after:
+            if before.sort_order >= after.sort_order:
+                self._rebalance(shelf)
                 self.db.flush()
-
-            moved.sort_order = (position_of(before) + position_of(after)) / Decimal("2")
-        elif before is not None:
-            moved.sort_order = position_of(before) + SORT_ORDER_GAP
-        elif after is not None:
-            moved.sort_order = position_of(after) - SORT_ORDER_GAP
+            moved.sort_order = (before.sort_order + after.sort_order) / Decimal("2")
+        elif before:
+            moved.sort_order = before.sort_order + SORT_ORDER_GAP
+        elif after:
+            moved.sort_order = after.sort_order - SORT_ORDER_GAP
         else:
             moved.sort_order = SORT_ORDER_GAP
 
         self.db.commit()
 
-    def _positions(self, shelf: ShelfTarget) -> list[ShelfPlacement]:
-        """Every position-carrying row on the shelf, in display order."""
-        if isinstance(shelf, ReadingShelf):
-            return list(
-                self.db.query(UserBook)
-                .filter(
-                    UserBook.user_id == self._user_id,
-                    UserBook.reading_shelf == shelf,
-                )
-                .order_by(UserBook.sort_order.asc(), UserBook.id.asc())
-            )
-
-        return list(
-            self.db.query(CustomShelfPlacement)
-            .filter(CustomShelfPlacement.shelf_id == shelf.id)
-            .order_by(
-                CustomShelfPlacement.sort_order.asc(), CustomShelfPlacement.id.asc()
-            )
-        )
-
-    def _position_of(self, shelf: ShelfTarget, book_id: int) -> ShelfPlacement | None:
-        """The book's position-carrying row on this shelf, or None if it is not on it."""
-        if isinstance(shelf, ReadingShelf):
-            user_book = (
-                self.db.query(UserBook)
-                .filter(
-                    UserBook.user_id == self._user_id,
-                    UserBook.reading_shelf == shelf,
-                    UserBook.book_id == book_id,
-                )
-                .first()
-            )
-
-            if user_book is None:
-                return None
-
-            # A book reaches a reading shelf without necessarily having been
-            # positioned on it, so give it a position on first sight.
-            ensure_shelf_position(self.db, user_book)
-
-            return user_book
-
-        return find_shelf_placement(self.db, shelf, book_id)
-
-    def _rebalance_positions(self, shelf: ShelfTarget) -> None:
-        """Respread one shelf's positions, so fractional inserts have room again."""
-        for index, row in enumerate(self._positions(shelf), start=1):
-            row.sort_order = SORT_ORDER_GAP * Decimal(index)
-
-    def _get_user_book(self, book_id: int) -> UserBook | None:
-        return (
-            self.db.query(UserBook)
-            .filter(UserBook.user_id == self._user_id, UserBook.book_id == book_id)
-            .first()
-        )
-
-    def _resolve_neighbour(
-        self, shelf: ShelfTarget, book_id: int | None
-    ) -> ShelfPlacement | None:
-        """Resolve a book the move is positioned against; it must be on this shelf."""
+    def _neighbour(self, shelf: Shelf, book_id: int | None) -> ShelfPlacement | None:
         if book_id is None:
             return None
-
         if self._get_user_book(book_id) is None:
             raise ShelfReorderError("Referenced book is not in your library")
 
-        row = self._position_of(shelf, book_id)
-        if row is None:
+        placement = find_shelf_placement(self.db, shelf, book_id)
+        if placement is None:
             raise ShelfReorderError("Referenced book is not on this shelf")
-        return row
+
+        return placement
+
+    def _rebalance(self, shelf: Shelf) -> None:
+        for index, row in enumerate(
+            self.db.query(ShelfPlacement)
+            .filter_by(shelf_id=shelf.id)
+            .order_by(ShelfPlacement.sort_order, ShelfPlacement.id),
+            1,
+        ):
+            row.sort_order = SORT_ORDER_GAP * Decimal(index)

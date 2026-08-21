@@ -114,6 +114,7 @@ class UserBookResponse(UserBookBase):
     def from_user_book(
         cls,
         user_book: UserBook,
+        shelf: ReadingShelf,
         started_at: Optional[datetime],
         finished_at: Optional[datetime],
     ) -> "UserBookResponse":
@@ -127,7 +128,7 @@ class UserBookResponse(UserBookBase):
             id=user_book.id,
             user_id=user_book.user_id,
             book_id=user_book.book_id,
-            shelf=user_book.reading_shelf,
+            shelf=shelf,
             notes=user_book.notes,
             started_at=started_at,
             finished_at=finished_at,
@@ -242,6 +243,7 @@ class ExportBookEntry(BaseModel):
         cls,
         book: Book,
         user_book: UserBook,
+        shelf: ReadingShelf,
         started_at: Optional[datetime],
         finished_at: Optional[datetime],
     ) -> "ExportBookEntry":
@@ -254,7 +256,7 @@ class ExportBookEntry(BaseModel):
             description=book.description,
             published_date=book.published_date,
             page_count=book.page_count,
-            shelf=user_book.reading_shelf,
+            shelf=shelf,
             notes=user_book.notes,
             started_at=started_at,
             finished_at=finished_at,

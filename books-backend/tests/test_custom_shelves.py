@@ -37,6 +37,7 @@ def test_list_shelves_returns_reading_and_custom(client, auth_headers):
     assert [shelf["ref"] for shelf in shelves] == [
         "reading:want_to_read",
         "reading:started",
+        "reading:paused",
         "reading:finished",
         "reading:abandoned",
     ]
@@ -46,7 +47,7 @@ def test_list_shelves_returns_reading_and_custom(client, auth_headers):
     _create_shelf(client, auth_headers, "Beach reads")
 
     shelves = client.get("/api/shelves", headers=auth_headers).json()
-    assert len(shelves) == 5
+    assert len(shelves) == 6
 
     custom = shelves[-1]
     assert custom["display_name"] == "Beach reads"

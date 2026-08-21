@@ -58,7 +58,7 @@ def test_an_invalid_shelf_ref_has_a_helpful_error(client, auth_headers):
         "custom:abc": "Custom shelf id must be a positive decimal integer",
         "reading:unknown": (
             "Unknown reading shelf 'unknown'. Expected one of: "
-            "want_to_read, started, finished, abandoned"
+            "want_to_read, started, paused, finished, abandoned"
         ),
     }
     for shelf, detail in invalid_refs.items():

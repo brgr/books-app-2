@@ -3,6 +3,7 @@
 import io
 from pathlib import Path
 
+from app.book_events import ensure_added_event
 from app.models import (
     Book,
     BookEvent,
@@ -28,10 +29,11 @@ def _make_book(db_session, **overrides):
     db_session.refresh(book)
 
     # The update/cover endpoints require the book to be in the acting user's
-    # library, so link it to the (single) test user.
+    # library. Use the normal event path so it also receives its initial
+    # reading-shelf placement.
     user = db_session.query(User).first()
     if user:
-        db_session.add(UserBook(user_id=user.id, book_id=book.id))
+        ensure_added_event(db_session, user_id=user.id, book_id=book.id)
         db_session.commit()
     return book
 

@@ -24,12 +24,11 @@ Base = declarative_base()
 
 
 class ReadingShelf(enum.Enum):
-    """A reading shelf. These four are fixed, and membership in them is derived
-    from reading state rather than assigned; user-created shelves are ``CustomShelf``
-    rows and work the other way round."""
+    """Fixed reading shelves."""
 
     WANT_TO_READ = "want_to_read"
     STARTED = "started"
+    PAUSED = "paused"
     FINISHED = "finished"
     ABANDONED = "abandoned"
 
@@ -37,7 +36,10 @@ class ReadingShelf(enum.Enum):
 class BookEventCode(enum.Enum):
     ADDED_TO_LIBRARY = "added_to_library"
     STARTED_READING = "started_reading"
+    PAUSED_READING = "paused_reading"
+    RESUMED_READING = "resumed_reading"
     FINISHED_READING = "finished_reading"
+    ABANDONED_READING = "abandoned_reading"
     NOTE_SET = "note_set"
     PROGRESS_SET = "progress_set"
     COVER_CHANGED = "cover_changed"
@@ -54,7 +56,7 @@ class User(Base):
     user_books: Mapped[list["UserBook"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
-    custom_shelves: Mapped[list["CustomShelf"]] = relationship(
+    shelves: Mapped[list["Shelf"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 
@@ -138,19 +140,9 @@ class UserBook(Base):
     book_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("books.id"), nullable=False
     )
-    # The reading shelf the book's state puts it on. Derived from the event
-    # stream (see ``project_user_book_state``), never assigned directly.
-    reading_shelf: Mapped[ReadingShelf] = mapped_column(
-        Enum(ReadingShelf, name="reading_shelf"),
-        nullable=False,
-        default=ReadingShelf.WANT_TO_READ,
-    )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     current_page: Mapped[int | None] = mapped_column(Integer, nullable=True)
     current_percent: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
-    # The position of this book on a reading shelf. Null by default, until the user places it once
-    # manually.
-    sort_order: Mapped[Decimal | None] = mapped_column(Numeric(20, 10), nullable=True)
 
     # Relationships
     user: Mapped["User"] = relationship(back_populates="user_books")
@@ -158,15 +150,12 @@ class UserBook(Base):
     events: Mapped[list["BookEvent"]] = relationship(
         back_populates="user_book", cascade="all, delete-orphan"
     )
-    custom_shelf_placements: Mapped[list["CustomShelfPlacement"]] = relationship(
+    shelf_placements: Mapped[list["ShelfPlacement"]] = relationship(
         back_populates="user_book", cascade="all, delete-orphan"
     )
 
     def __repr__(self):
-        return (
-            f"<UserBook(user_id={self.user_id}, book_id={self.book_id}, "
-            f"reading_shelf='{self.reading_shelf.value}')>"
-        )
+        return f"<UserBook(user_id={self.user_id}, book_id={self.book_id})>"
 
 
 class BookEventType(Base):
@@ -321,58 +310,63 @@ class BookEventCover(Base):
         return f"<BookEventCover(event_id='{self.event_id}')>"
 
 
-class CustomShelf(Base):
-    """A user-created shelf. See ``app.shelves.service`` for how the two kinds
-    of shelf differ."""
+class ShelfKind(enum.Enum):
+    READING = "reading"
+    CUSTOM = "custom"
 
-    __tablename__ = "custom_shelves"
+
+class Shelf(Base):
+    """An ordered shelf, either a reading shelf or a custom (user-created) shelf."""
+
+    __tablename__ = "shelves"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
+    kind: Mapped[ShelfKind] = mapped_column(
+        Enum(ShelfKind, name="shelf_kind"), nullable=False
+    )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
 
-    user: Mapped["User"] = relationship(back_populates="custom_shelves")
-    placements: Mapped[list["CustomShelfPlacement"]] = relationship(
+    user: Mapped["User"] = relationship(back_populates="shelves")
+    placements: Mapped[list["ShelfPlacement"]] = relationship(
         back_populates="shelf", cascade="all, delete-orphan"
     )
 
     __table_args__ = (
-        UniqueConstraint("user_id", "name", name="uq_custom_shelves_user_name"),
+        UniqueConstraint("user_id", "kind", "name", name="uq_shelves_user_kind_name"),
     )
 
     def __repr__(self):
-        return f"<CustomShelf(user_id={self.user_id}, name='{self.name}')>"
+        return f"<Shelf(user_id={self.user_id}, kind='{self.kind.value}', name='{self.name}')>"
 
 
-class CustomShelfPlacement(Base):
-    """A book's placement on a user-created shelf, carrying its position there."""
+class ShelfPlacement(Base):
+    """A book's placement and position on one shelf."""
 
-    __tablename__ = "custom_shelf_placements"
+    __tablename__ = "shelf_placements"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     shelf_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("custom_shelves.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("shelves.id", ondelete="CASCADE"), nullable=False
     )
     user_book_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("user_books.id", ondelete="CASCADE"), nullable=False
     )
     sort_order: Mapped[Decimal] = mapped_column(Numeric(20, 10), nullable=False)
 
-    shelf: Mapped["CustomShelf"] = relationship(back_populates="placements")
-    user_book: Mapped["UserBook"] = relationship(
-        back_populates="custom_shelf_placements"
-    )
+    shelf: Mapped["Shelf"] = relationship(back_populates="placements")
+    user_book: Mapped["UserBook"] = relationship(back_populates="shelf_placements")
 
     __table_args__ = (
         UniqueConstraint(
             "shelf_id",
             "user_book_id",
-            name="uq_custom_shelf_placements_shelf_user_book",
+            name="uq_shelf_placements_shelf_user_book",
         ),
-        Index("ix_custom_shelf_placements_shelf_sort", "shelf_id", "sort_order"),
+        Index("ix_shelf_placements_shelf_sort", "shelf_id", "sort_order"),
     )
 
     def __repr__(self):
-        return f"<CustomShelfPlacement(shelf_id={self.shelf_id}, user_book_id={self.user_book_id})>"
+        return f"<ShelfPlacement(shelf_id={self.shelf_id}, user_book_id={self.user_book_id})>"

@@ -1,4 +1,4 @@
-"""Orchestration layer for a user's reading state and timeline."""
+"""Reading-state operations: the state is the user's reading-shelf placement."""
 
 from datetime import UTC, datetime
 
@@ -7,10 +7,13 @@ from sqlalchemy.orm import Session, joinedload
 from app.book_events import (
     apply_progress_event,
     build_user_book_response,
+    current_reading_shelf,
     ensure_added_event,
+    move_reading_shelf_placement,
     project_user_book_state,
     record_finished_reading,
     record_note_event,
+    record_reading_event,
     record_started_reading,
 )
 from app.books.queries import get_user_book
@@ -22,62 +25,52 @@ from app.models import (
     UserBook,
 )
 from app.schemas import BookProgressUpdate, UserBookResponse, UserBookShelfUpdate
-from app.shelves.shelves import ensure_shelf_position, move_to_end_of_shelf
 
 
-# noinspection bad-argument-type
 class ReadingService:
-    """Reading-state operations scoped to a single request's db session and user."""
-
     def __init__(self, db: Session, user: User):
         self.db = db
         self.user = user
 
     @property
     def _user_id(self) -> int:
-        # noinspection PyTypeChecker
         return self.user.id
 
+    # TODO: We should separate the API for reading and custom shelves. For custom shelves, we don't "set" a shelf,
+    #  but we add or remove a book from that shelf. For reading, in the API, we might want to talk about
+    #  reading state instead; and use a different API endpoint, even though the DB model differs only slightly.
     def set_shelf(
         self, book_id: int, shelf_data: UserBookShelfUpdate
     ) -> UserBookResponse:
-        """Set or update the acting user's shelf for a book.
-
-        Raises ValueError on any domain-rule violation (illegal transition, a
-        future ``occurred_at``, etc.); the router maps these to HTTP 400.
-        """
-        user_book = ensure_added_event(self.db, user_id=self._user_id, book_id=book_id)
-        project_user_book_state(self.db, user_book)
-        previous_shelf = user_book.reading_shelf
-
+        user_book = ensure_added_event(self.db, self._user_id, book_id)
+        previous = current_reading_shelf(self.db, user_book.id)
         occurred_at = self._normalize_occurred_at(shelf_data.occurred_at)
-        self._apply_shelf_transition(user_book, shelf_data.shelf, occurred_at)
+        self._apply_transition(user_book, previous, shelf_data.shelf, occurred_at)
         self._apply_notes(user_book, shelf_data)
 
-        project_user_book_state(self.db, user_book)
-        self._sync_shelf_position(user_book, previous_shelf)
+        if shelf_data.shelf != previous:
+            move_reading_shelf_placement(self.db, user_book, shelf_data.shelf)
 
+        project_user_book_state(self.db, user_book)
         self.db.commit()
         self.db.refresh(user_book)
 
         return build_user_book_response(self.db, user_book)
 
     def remove_from_library(self, book_id: int) -> bool:
-        """Remove the book from the user's library. Returns False if absent."""
         user_book = get_user_book(self.db, user_id=self._user_id, book_id=book_id)
         if not user_book:
             return False
+
         self.db.delete(user_book)
         self.db.commit()
         return True
 
     def get_events(self, book_id: int) -> list[BookEvent]:
-        """Return the user's events for a book, most recent first (empty if none)."""
         user_book = get_user_book(self.db, user_id=self._user_id, book_id=book_id)
         if not user_book:
             return []
 
-        # noinspection PyTypeChecker
         return (
             self.db.query(BookEvent)
             .options(
@@ -94,89 +87,83 @@ class ReadingService:
     def add_progress(
         self, book_id: int, max_page: int | None, progress: BookProgressUpdate
     ) -> UserBookResponse:
-        """Record a progress event, requiring an in-progress reading cycle.
-
-        Raises ValueError (mapped to HTTP 400) if the book has not been started.
-        """
         user_book = get_user_book(self.db, user_id=self._user_id, book_id=book_id)
-        if not user_book:
+
+        if (
+            not user_book
+            or current_reading_shelf(self.db, user_book.id) != ReadingShelf.STARTED
+        ):
             raise ValueError("Cannot record progress before starting reading")
 
-        project_user_book_state(self.db, user_book)
-        if user_book.reading_shelf != ReadingShelf.STARTED:
-            raise ValueError("Cannot record progress before starting reading")
-
-        user_book = apply_progress_event(
+        return build_user_book_response(
             self.db,
-            user_book,
-            page=progress.page,
-            percent=progress.percent,
-            max_page=max_page,
+            apply_progress_event(
+                self.db,
+                user_book,
+                page=progress.page,
+                percent=progress.percent,
+                max_page=max_page,
+            ),
         )
-        return build_user_book_response(self.db, user_book)
 
     @staticmethod
-    def _normalize_occurred_at(occurred_at: datetime | None) -> datetime | None:
-        if occurred_at is None:
+    def _normalize_occurred_at(value: datetime | None) -> datetime | None:
+        if value is None:
             return None
-        if occurred_at.tzinfo is None:
-            occurred_at = occurred_at.replace(tzinfo=UTC)
-        if occurred_at > datetime.now(UTC):
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=UTC)
+        if value > datetime.now(UTC):
             raise ValueError("occurred_at cannot be in the future")
-        return occurred_at
+        return value
 
-    def _apply_shelf_transition(
+    def _apply_transition(
         self,
         user_book: UserBook,
-        target_shelf: ReadingShelf,
+        source: ReadingShelf,
+        target: ReadingShelf,
         occurred_at: datetime | None,
     ) -> None:
-        user_book_id = user_book.id
-        if (
-            target_shelf == ReadingShelf.WANT_TO_READ
-            and user_book.reading_shelf != ReadingShelf.WANT_TO_READ
-        ):
+        if target == source:
+            return
+        if target == ReadingShelf.WANT_TO_READ:
             raise ValueError(
                 "Cannot revert to 'want_to_read' after reading has started"
             )
 
-        if (
-            target_shelf == ReadingShelf.STARTED
-            and user_book.reading_shelf != ReadingShelf.STARTED
+        if source == ReadingShelf.WANT_TO_READ and target == ReadingShelf.FINISHED:
+            raise ValueError("Cannot finish reading before starting")
+
+        if source == ReadingShelf.WANT_TO_READ and target == ReadingShelf.STARTED:
+            record_started_reading(self.db, user_book.id, occurred_at)
+        elif source == ReadingShelf.STARTED and target == ReadingShelf.PAUSED:
+            record_reading_event(
+                self.db, user_book.id, BookEventCode.PAUSED_READING, occurred_at
+            )
+        elif source == ReadingShelf.PAUSED and target == ReadingShelf.STARTED:
+            record_reading_event(
+                self.db, user_book.id, BookEventCode.RESUMED_READING, occurred_at
+            )
+        elif source == ReadingShelf.STARTED and target == ReadingShelf.FINISHED:
+            record_finished_reading(self.db, user_book.id, occurred_at)
+        elif (
+            source in {ReadingShelf.STARTED, ReadingShelf.PAUSED}
+            and target == ReadingShelf.ABANDONED
         ):
-            record_started_reading(
-                self.db, user_book_id=user_book_id, occurred_at=occurred_at
+            record_reading_event(
+                self.db, user_book.id, BookEventCode.ABANDONED_READING, occurred_at
             )
         elif (
-            target_shelf == ReadingShelf.FINISHED
-            and user_book.reading_shelf != ReadingShelf.FINISHED
+            source in {ReadingShelf.FINISHED, ReadingShelf.ABANDONED}
+            and target == ReadingShelf.STARTED
         ):
-            record_finished_reading(
-                self.db, user_book_id=user_book_id, occurred_at=occurred_at
-            )
-
-    def _apply_notes(
-        self, user_book: UserBook, shelf_data: UserBookShelfUpdate
-    ) -> None:
-        if "notes" not in shelf_data.model_fields_set:
-            return
-        normalized_notes = shelf_data.notes
-        if normalized_notes == "":
-            normalized_notes = None
-        if normalized_notes != user_book.notes:
-            record_note_event(
-                self.db,
-                user_book_id=user_book.id,
-                code=BookEventCode.NOTE_SET,
-                note=normalized_notes,
-            )
-            user_book.notes = normalized_notes
-
-    def _sync_shelf_position(
-        self, user_book: UserBook, previous_shelf: ReadingShelf
-    ) -> None:
-        """Keep the book's position sensible after a shelf change."""
-        if previous_shelf != user_book.reading_shelf:
-            move_to_end_of_shelf(self.db, user_book)
+            record_started_reading(self.db, user_book.id, occurred_at)
         else:
-            ensure_shelf_position(self.db, user_book)
+            raise ValueError(f"Cannot move from '{source.value}' to '{target.value}'")
+
+    def _apply_notes(self, user_book: UserBook, data: UserBookShelfUpdate) -> None:
+        if "notes" not in data.model_fields_set:
+            return
+        note = data.notes or None
+        if note != user_book.notes:
+            record_note_event(self.db, user_book.id, BookEventCode.NOTE_SET, note)
+            user_book.notes = note

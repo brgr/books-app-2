@@ -7,12 +7,15 @@ from sqlalchemy.orm import Session
 
 from app.book_events import (
     ensure_added_event,
+    move_reading_shelf_placement,
+    project_user_book_state,
     record_finished_reading,
+    record_progress_event,
+    record_reading_event,
     record_started_reading,
 )
 from app.image_utils import store_cover_image
-from app.models import Book, Import, ReadingShelf, UserBook
-from app.shelves.shelves import ensure_shelf_position
+from app.models import Book, BookEventCode, Import, ReadingShelf, UserBook
 
 
 class ImportReadingListError(ValueError):
@@ -143,7 +146,6 @@ def import_reading_list_from_bytes(
         user_book = UserBook(
             user_id=user_id,
             book_id=book_id,
-            reading_shelf=derived_shelf,
             notes=notes,
             current_page=current_page,
         )
@@ -151,7 +153,11 @@ def import_reading_list_from_bytes(
         db.flush()
 
         ensure_added_event(db, user_id=user_id, book_id=book_id, import_id=import_id)
-        if derived_shelf in (ReadingShelf.STARTED, ReadingShelf.FINISHED):
+        if derived_shelf in (
+            ReadingShelf.STARTED,
+            ReadingShelf.FINISHED,
+            ReadingShelf.ABANDONED,
+        ):
             record_started_reading(
                 db,
                 user_book_id=user_book.id,
@@ -163,8 +169,13 @@ def import_reading_list_from_bytes(
                 user_book_id=user_book.id,
                 occurred_at=finished_at,
             )
+        if derived_shelf == ReadingShelf.ABANDONED:
+            record_reading_event(db, user_book.id, BookEventCode.ABANDONED_READING)
+        if current_page is not None:
+            record_progress_event(db, user_book.id, page=current_page)
 
-        ensure_shelf_position(db, user_book)
+        move_reading_shelf_placement(db, user_book, derived_shelf)
+        project_user_book_state(db, user_book)
 
         # The export's "Lists" column is ignored: a book sits on exactly one
         # reading shelf, the one its ReadingShelf puts it on.
