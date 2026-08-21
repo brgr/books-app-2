@@ -242,11 +242,22 @@ def record_finished_reading(
     if latest_finish and _is_after(latest_finish, latest_start):
         raise ValueError("Cannot finish reading twice without a new start")
 
+    event_occurred_at = occurred_at or datetime.now(UTC)
+    if event_occurred_at.tzinfo is None:
+        event_occurred_at = event_occurred_at.replace(tzinfo=UTC)
+
+    start_occurred_at = latest_start.occurred_at
+    if start_occurred_at.tzinfo is None:
+        start_occurred_at = start_occurred_at.replace(tzinfo=UTC)
+
+    if event_occurred_at < start_occurred_at:
+        raise ValueError("Cannot finish reading before the current start date")
+
     event_type = _get_event_type(session, BookEventCode.FINISHED_READING)
     event = BookEvent(
         user_book_id=user_book_id,
         event_type_id=event_type.id,
-        occurred_at=occurred_at or datetime.now(UTC),
+        occurred_at=event_occurred_at,
     )
     session.add(event)
     session.flush()

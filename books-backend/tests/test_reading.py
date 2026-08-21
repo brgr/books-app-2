@@ -281,6 +281,30 @@ def test_set_finished_with_custom_occurred_at(client, auth_headers, created_book
     assert returned == finished_at
 
 
+def test_finish_date_must_not_precede_current_start(client, auth_headers, created_book):
+    """A backdated finish should trigger a validation error."""
+    book_id = created_book["id"]
+    started_at = datetime(2026, 1, 10, 12, 0, 0, tzinfo=UTC)
+    # Note: The finished_at is before the started_at, which should trigger a validation error
+    invalid_finished_at = datetime(2026, 1, 9, 12, 0, 0, tzinfo=UTC)
+
+    response = client.put(
+        f"/api/books/{book_id}/shelf",
+        json={"shelf": "started", "occurred_at": started_at.isoformat()},
+        headers=auth_headers,
+    )
+    assert response.status_code == status.HTTP_200_OK
+
+    response = client.put(
+        f"/api/books/{book_id}/shelf",
+        json={"shelf": "finished", "occurred_at": invalid_finished_at.isoformat()},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "before the current start" in response.json()["detail"].lower()
+
+
 def test_occurred_at_cannot_be_in_the_future(client, auth_headers, created_book):
     """Backdating must not accept future timestamps."""
     book_id = created_book["id"]
