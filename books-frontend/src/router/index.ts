@@ -6,6 +6,8 @@ import BooksView from "../views/BooksView.vue";
 import BookDetailView from "../views/BookDetailView.vue";
 import BookEditView from "../views/BookEditView.vue";
 import SettingsView from "../views/SettingsView.vue";
+import CustomShelvesView from "../views/CustomShelvesView.vue";
+import CustomShelfView from "../views/CustomShelfView.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -26,6 +28,18 @@ const router = createRouter({
       path: "/shelves/:shelf(to-read|finished)",
       name: "shelf",
       component: BooksView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/shelves",
+      name: "custom-shelves",
+      component: CustomShelvesView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/shelves/custom/:id(\\d+)",
+      name: "custom-shelf",
+      component: CustomShelfView,
       meta: { requiresAuth: true },
     },
     {

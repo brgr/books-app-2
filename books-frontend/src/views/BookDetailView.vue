@@ -11,6 +11,7 @@ import NavigationBar from "../components/ui/NavigationBar.vue";
 import CollapsibleText from "../components/ui/CollapsibleText.vue";
 import BookMetadata from "../components/book/BookMetadata.vue";
 import EventTimeline from "../components/book/EventTimeline.vue";
+import BookCustomShelves from "../components/book/BookCustomShelves.vue";
 import { type Book, type BookEvent, type BookProgressUpdate, ReadingShelf } from "../api/types";
 import { formatShortDate } from "../utils/date";
 import { useCachedQuery } from "../composables/useCachedQuery";
@@ -185,6 +186,8 @@ const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(() =
           </div>
 
           <BookNotes :notes="book.user_book?.notes ?? ''" :saving="notesSaving" @save="handleSaveNotes" />
+
+          <BookCustomShelves :book-id="book.id" />
 
           <BookMetadata :book="book" />
 

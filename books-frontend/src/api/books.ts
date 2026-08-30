@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import { parseShelfRef } from "./types";
 import type {
   Book,
   BookCreate,
@@ -10,8 +11,9 @@ import type {
   GoogleBookResult,
   ImportRecord,
   PaginatedBooks,
-  ReadingShelf,
   ShelfReorderRequest,
+  Shelf,
+  ShelfRef,
   UserBook,
   UserBookShelfUpdate,
 } from "./types";
@@ -23,19 +25,38 @@ export async function getBooks(page = 1, pageSize = 20): Promise<PaginatedBooks>
   return response.data;
 }
 
-function readingShelfRef(shelf: ReadingShelf): string {
-  return `reading:${shelf}`;
-}
-
-export async function getShelfBooks(shelf: ReadingShelf, page = 1, pageSize = 20): Promise<PaginatedBooks> {
-  const response = await apiClient.get<PaginatedBooks>(`/shelves/${readingShelfRef(shelf)}/books`, {
+export async function getShelfBooks(shelf: ShelfRef, page = 1, pageSize = 20): Promise<PaginatedBooks> {
+  const response = await apiClient.get<PaginatedBooks>(`/shelves/${shelf}/books`, {
     params: { page, page_size: pageSize },
   });
   return response.data;
 }
 
-export async function reorderShelfItem(shelf: ReadingShelf, payload: ShelfReorderRequest): Promise<void> {
-  await apiClient.post(`/shelves/${readingShelfRef(shelf)}/items/reorder`, payload);
+export async function reorderShelfItem(shelf: ShelfRef, payload: ShelfReorderRequest): Promise<void> {
+  await apiClient.post(`/shelves/${shelf}/items/reorder`, payload);
+}
+
+export async function getShelves(): Promise<Shelf[]> {
+  const response = await apiClient.get<Shelf[]>("/shelves");
+  return response.data.map((shelf) => ({ ...shelf, ref: parseShelfRef(shelf.ref) }));
+}
+
+export async function createShelf(name: string): Promise<Shelf> {
+  const response = await apiClient.post<Shelf>("/shelves", { name });
+  return response.data;
+}
+
+export async function getBookShelves(bookId: number): Promise<Shelf[]> {
+  const response = await apiClient.get<Shelf[]>(`/books/${bookId}/custom-shelves`);
+  return response.data.map((shelf) => ({ ...shelf, ref: parseShelfRef(shelf.ref) }));
+}
+
+export async function addBookToShelf(shelf: ShelfRef, bookId: number): Promise<void> {
+  await apiClient.post(`/shelves/${parseShelfRef(shelf)}/books`, { book_id: bookId });
+}
+
+export async function removeBookFromShelf(shelf: ShelfRef, bookId: number): Promise<void> {
+  await apiClient.delete(`/shelves/${parseShelfRef(shelf)}/books/${bookId}`);
 }
 
 export async function getBook(id: number): Promise<Book> {

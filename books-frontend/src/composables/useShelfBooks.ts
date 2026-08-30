@@ -1,12 +1,12 @@
 import { computed, watch } from "vue";
 import { getShelfBooks } from "../api/books";
-import type { Book, ReadingShelf } from "../api/types";
+import type { Book, ShelfRef } from "../api/types";
 import { cacheKeys } from "../cache/keys";
 import { useLibraryPage } from "./useLibraryPage.ts";
 import { usePaginatedList } from "./usePaginatedList.ts";
 
 export interface ShelfBooksOptions {
-  shelf: ReadingShelf;
+  shelf: ShelfRef;
   pageSize: number;
 }
 
@@ -22,7 +22,7 @@ export function useShelfBooks(options: ShelfBooksOptions) {
     error: loadError,
     loadMore,
     reload,
-  } = usePaginatedList<Book, ReadingShelf>({
+  } = usePaginatedList<Book, ShelfRef>({
     resourceId: options.shelf,
     cacheKey: (shelf, page) => cacheKeys.shelfBooks(shelf, page, options.pageSize),
     cacheKeyPrefix: (shelf) => cacheKeys.shelfBooksPrefix(shelf),

@@ -6,7 +6,7 @@ import BookCard from "./BookCard/BookCard.vue";
 import BookContextMenu from "./BookContextMenu.vue";
 import BookCoverTile from "./BookCoverTile.vue";
 import ShelfViewModeToggle from "./ShelfViewModeToggle.vue";
-import type { Book, ReadingShelf } from "../../api/types";
+import type { Book, ShelfRef } from "../../api/types";
 import { useContextMenu } from "../../composables/useContextMenu";
 import { useInfiniteScroll } from "../../composables/useInfiniteScroll";
 import { useLibraryPage } from "../../composables/useLibraryPage";
@@ -16,7 +16,7 @@ import { useShelfViewMode, type ViewMode } from "../../composables/useShelfViewM
 
 const props = withDefaults(
   defineProps<{
-    shelf: ReadingShelf;
+    shelf: ShelfRef;
     /** Heading above the shelf. Omitted when the page shows a single, self-evident shelf. */
     title?: string | null;
     showProgress?: boolean;

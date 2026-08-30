@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { AxiosAdapter, InternalAxiosRequestConfig } from "axios";
 import { apiClient } from "./client";
 import { getShelfBooks, reorderShelfItem } from "./books";
-import { ReadingShelf } from "./types";
 
 const originalAdapter = apiClient.defaults.adapter;
 
@@ -29,7 +28,7 @@ describe("shelf API uses tagged refs", () => {
   it("uses a tagged ref when loading a reading shelf", async () => {
     const request = captureRequest();
 
-    await getShelfBooks(ReadingShelf.STARTED);
+    await getShelfBooks("reading:started");
 
     await expect(request).resolves.toMatchObject({ url: "/shelves/reading:started/books" });
   });
@@ -37,7 +36,7 @@ describe("shelf API uses tagged refs", () => {
   it("uses a tagged ref when reordering a reading shelf", async () => {
     const request = captureRequest();
 
-    await reorderShelfItem(ReadingShelf.FINISHED, { moved_book_id: 1 });
+    await reorderShelfItem("reading:finished", { moved_book_id: 1 });
 
     await expect(request).resolves.toMatchObject({ url: "/shelves/reading:finished/items/reorder" });
   });

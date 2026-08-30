@@ -6,7 +6,6 @@ import BookSearchModal from "../components/modals/BookSearchModal.vue";
 import BooksSearchHeader from "../components/ui/BooksSearchHeader.vue";
 import LibraryNav from "../components/ui/LibraryNav.vue";
 import NavigationBar from "../components/ui/NavigationBar.vue";
-import { ReadingShelf } from "../api/types";
 import { useAddBook } from "../composables/useAddBook";
 import { provideLibraryPage } from "../composables/useLibraryPage";
 
@@ -19,8 +18,8 @@ const shelfFilter = computed<"to-read" | "finished">(() =>
   route.params.shelf === "finished" ? "finished" : "to-read",
 );
 
-function goToShelf(shelf: "to-read" | "finished") {
-  router.push({ name: "shelf", params: { shelf } });
+function goToShelf(shelf: "to-read" | "finished" | "shelves") {
+  router.push(shelf === "shelves" ? { name: "custom-shelves" } : { name: "shelf", params: { shelf } });
 }
 
 const { allShelvesEmpty, refreshShelves } = provideLibraryPage({ searchQuery });
@@ -49,10 +48,10 @@ const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(refr
         <template v-if="shelfFilter === 'to-read'">
           <!-- Books in progress load as a single page of up to 100: more than a user realistically
                reads at once. Worth revisiting if that ever stops holding. -->
-          <BookShelf :shelf="ReadingShelf.STARTED" title="Reading now" show-progress :page-size="100" />
-          <BookShelf :shelf="ReadingShelf.WANT_TO_READ" title="Want to read" paginated />
+          <BookShelf shelf="reading:started" title="Reading now" show-progress :page-size="100" />
+          <BookShelf shelf="reading:want_to_read" title="Want to read" paginated />
         </template>
-        <BookShelf v-else :shelf="ReadingShelf.FINISHED" paginated />
+        <BookShelf v-else shelf="reading:finished" paginated />
       </div>
     </div>
 

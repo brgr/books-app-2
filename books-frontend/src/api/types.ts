@@ -8,6 +8,43 @@ export const ReadingShelf = {
 
 export type ReadingShelf = (typeof ReadingShelf)[keyof typeof ReadingShelf];
 
+/** Address of a built-in reading shelf. */
+export type ReadingShelfRef = `reading:${ReadingShelf}`;
+
+/** Address of a custom shelf. */
+export type CustomShelfRef = `custom:${number}`;
+
+/** Address of either a built-in reading shelf or a custom shelf. */
+export type ShelfRef = ReadingShelfRef | CustomShelfRef;
+
+/**
+ * Validates and narrows a shelf reference received from an untyped source such as a route or
+ * an API response.
+ */
+export function parseShelfRef(value: string): ShelfRef {
+  const readingPrefix = "reading:";
+  const customMatch = /^custom:([1-9]\d*)$/.exec(value);
+
+  if (
+    value.startsWith(readingPrefix) &&
+    Object.values(ReadingShelf).includes(value.slice(readingPrefix.length) as ReadingShelf)
+  ) {
+    return value as ReadingShelfRef;
+  }
+
+  if (customMatch) {
+    return value as CustomShelfRef;
+  }
+
+  throw new Error(`Invalid shelf reference: ${value}`);
+}
+
+export interface Shelf {
+  ref: ShelfRef;
+  display_name: string;
+  book_count: number;
+}
+
 export interface User {
   id: number;
   username: string;
