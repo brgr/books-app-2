@@ -140,6 +140,25 @@ class ShelfService:
             for s in reading + [s for s in shelves if s.kind == ShelfKind.CUSTOM]
         ]
 
+    def list_book_custom_shelves(self, book_id: int) -> list[ShelfResponse]:
+        """Return the custom shelves containing one of the user's library books."""
+        user_book = self._get_user_book(book_id)
+        if user_book is None:
+            raise BookNotInLibraryError("Book not in your library")
+
+        shelves = (
+            self.db.query(Shelf)
+            .join(ShelfPlacement)
+            .filter(
+                Shelf.user_id == self._user_id,
+                Shelf.kind == ShelfKind.CUSTOM,
+                ShelfPlacement.user_book_id == user_book.id,
+            )
+            .order_by(Shelf.id.asc())
+            .all()
+        )
+        return [self._to_response(shelf) for shelf in shelves]
+
     def create_shelf(self, payload: CustomShelfNamePayload) -> ShelfResponse:
         shelf = Shelf(user_id=self._user_id, kind=ShelfKind.CUSTOM, name=payload.name)
         self.db.add(shelf)

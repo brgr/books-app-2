@@ -275,6 +275,28 @@ def test_a_book_can_sit_on_several_custom_shelves(
         assert [item["id"] for item in books["items"]] == [book_id]
 
 
+def test_list_book_custom_shelves(client, auth_headers, sample_book_data):
+    book_id = _create_book(client, auth_headers, sample_book_data, "Listed", "1")
+    first_ref = _create_shelf(client, auth_headers, "Beach reads")
+    second_ref = _create_shelf(client, auth_headers, "Favourites")
+
+    client.post(
+        f"/api/shelves/{first_ref}/books",
+        json={"book_id": book_id},
+        headers=auth_headers,
+    )
+    client.post(
+        f"/api/shelves/{second_ref}/books",
+        json={"book_id": book_id},
+        headers=auth_headers,
+    )
+
+    response = client.get(f"/api/books/{book_id}/custom-shelves", headers=auth_headers)
+
+    assert response.status_code == status.HTTP_200_OK
+    assert [shelf["ref"] for shelf in response.json()] == [first_ref, second_ref]
+
+
 def test_adding_a_book_outside_the_library_is_not_found(client, auth_headers):
     shelf_ref = _create_shelf(client, auth_headers, "Beach reads")
 

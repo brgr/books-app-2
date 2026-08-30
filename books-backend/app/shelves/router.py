@@ -71,6 +71,12 @@ def list_shelves(service: ShelfServiceDep):
     return service.list_shelves()
 
 
+@router.get("/books/{book_id}/custom-shelves", response_model=list[ShelfResponse])
+def list_book_custom_shelves(book_id: int, service: ShelfServiceDep):
+    """The custom shelves containing a library book."""
+    return service.list_book_custom_shelves(book_id)
+
+
 @router.post(
     "/shelves", response_model=ShelfResponse, status_code=status.HTTP_201_CREATED
 )
