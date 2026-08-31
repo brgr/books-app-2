@@ -24,7 +24,7 @@ const shelfRef = computed<ShelfRef>(() => {
   return parseShelfRef(`custom:${id}`);
 });
 
-const { data: shelves, refresh } = useCachedQuery<Shelf[]>(cacheKeys.shelves, getShelves);
+const { data: shelves, error: shelvesError, refresh } = useCachedQuery<Shelf[]>(cacheKeys.shelves, getShelves);
 const shelf = computed(() => (shelves.value ?? []).find((item) => item.ref === shelfRef.value));
 const { allShelvesEmpty, refreshShelves } = provideLibraryPage({ searchQuery });
 const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(refreshShelves);
@@ -98,13 +98,21 @@ async function confirmDeleteShelf() {
     <div class="container">
       <BooksSearchHeader v-model:search-query="searchQuery" />
 
-      <header class="shelf-heading">
-        <h1>{{ shelf?.display_name ?? "Shelf" }}</h1>
-        <button type="button" class="btn-small" @click="openEditShelf">Edit shelf</button>
-      </header>
+      <div v-if="shelvesError" class="error-state">
+        Failed to load this shelf. Please try again.
+        <button type="button" class="btn-small" @click="refresh">Retry</button>
+      </div>
+      <div v-else-if="!shelves" class="loading">Loading shelf...</div>
+      <div v-else-if="!shelf" class="empty-state">This shelf no longer exists.</div>
+      <template v-else>
+        <header class="shelf-heading">
+          <h1>{{ shelf.display_name }}</h1>
+          <button type="button" class="btn-small" @click="openEditShelf">Edit shelf</button>
+        </header>
 
-      <p v-if="allShelvesEmpty" class="empty-state">No books on this shelf yet.</p>
-      <BookShelf :shelf="shelfRef" :title="null" paginated can-remove-from-shelf />
+        <p v-if="allShelvesEmpty" class="empty-state">No books on this shelf yet.</p>
+        <BookShelf :shelf="shelfRef" :title="null" paginated can-remove-from-shelf />
+      </template>
     </div>
 
     <BookSearchModal v-if="showSearchModal" @close="closeSearch" @select="selectBook" />
@@ -142,6 +150,14 @@ h1 {
   text-align: center;
   padding: var(--spacing-xl);
   color: var(--color-text-secondary);
+}
+.error-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-xl);
+  color: var(--color-danger);
 }
 @media (min-width: 769px) {
   .custom-shelf-page {

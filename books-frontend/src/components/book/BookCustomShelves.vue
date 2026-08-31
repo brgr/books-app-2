@@ -8,8 +8,16 @@ import { useCachedQuery } from "../../composables/useCachedQuery";
 
 const props = defineProps<{ bookId: number }>();
 
-const { data: shelves, refresh: refreshShelves } = useCachedQuery<Shelf[]>(cacheKeys.shelves, getShelves);
-const { data: bookShelves, refresh: refreshBookShelves } = useCachedQuery<Shelf[]>(
+const {
+  data: shelves,
+  error: shelvesError,
+  refresh: refreshShelves,
+} = useCachedQuery<Shelf[]>(cacheKeys.shelves, getShelves);
+const {
+  data: bookShelves,
+  error: bookShelvesError,
+  refresh: refreshBookShelves,
+} = useCachedQuery<Shelf[]>(
   computed(() => cacheKeys.shelvesForBook(props.bookId)),
   () => getBookShelves(props.bookId),
 );
@@ -49,7 +57,9 @@ async function toggleShelf(shelf: Shelf) {
       <button type="button" class="btn-small" @click="showShelfEditor = true">Update shelves</button>
     </div>
 
-    <p v-if="!selectedCustomShelves.length" class="empty">Not in any shelves.</p>
+    <p v-if="bookShelvesError" class="error">Failed to load shelf memberships. Please try again.</p>
+    <p v-else-if="!bookShelves" class="empty">Loading shelves...</p>
+    <p v-else-if="!selectedCustomShelves.length" class="empty">Not in any shelves.</p>
     <ul v-else class="shelf-list" aria-label="Custom shelves">
       <li v-for="shelf in selectedCustomShelves" :key="shelf.ref">{{ shelf.display_name }}</li>
     </ul>
@@ -69,7 +79,10 @@ async function toggleShelf(shelf: Shelf) {
           <button type="button" class="btn-small" :disabled="updating !== null" @click="closeShelfEditor">Close</button>
         </div>
         <div class="modal-body">
-          <p v-if="!customShelves.length" class="empty">No shelves yet.</p>
+          <p v-if="shelvesError" class="error">Failed to load shelves. Please try again.</p>
+          <p v-else-if="bookShelvesError" class="error">Failed to load shelf memberships. Please try again.</p>
+          <p v-else-if="!shelves || !bookShelves" class="empty">Loading shelves...</p>
+          <p v-else-if="!customShelves.length" class="empty">No shelves yet.</p>
           <div v-else class="shelf-options">
             <label v-for="shelf in customShelves" :key="shelf.ref" class="shelf-option">
               <input
@@ -106,6 +119,10 @@ h2 {
 .empty {
   margin: 0;
   color: var(--color-text-secondary);
+}
+.error {
+  margin: 0;
+  color: var(--color-danger);
 }
 .shelf-list {
   display: flex;
