@@ -10,6 +10,7 @@
   --color-success: #34c759;
   --color-warning: #ff9500;
   --color-danger: #ff3b30;
+  --color-danger-hover: #d92d24;
   --color-error-bg: #fff5f5;
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
@@ -139,8 +140,9 @@ button:disabled,
   border-color: var(--color-danger);
 }
 
-.btn-danger:hover {
-  opacity: 0.9;
+.btn-danger:hover:not(:disabled) {
+  background-color: var(--color-danger-hover);
+  border-color: var(--color-danger-hover);
 }
 
 .btn-small {

@@ -42,6 +42,9 @@ export function useCachedQuery<T>(
     });
   }
 
+  /**
+   * Re-executes the query and resolves when the resulting request completes.
+   */
   async function refresh() {
     execute();
     await currentPromise;

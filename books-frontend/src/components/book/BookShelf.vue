@@ -13,6 +13,8 @@ import { useLibraryPage } from "../../composables/useLibraryPage";
 import { useShelfBooks } from "../../composables/useShelfBooks";
 import { useShelfReorder } from "../../composables/useShelfReorder";
 import { useShelfViewMode, type ViewMode } from "../../composables/useShelfViewMode";
+import { removeBookFromShelf } from "../../api/books";
+import { invalidateCache } from "../../cache/invalidate";
 
 const props = withDefaults(
   defineProps<{
@@ -25,6 +27,8 @@ const props = withDefaults(
     pageSize?: number;
     /** Layout this shelf starts in, until the reader picks one; theirs is then remembered. */
     defaultViewMode?: ViewMode;
+    /** Whether this shelf supports removing a book without removing it from the library. */
+    canRemoveFromShelf?: boolean;
   }>(),
   { title: null, showProgress: false, paginated: false, pageSize: 30, defaultViewMode: "list" },
 );
@@ -35,7 +39,7 @@ const { searchQuery } = useLibraryPage();
 // Deliberately this shelf's own, not the page's: shelves on one page can be laid out differently.
 const viewMode = useShelfViewMode(props.shelf, props.defaultViewMode);
 
-const { books: filteredBooks, error, hasMore, isLoadingMore, loadMore, replaceItems } = useShelfBooks(props);
+const { books: filteredBooks, error, hasMore, isLoadingMore, loadMore, reload, replaceItems } = useShelfBooks(props);
 
 /**
  * vuedraggable reorders the array it renders from in place, so the shelf draws from a mutable
@@ -95,6 +99,21 @@ function handleContextMove(edge: "top" | "bottom") {
   closeContextMenu();
   if (bookId !== null) void moveBookToEdge(bookId, edge);
 }
+
+async function handleContextRemove() {
+  const bookId = contextMenu.value.bookId;
+  closeContextMenu();
+  if (bookId === null || !props.canRemoveFromShelf) return;
+
+  try {
+    await removeBookFromShelf(props.shelf, bookId);
+    await invalidateCache.shelfChanged(bookId);
+    await reload();
+  } catch (error) {
+    console.error("Failed to remove book from shelf:", error);
+    alert("Failed to remove book from this shelf.");
+  }
+}
 </script>
 
 <template>
@@ -142,8 +161,10 @@ function handleContextMove(edge: "top" | "bottom") {
       v-if="contextMenu.visible && contextMenu.bookId !== null"
       :x="contextMenu.x"
       :y="contextMenu.y"
+      :can-remove-from-shelf="canRemoveFromShelf"
       @view="handleContextView"
       @move="handleContextMove"
+      @remove-from-shelf="handleContextRemove"
       @close="closeContextMenu"
     />
   </section>

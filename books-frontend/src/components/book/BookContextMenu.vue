@@ -4,6 +4,7 @@ import { ref, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
 const props = defineProps<{
   x: number;
   y: number;
+  canRemoveFromShelf?: boolean;
 }>();
 
 type MoveEdge = "top" | "bottom";
@@ -11,6 +12,7 @@ type MoveEdge = "top" | "bottom";
 const emit = defineEmits<{
   view: [];
   move: [edge: MoveEdge];
+  removeFromShelf: [];
   close: [];
 }>();
 
@@ -65,6 +67,15 @@ onBeforeUnmount(() => {
         <button type="button" class="ctx-item" role="menuitem" @click="emit('view')">View Book</button>
         <button type="button" class="ctx-item" role="menuitem" @click="emit('move', 'top')">Move to Top</button>
         <button type="button" class="ctx-item" role="menuitem" @click="emit('move', 'bottom')">Move to Bottom</button>
+        <button
+          v-if="canRemoveFromShelf"
+          type="button"
+          class="ctx-item ctx-item-danger"
+          role="menuitem"
+          @click="emit('removeFromShelf')"
+        >
+          Remove from this shelf
+        </button>
       </div>
     </div>
   </teleport>
@@ -95,6 +106,7 @@ onBeforeUnmount(() => {
   text-align: left;
   background: transparent;
   border: none;
+  border-radius: 0;
   padding: 10px 12px;
   font-size: 0.95rem;
   font-weight: 500;
@@ -105,7 +117,11 @@ onBeforeUnmount(() => {
 
 .ctx-item:hover,
 .ctx-item:focus-visible {
-  background: var(--color-bg);
+  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-bg-card));
   outline: none;
+}
+
+.ctx-item-danger {
+  color: var(--color-danger, #c0392b);
 }
 </style>

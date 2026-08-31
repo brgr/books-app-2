@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { getShelves } from "../api/books";
+import { deleteShelf, getShelves, renameShelf } from "../api/books";
 import { parseShelfRef, type Shelf, type ShelfRef } from "../api/types";
 import BookShelf from "../components/book/BookShelf.vue";
 import BookSearchModal from "../components/modals/BookSearchModal.vue";
+import CustomShelfEditModal from "../components/modals/CustomShelfEditModal.vue";
 import BooksSearchHeader from "../components/ui/BooksSearchHeader.vue";
 import LibraryNav from "../components/ui/LibraryNav.vue";
 import NavigationBar from "../components/ui/NavigationBar.vue";
 import { cacheKeys } from "../cache/keys";
+import { cacheDel } from "../cache/store";
 import { useAddBook } from "../composables/useAddBook";
 import { provideLibraryPage } from "../composables/useLibraryPage";
 import { useCachedQuery } from "../composables/useCachedQuery";
@@ -22,13 +24,68 @@ const shelfRef = computed<ShelfRef>(() => {
   return parseShelfRef(`custom:${id}`);
 });
 
-const { data: shelves } = useCachedQuery<Shelf[]>(cacheKeys.shelves, getShelves);
+const { data: shelves, refresh } = useCachedQuery<Shelf[]>(cacheKeys.shelves, getShelves);
 const shelf = computed(() => (shelves.value ?? []).find((item) => item.ref === shelfRef.value));
 const { allShelvesEmpty, refreshShelves } = provideLibraryPage({ searchQuery });
 const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(refreshShelves);
+const showEditShelf = ref(false);
+const saving = ref(false);
+const actionError = ref("");
 
 function goTo(surface: "to-read" | "finished" | "shelves") {
   router.push(surface === "shelves" ? { name: "custom-shelves" } : { name: "shelf", params: { shelf: surface } });
+}
+
+function openEditShelf() {
+  actionError.value = "";
+  showEditShelf.value = true;
+}
+
+function closeEditShelf() {
+  showEditShelf.value = false;
+  actionError.value = "";
+}
+
+function clearActionError() {
+  actionError.value = "";
+}
+
+async function saveRename(name: string) {
+  if (saving.value) return;
+
+  saving.value = true;
+  actionError.value = "";
+  try {
+    await renameShelf(shelfRef.value, name);
+    await refresh();
+    closeEditShelf();
+  } catch (error) {
+    console.error("Failed to rename shelf:", error);
+    actionError.value = error instanceof Error ? error.message : "Failed to rename shelf.";
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function confirmDeleteShelf() {
+  if (saving.value) return;
+
+  saving.value = true;
+  actionError.value = "";
+  try {
+    await deleteShelf(shelfRef.value);
+
+    // Invalidate the shelves cache so that the deleted shelf is removed from the list
+    await cacheDel(cacheKeys.shelves());
+
+    // After deleting the shelf, remove that shelf from the navigation and go back to the custom shelves page instead
+    await router.replace({ name: "custom-shelves" });
+  } catch (error) {
+    console.error("Failed to delete shelf:", error);
+    actionError.value = error instanceof Error ? error.message : "Failed to delete shelf.";
+  } finally {
+    saving.value = false;
+  }
 }
 </script>
 
@@ -41,11 +98,26 @@ function goTo(surface: "to-read" | "finished" | "shelves") {
     <div class="container">
       <BooksSearchHeader v-model:search-query="searchQuery" />
 
-      <h1>{{ shelf?.display_name ?? "Shelf" }}</h1>
+      <header class="shelf-heading">
+        <h1>{{ shelf?.display_name ?? "Shelf" }}</h1>
+        <button type="button" class="btn-small" @click="openEditShelf">Edit shelf</button>
+      </header>
+
       <p v-if="allShelvesEmpty" class="empty-state">No books on this shelf yet.</p>
-      <BookShelf :shelf="shelfRef" :title="null" paginated />
+      <BookShelf :shelf="shelfRef" :title="null" paginated can-remove-from-shelf />
     </div>
+
     <BookSearchModal v-if="showSearchModal" @close="closeSearch" @select="selectBook" />
+    <CustomShelfEditModal
+      v-if="showEditShelf"
+      :shelf-name="shelf?.display_name ?? ''"
+      :saving="saving"
+      :error="actionError"
+      @close="closeEditShelf"
+      @rename="saveRename"
+      @request-delete="clearActionError"
+      @delete="confirmDeleteShelf"
+    />
   </div>
 </template>
 
@@ -55,8 +127,15 @@ function goTo(surface: "to-read" | "finished" | "shelves") {
   padding-bottom: 112px;
   background: var(--color-bg);
 }
-h1 {
+.shelf-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin: var(--spacing-lg) 0;
+  gap: var(--spacing-md);
+}
+h1 {
+  margin: 0;
   font-size: 1.5rem;
 }
 .empty-state {

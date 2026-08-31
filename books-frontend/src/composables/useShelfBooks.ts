@@ -51,5 +51,5 @@ export function useShelfBooks(options: ShelfBooksOptions) {
 
   registerShelf(computed(() => ({ loaded: loaded.value, count: books.value.length })));
 
-  return { books, error, hasMore, isLoadingMore, loadMore, replaceItems };
+  return { books, error, hasMore, isLoadingMore, loadMore, reload, replaceItems };
 }

@@ -46,6 +46,15 @@ export async function createShelf(name: string): Promise<Shelf> {
   return response.data;
 }
 
+export async function renameShelf(shelf: ShelfRef, name: string): Promise<Shelf> {
+  const response = await apiClient.patch<Shelf>(`/shelves/${parseShelfRef(shelf)}`, { name });
+  return response.data;
+}
+
+export async function deleteShelf(shelf: ShelfRef): Promise<void> {
+  await apiClient.delete(`/shelves/${parseShelfRef(shelf)}`);
+}
+
 export async function getBookShelves(bookId: number): Promise<Shelf[]> {
   const response = await apiClient.get<Shelf[]>(`/books/${bookId}/custom-shelves`);
   return response.data.map((shelf) => ({ ...shelf, ref: parseShelfRef(shelf.ref) }));
