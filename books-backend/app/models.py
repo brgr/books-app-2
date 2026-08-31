@@ -1,5 +1,6 @@
 import enum
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
@@ -43,6 +44,53 @@ class BookEventCode(enum.Enum):
     NOTE_SET = "note_set"
     PROGRESS_SET = "progress_set"
     COVER_CHANGED = "cover_changed"
+
+
+class ReadingDatePrecision(enum.Enum):
+    """How much of a reading date is known."""
+
+    DAY = "day"
+    MONTH = "month"
+    YEAR = "year"
+    UNKNOWN = "unknown"
+
+
+@dataclass(frozen=True)
+class ReadingDate:
+    """A reading date whose calendar precision may be full, partial, or unknown.
+
+    Known values are stored at the first instant of their known period; e.g., April 2026
+    will be stored as April 1st, 2026.  The separate precision field then tells it that
+    the reading date is only known to the month or year (in the example, the reading date
+    is only known to the month).
+    """
+
+    value: datetime | None
+    precision: ReadingDatePrecision
+
+    def __post_init__(self) -> None:
+        if self.precision == ReadingDatePrecision.UNKNOWN:
+            if self.value is not None:
+                raise ValueError("An unknown reading date cannot have a value")
+            return
+        if self.value is None:
+            raise ValueError("A known reading date requires a value")
+
+        normalized = self.value.replace(hour=0, minute=0, second=0, microsecond=0)
+        if self.precision == ReadingDatePrecision.MONTH:
+            normalized = normalized.replace(day=1)
+        elif self.precision == ReadingDatePrecision.YEAR:
+            normalized = normalized.replace(month=1, day=1)
+        object.__setattr__(self, "value", normalized)
+
+    @classmethod
+    def unknown(cls) -> "ReadingDate":
+        return cls(None, ReadingDatePrecision.UNKNOWN)
+
+    @classmethod
+    def from_datetime(cls, value: datetime) -> "ReadingDate":
+        """Build a day-precision date from a legacy full timestamp."""
+        return cls(value, ReadingDatePrecision.DAY)
 
 
 class User(Base):
@@ -183,6 +231,11 @@ class BookEvent(Base):
     occurred_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=lambda: datetime.now(UTC)
     )
+    reading_date_entry: Mapped["BookEventReadingDate | None"] = relationship(
+        back_populates="event",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
     user_book: Mapped["UserBook"] = relationship(back_populates="events")
     event_type: Mapped["BookEventType"] = relationship()
@@ -213,6 +266,28 @@ class BookEvent(Base):
         return (
             f"<BookEvent(id='{self.id}', user_book_id={self.user_book_id}, "
             f"event_type_id={self.event_type_id}, occurred_at={self.occurred_at})>"
+        )
+
+
+class BookEventReadingDate(Base):
+    """Imprecise date payload for a reading-state event."""
+
+    __tablename__ = "book_event_reading_dates"
+
+    event_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("book_events.id", ondelete="CASCADE"), primary_key=True
+    )
+    value: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    precision: Mapped[ReadingDatePrecision] = mapped_column(
+        Enum(ReadingDatePrecision, name="reading_date_precision"), nullable=False
+    )
+
+    event: Mapped["BookEvent"] = relationship(back_populates="reading_date_entry")
+
+    def __repr__(self):
+        return (
+            f"<BookEventReadingDate(event_id='{self.event_id}', "
+            f"precision={self.precision.value})>"
         )
 
 

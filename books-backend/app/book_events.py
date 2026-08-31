@@ -12,7 +12,9 @@ from app.models import (
     BookEventImportSource,
     BookEventNote,
     BookEventProgress,
+    BookEventReadingDate,
     BookEventType,
+    ReadingDate,
     ReadingShelf,
     Shelf,
     ShelfKind,
@@ -181,11 +183,13 @@ def ensure_added_event(
 def record_started_reading(
     session: Session,
     user_book_id: int,
-    occurred_at: Optional[datetime] = None,
+    reading_date: ReadingDate,
 ) -> BookEvent:
-    """Append a start event if the book is not currently being read.
+    """Add a start event with the user's stated reading date.
 
-    Requires that the book was added and is not already in an open reading cycle.
+    The event timestamp records when this state change is made; ``reading_date``
+    records when the user says reading began. Requires that the book was added
+    and is not already in an open reading cycle.
     """
     add_event = _latest_event(session, user_book_id, BookEventCode.ADDED_TO_LIBRARY)
     if not add_event:
@@ -215,19 +219,26 @@ def record_started_reading(
     event = BookEvent(
         user_book_id=user_book_id,
         event_type_id=event_type.id,
-        occurred_at=occurred_at or datetime.now(UTC),
+        occurred_at=datetime.now(UTC),
     )
     session.add(event)
     session.flush()
+
+    book_event_reading_date = BookEventReadingDate(
+        event_id=event.id, value=reading_date.value, precision=reading_date.precision
+    )
+    session.add(book_event_reading_date)
+    session.flush()
+
     return event
 
 
 def record_finished_reading(
     session: Session,
     user_book_id: int,
-    occurred_at: Optional[datetime] = None,
+    reading_date: ReadingDate,
 ) -> BookEvent:
-    """Append a finish event if there is an open reading cycle."""
+    """Add a finish event with the user's stated reading date."""
     add_event = _latest_event(session, user_book_id, BookEventCode.ADDED_TO_LIBRARY)
     if not add_event:
         raise ValueError("Cannot finish reading before adding to library")
@@ -242,25 +253,23 @@ def record_finished_reading(
     if latest_finish and _is_after(latest_finish, latest_start):
         raise ValueError("Cannot finish reading twice without a new start")
 
-    event_occurred_at = occurred_at or datetime.now(UTC)
-    if event_occurred_at.tzinfo is None:
-        event_occurred_at = event_occurred_at.replace(tzinfo=UTC)
-
-    start_occurred_at = latest_start.occurred_at
-    if start_occurred_at.tzinfo is None:
-        start_occurred_at = start_occurred_at.replace(tzinfo=UTC)
-
-    if event_occurred_at < start_occurred_at:
-        raise ValueError("Cannot finish reading before the current start date")
-
     event_type = _get_event_type(session, BookEventCode.FINISHED_READING)
     event = BookEvent(
         user_book_id=user_book_id,
         event_type_id=event_type.id,
-        occurred_at=event_occurred_at,
+        occurred_at=datetime.now(UTC),
     )
     session.add(event)
     session.flush()
+    session.add(
+        BookEventReadingDate(
+            event_id=event.id,
+            value=reading_date.value,
+            precision=reading_date.precision,
+        )
+    )
+    session.flush()
+
     return event
 
 
@@ -403,22 +412,54 @@ def record_cover_changed(
 def derive_reading_dates(
     session: Session, user_book_id: int
 ) -> tuple[datetime | None, datetime | None]:
-    """Derive ``(started_at, finished_at)`` for a user_book from its event stream.
+    """Derive ``(started_at, finished_at)`` for a user_book from its event stream."""
+    latest_start = _latest_event(session, user_book_id, BookEventCode.STARTED_READING)
+    latest_finish = _latest_event(session, user_book_id, BookEventCode.FINISHED_READING)
 
-    ``started_at`` is the latest start event's ``occurred_at`` (None if never started).
-    ``finished_at`` is the latest finish event's ``occurred_at`` only when that finish is after the latest start
-    (None otherwise), matching an open vs. closed reading cycle.
+    started = _reading_date_for_event(latest_start)
+    started_at = started.value if started else None
+
+    if latest_finish and _is_after(latest_finish, latest_start):
+        finished = _reading_date_for_event(latest_finish)
+        finished_at = finished.value if finished else None
+    else:
+        finished_at = None
+
+    return started_at, finished_at
+
+
+# TODO: Once, the REST API is changed, switch it only to this function and remove the above
+def derive_reading_date_values(
+    session: Session, user_book_id: int
+) -> tuple[ReadingDate | None, ReadingDate | None]:
+    """Derive precise or partial reading dates.
+
+    The established ``derive_reading_dates`` remains the outward-facing,
+    full-datetime projection until the REST contract is extended.
     """
     latest_start = _latest_event(session, user_book_id, BookEventCode.STARTED_READING)
     latest_finish = _latest_event(session, user_book_id, BookEventCode.FINISHED_READING)
 
-    started_at = latest_start.occurred_at if latest_start else None
-    if latest_finish and _is_after(latest_finish, latest_start):
-        finished_at = latest_finish.occurred_at
-    else:
-        finished_at = None
-    # noinspection PyTypeChecker
+    started_at = _reading_date_for_event(latest_start)
+    finished_at = (
+        _reading_date_for_event(latest_finish)
+        if latest_finish and _is_after(latest_finish, latest_start)
+        else None
+    )
     return started_at, finished_at
+
+
+def _reading_date_for_event(event: BookEvent | None) -> ReadingDate | None:
+    """Return a reading event's required date payload."""
+    if event is None:
+        return None
+
+    reading_date_entry = event.reading_date_entry
+
+    if reading_date_entry is None:
+        raise RuntimeError(f"Reading event '{event.id}' has no reading-date payload")
+
+    return ReadingDate(reading_date_entry.value, reading_date_entry.precision)
 
 
 def current_reading_shelf(session: Session, user_book_id: int) -> ReadingShelf:

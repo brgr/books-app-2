@@ -15,7 +15,7 @@ from app.book_events import (
     record_started_reading,
 )
 from app.image_utils import store_cover_image
-from app.models import Book, BookEventCode, Import, ReadingShelf, UserBook
+from app.models import Book, BookEventCode, Import, ReadingDate, ReadingShelf, UserBook
 
 
 class ImportReadingListError(ValueError):
@@ -47,6 +47,12 @@ def _parse_date(val: str) -> datetime | None:
         return datetime.strptime(val, "%Y-%m-%d")
     except ValueError:
         return None
+
+
+def _reading_date_or_unknown(value: datetime | None) -> ReadingDate:
+    if value is None:
+        return ReadingDate.unknown()
+    return ReadingDate.from_datetime(value)
 
 
 def import_reading_list_from_bytes(
@@ -161,13 +167,13 @@ def import_reading_list_from_bytes(
             record_started_reading(
                 db,
                 user_book_id=user_book.id,
-                occurred_at=started_at,
+                reading_date=_reading_date_or_unknown(started_at),
             )
         if derived_shelf == ReadingShelf.FINISHED:
             record_finished_reading(
                 db,
                 user_book_id=user_book.id,
-                occurred_at=finished_at,
+                reading_date=_reading_date_or_unknown(finished_at),
             )
         if derived_shelf == ReadingShelf.ABANDONED:
             record_reading_event(db, user_book.id, BookEventCode.ABANDONED_READING)

@@ -236,7 +236,7 @@ def test_progress_requires_start(client, auth_headers, created_book):
 
 
 def test_set_started_with_custom_occurred_at(client, auth_headers, created_book):
-    """Start reading can be backdated via occurred_at."""
+    """The legacy request date is stored as a day-precision reading date."""
     book_id = created_book["id"]
     backdated = datetime(2026, 1, 15, 12, 0, 0, tzinfo=UTC)
 
@@ -251,11 +251,10 @@ def test_set_started_with_custom_occurred_at(client, auth_headers, created_book)
     returned = datetime.fromisoformat(data["started_at"].replace("Z", "+00:00"))
     if returned.tzinfo is None:
         returned = returned.replace(tzinfo=UTC)
-    assert returned == backdated
+    assert returned == backdated.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
 def test_set_finished_with_custom_occurred_at(client, auth_headers, created_book):
-    """Finish reading can be backdated via occurred_at."""
     book_id = created_book["id"]
     started_at = datetime(2026, 1, 10, 12, 0, 0, tzinfo=UTC)
     finished_at = datetime(2026, 2, 1, 12, 0, 0, tzinfo=UTC)
@@ -278,11 +277,11 @@ def test_set_finished_with_custom_occurred_at(client, auth_headers, created_book
     returned = datetime.fromisoformat(data["finished_at"].replace("Z", "+00:00"))
     if returned.tzinfo is None:
         returned = returned.replace(tzinfo=UTC)
-    assert returned == finished_at
+    assert returned == finished_at.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
-def test_finish_date_must_not_precede_current_start(client, auth_headers, created_book):
-    """A backdated finish should trigger a validation error."""
+def test_finish_can_precede_start_reading_date(client, auth_headers, created_book):
+    """Reading-date chronology is distinct from the ordered event stream."""
     book_id = created_book["id"]
     started_at = datetime(2026, 1, 10, 12, 0, 0, tzinfo=UTC)
     # Note: The finished_at is before the started_at, which should trigger a validation error
@@ -301,8 +300,7 @@ def test_finish_date_must_not_precede_current_start(client, auth_headers, create
         headers=auth_headers,
     )
 
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-    assert "before the current start" in response.json()["detail"].lower()
+    assert response.status_code == status.HTTP_200_OK
 
 
 def test_occurred_at_cannot_be_in_the_future(client, auth_headers, created_book):

@@ -20,6 +20,7 @@ from app.books.queries import get_user_book
 from app.models import (
     BookEvent,
     BookEventCode,
+    ReadingDate,
     ReadingShelf,
     User,
     UserBook,
@@ -44,8 +45,8 @@ class ReadingService:
     ) -> UserBookResponse:
         user_book = ensure_added_event(self.db, self._user_id, book_id)
         previous = current_reading_shelf(self.db, user_book.id)
-        occurred_at = self._normalize_occurred_at(shelf_data.occurred_at)
-        self._apply_transition(user_book, previous, shelf_data.shelf, occurred_at)
+        reading_date = self._reading_date_from_legacy_input(shelf_data.occurred_at)
+        self._apply_transition(user_book, previous, shelf_data.shelf, reading_date)
         self._apply_notes(user_book, shelf_data)
 
         if shelf_data.shelf != previous:
@@ -106,22 +107,29 @@ class ReadingService:
             ),
         )
 
+    # TODO: Adapt this once we change the API accordingly. Also, we shouldn't even expect a None, then.
     @staticmethod
-    def _normalize_occurred_at(value: datetime | None) -> datetime | None:
+    def _reading_date_from_legacy_input(value: datetime | None) -> ReadingDate:
+        """Adapt the current API's date field to the reading-date domain.
+
+        The API still calls this field ``occurred_at``. Until the API is changed,
+        it denotes the user-stated reading date, not the timestamp of
+        the state-change event.
+        """
         if value is None:
-            return None
+            return ReadingDate.from_datetime(datetime.now(UTC))
         if value.tzinfo is None:
             value = value.replace(tzinfo=UTC)
         if value > datetime.now(UTC):
             raise ValueError("occurred_at cannot be in the future")
-        return value
+        return ReadingDate.from_datetime(value)
 
     def _apply_transition(
         self,
         user_book: UserBook,
         source: ReadingShelf,
         target: ReadingShelf,
-        occurred_at: datetime | None,
+        reading_date: ReadingDate,
     ) -> None:
         if target == source:
             return
@@ -134,29 +142,23 @@ class ReadingService:
             raise ValueError("Cannot finish reading before starting")
 
         if source == ReadingShelf.WANT_TO_READ and target == ReadingShelf.STARTED:
-            record_started_reading(self.db, user_book.id, occurred_at)
+            record_started_reading(self.db, user_book.id, reading_date)
         elif source == ReadingShelf.STARTED and target == ReadingShelf.PAUSED:
-            record_reading_event(
-                self.db, user_book.id, BookEventCode.PAUSED_READING, occurred_at
-            )
+            record_reading_event(self.db, user_book.id, BookEventCode.PAUSED_READING)
         elif source == ReadingShelf.PAUSED and target == ReadingShelf.STARTED:
-            record_reading_event(
-                self.db, user_book.id, BookEventCode.RESUMED_READING, occurred_at
-            )
+            record_reading_event(self.db, user_book.id, BookEventCode.RESUMED_READING)
         elif source == ReadingShelf.STARTED and target == ReadingShelf.FINISHED:
-            record_finished_reading(self.db, user_book.id, occurred_at)
+            record_finished_reading(self.db, user_book.id, reading_date)
         elif (
             source in {ReadingShelf.STARTED, ReadingShelf.PAUSED}
             and target == ReadingShelf.ABANDONED
         ):
-            record_reading_event(
-                self.db, user_book.id, BookEventCode.ABANDONED_READING, occurred_at
-            )
+            record_reading_event(self.db, user_book.id, BookEventCode.ABANDONED_READING)
         elif (
             source in {ReadingShelf.FINISHED, ReadingShelf.ABANDONED}
             and target == ReadingShelf.STARTED
         ):
-            record_started_reading(self.db, user_book.id, occurred_at)
+            record_started_reading(self.db, user_book.id, reading_date)
         else:
             raise ValueError(f"Cannot move from '{source.value}' to '{target.value}'")
 
