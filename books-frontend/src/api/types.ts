@@ -8,6 +8,21 @@ export const ReadingShelf = {
 
 export type ReadingShelf = (typeof ReadingShelf)[keyof typeof ReadingShelf];
 
+export const ReadingDatePrecision = {
+  DAY: "day",
+  MONTH: "month",
+  YEAR: "year",
+  UNKNOWN: "unknown",
+} as const;
+
+export type ReadingDatePrecision = (typeof ReadingDatePrecision)[keyof typeof ReadingDatePrecision];
+
+/** A user-stated calendar date, which may deliberately be partial or unknown. */
+export interface ReadingDateValue {
+  value: string | null;
+  precision: ReadingDatePrecision;
+}
+
 /** Address of a built-in reading shelf. */
 export type ReadingShelfRef = `reading:${ReadingShelf}`;
 
@@ -56,8 +71,8 @@ export interface UserBook {
   user_id: number;
   book_id: number;
   shelf: ReadingShelf;
-  started_at: string | null;
-  finished_at: string | null;
+  started_at: ReadingDateValue | null;
+  finished_at: ReadingDateValue | null;
   notes: string | null;
   current_page: number | null;
   current_percent: number | null;
@@ -117,7 +132,7 @@ export interface BookUpdate {
 export interface UserBookShelfUpdate {
   shelf: ReadingShelf;
   notes?: string;
-  occurred_at?: string;
+  reading_date?: ReadingDateValue;
 }
 
 export interface GoogleBookResult {
@@ -145,6 +160,7 @@ export interface BookEvent {
   id: string;
   event_type: BookEventType;
   occurred_at: string;
+  reading_date?: ReadingDateValue | null;
   note?: string | null;
   page?: number | null;
   import_id?: number | null;

@@ -25,7 +25,12 @@ from app.models import (
     User,
     UserBook,
 )
-from app.schemas import BookProgressUpdate, UserBookResponse, UserBookShelfUpdate
+from app.schemas import (
+    BookProgressUpdate,
+    ReadingDateValue,
+    UserBookResponse,
+    UserBookShelfUpdate,
+)
 
 
 class ReadingService:
@@ -45,7 +50,7 @@ class ReadingService:
     ) -> UserBookResponse:
         user_book = ensure_added_event(self.db, self._user_id, book_id)
         previous = current_reading_shelf(self.db, user_book.id)
-        reading_date = self._reading_date_from_legacy_input(shelf_data.occurred_at)
+        reading_date = self._reading_date_from_input(shelf_data.reading_date)
         self._apply_transition(user_book, previous, shelf_data.shelf, reading_date)
         self._apply_notes(user_book, shelf_data)
 
@@ -79,6 +84,7 @@ class ReadingService:
                 joinedload(BookEvent.progress_entry),
                 joinedload(BookEvent.cover_entry),
                 joinedload(BookEvent.import_source),
+                joinedload(BookEvent.reading_date_entry),
             )
             .filter(BookEvent.user_book_id == user_book.id)
             .order_by(BookEvent.occurred_at.desc(), BookEvent.id.desc())
@@ -107,22 +113,24 @@ class ReadingService:
             ),
         )
 
-    # TODO: Adapt this once we change the API accordingly. Also, we shouldn't even expect a None, then.
+    # TODO: This will probably change in the future, when we actually support imprecise reading dates in the frontend
+    # TODO: Should it really be possible that this is "None"?
     @staticmethod
-    def _reading_date_from_legacy_input(value: datetime | None) -> ReadingDate:
-        """Adapt the current API's date field to the reading-date domain.
-
-        The API still calls this field ``occurred_at``. Until the API is changed,
-        it denotes the user-stated reading date, not the timestamp of
-        the state-change event.
-        """
+    def _reading_date_from_input(value: ReadingDateValue | None) -> ReadingDate:
+        """Use the requested reading date, defaulting to today's full date."""
         if value is None:
             return ReadingDate.from_datetime(datetime.now(UTC))
-        if value.tzinfo is None:
-            value = value.replace(tzinfo=UTC)
-        if value > datetime.now(UTC):
-            raise ValueError("occurred_at cannot be in the future")
-        return ReadingDate.from_datetime(value)
+
+        reading_date = value.to_domain()
+        if reading_date.value:
+            date_value = reading_date.value
+
+            if date_value.tzinfo is None:
+                date_value = date_value.replace(tzinfo=UTC)
+            if date_value > datetime.now(UTC):
+                raise ValueError("reading_date cannot be in the future")
+
+        return reading_date
 
     def _apply_transition(
         self,

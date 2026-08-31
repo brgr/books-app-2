@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.book_events import (
     current_reading_shelf,
-    derive_reading_dates,
+    derive_reading_date_values,
     project_user_book_state,
 )
 from app.models import Book, User, UserBook
@@ -24,7 +24,7 @@ def build_user_books_export(db: Session, user: User) -> list[ExportBookEntry]:
     entries = []
     for user_book, book in user_books:
         project_user_book_state(db, user_book)
-        started_at, finished_at = derive_reading_dates(db, user_book.id)
+        started_at, finished_at = derive_reading_date_values(db, user_book.id)
         reading_shelf = current_reading_shelf(db, user_book.id)
 
         book_entry = ExportBookEntry.from_orm_pair(

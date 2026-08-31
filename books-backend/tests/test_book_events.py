@@ -7,7 +7,6 @@ from app.book_events import (
     record_finished_reading,
     record_started_reading,
     derive_reading_date_values,
-    derive_reading_dates,
 )
 from app.models import (
     Book,
@@ -191,4 +190,4 @@ def test_missing_reading_date_payload_is_a_data_integrity_error(db_session):
     db_session.expire_all()
 
     with pytest.raises(RuntimeError, match="no reading-date payload"):
-        derive_reading_dates(db_session, user_book_id)
+        derive_reading_date_values(db_session, user_book_id)

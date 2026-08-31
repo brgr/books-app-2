@@ -1,7 +1,11 @@
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi import status
+
+
+def full_reading_date(value: datetime) -> dict[str, str]:
+    return {"value": value.isoformat(), "precision": "day"}
 
 
 @pytest.fixture
@@ -236,22 +240,56 @@ def test_progress_requires_start(client, auth_headers, created_book):
 
 
 def test_set_started_with_custom_occurred_at(client, auth_headers, created_book):
-    """The legacy request date is stored as a day-precision reading date."""
+    """A full API reading date is stored and returned with day precision."""
     book_id = created_book["id"]
     backdated = datetime(2026, 1, 15, 12, 0, 0, tzinfo=UTC)
 
     response = client.put(
         f"/api/books/{book_id}/shelf",
-        json={"shelf": "started", "occurred_at": backdated.isoformat()},
+        json={"shelf": "started", "reading_date": full_reading_date(backdated)},
         headers=auth_headers,
     )
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     assert data["shelf"] == "started"
-    returned = datetime.fromisoformat(data["started_at"].replace("Z", "+00:00"))
+    assert data["started_at"]["precision"] == "day"
+    returned = datetime.fromisoformat(
+        data["started_at"]["value"].replace("Z", "+00:00")
+    )
     if returned.tzinfo is None:
         returned = returned.replace(tzinfo=UTC)
     assert returned == backdated.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def test_set_shelf_accepts_partial_and_unknown_reading_dates(
+    client, auth_headers, created_book
+):
+    book_id = created_book["id"]
+
+    response = client.put(
+        f"/api/books/{book_id}/shelf",
+        json={
+            "shelf": "started",
+            "reading_date": {"value": "2026-04-18T12:00:00Z", "precision": "month"},
+        },
+        headers=auth_headers,
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["started_at"] == {
+        "value": "2026-04-01T00:00:00",
+        "precision": "month",
+    }
+
+    response = client.put(
+        f"/api/books/{book_id}/shelf",
+        json={
+            "shelf": "finished",
+            "reading_date": {"value": None, "precision": "unknown"},
+        },
+        headers=auth_headers,
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["finished_at"] == {"value": None, "precision": "unknown"}
 
 
 def test_set_finished_with_custom_occurred_at(client, auth_headers, created_book):
@@ -261,20 +299,23 @@ def test_set_finished_with_custom_occurred_at(client, auth_headers, created_book
 
     response = client.put(
         f"/api/books/{book_id}/shelf",
-        json={"shelf": "started", "occurred_at": started_at.isoformat()},
+        json={"shelf": "started", "reading_date": full_reading_date(started_at)},
         headers=auth_headers,
     )
     assert response.status_code == status.HTTP_200_OK
 
     response = client.put(
         f"/api/books/{book_id}/shelf",
-        json={"shelf": "finished", "occurred_at": finished_at.isoformat()},
+        json={"shelf": "finished", "reading_date": full_reading_date(finished_at)},
         headers=auth_headers,
     )
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     assert data["shelf"] == "finished"
-    returned = datetime.fromisoformat(data["finished_at"].replace("Z", "+00:00"))
+    assert data["finished_at"]["precision"] == "day"
+    returned = datetime.fromisoformat(
+        data["finished_at"]["value"].replace("Z", "+00:00")
+    )
     if returned.tzinfo is None:
         returned = returned.replace(tzinfo=UTC)
     assert returned == finished_at.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -289,14 +330,17 @@ def test_finish_can_precede_start_reading_date(client, auth_headers, created_boo
 
     response = client.put(
         f"/api/books/{book_id}/shelf",
-        json={"shelf": "started", "occurred_at": started_at.isoformat()},
+        json={"shelf": "started", "reading_date": full_reading_date(started_at)},
         headers=auth_headers,
     )
     assert response.status_code == status.HTTP_200_OK
 
     response = client.put(
         f"/api/books/{book_id}/shelf",
-        json={"shelf": "finished", "occurred_at": invalid_finished_at.isoformat()},
+        json={
+            "shelf": "finished",
+            "reading_date": full_reading_date(invalid_finished_at),
+        },
         headers=auth_headers,
     )
 
@@ -310,7 +354,7 @@ def test_occurred_at_cannot_be_in_the_future(client, auth_headers, created_book)
 
     response = client.put(
         f"/api/books/{book_id}/shelf",
-        json={"shelf": "started", "occurred_at": future.isoformat()},
+        json={"shelf": "started", "reading_date": full_reading_date(future)},
         headers=auth_headers,
     )
     assert response.status_code == status.HTTP_400_BAD_REQUEST

@@ -12,7 +12,7 @@ import CollapsibleText from "../components/ui/CollapsibleText.vue";
 import BookMetadata from "../components/book/BookMetadata.vue";
 import EventTimeline from "../components/book/EventTimeline.vue";
 import BookCustomShelves from "../components/book/BookCustomShelves.vue";
-import { type Book, type BookEvent, type BookProgressUpdate, ReadingShelf } from "../api/types";
+import { type Book, type BookEvent, type BookProgressUpdate, ReadingDatePrecision, ReadingShelf } from "../api/types";
 import { formatShortDate } from "../utils/date";
 import { useCachedQuery } from "../composables/useCachedQuery";
 import { useAddBook } from "../composables/useAddBook";
@@ -59,8 +59,13 @@ const canUpdateProgress = computed(() => book.value?.user_book?.shelf === Readin
 async function changeShelf(shelf: ReadingShelf, occurredAt?: string) {
   if (!book.value) return;
   updatingShelf.value = true;
+
   try {
-    await setShelf(book.value.id, { shelf, occurred_at: occurredAt });
+    let readingDate = {
+      value: occurredAt ?? new Date().toISOString(),
+      precision: ReadingDatePrecision.DAY,
+    };
+    await setShelf(book.value.id, { shelf, reading_date: readingDate });
     await invalidateCache.shelfChanged(book.value.id);
 
     await refreshBook();
@@ -160,8 +165,8 @@ const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(() =
                 :current-page="book.user_book?.current_page ?? null"
                 :current-percent="book.user_book?.current_percent ?? null"
                 :page-count="book.page_count ?? null"
-                :started-at="book.user_book?.started_at ?? null"
-                :finished-at="book.user_book?.finished_at ?? null"
+                :started-at="book.user_book?.started_at?.value ?? null"
+                :finished-at="book.user_book?.finished_at?.value ?? null"
                 :progress-saving="progressSaving"
                 @change="changeShelf"
                 @update-progress="handleSaveProgress"
@@ -169,11 +174,11 @@ const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(() =
             </div>
 
             <div v-if="book.user_book && !canUpdateProgress" class="book-dates">
-              <div v-if="book.user_book.started_at" class="date-item">
-                <strong>Started:</strong> {{ formatShortDate(book.user_book.started_at) }}
+              <div v-if="book.user_book.started_at?.value" class="date-item">
+                <strong>Started:</strong> {{ formatShortDate(book.user_book.started_at.value) }}
               </div>
-              <div v-if="book.user_book.finished_at" class="date-item">
-                <strong>Finished:</strong> {{ formatShortDate(book.user_book.finished_at) }}
+              <div v-if="book.user_book.finished_at?.value" class="date-item">
+                <strong>Finished:</strong> {{ formatShortDate(book.user_book.finished_at.value) }}
               </div>
             </div>
           </div>

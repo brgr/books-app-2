@@ -1,13 +1,23 @@
+from datetime import datetime
+from typing import Annotated, Literal, Optional, cast
+
 from pydantic import (
     BaseModel,
-    Field,
     ConfigDict,
+    Field,
     StringConstraints,
     model_validator,
 )
-from datetime import datetime
-from typing import Annotated, Literal, Optional, cast
-from app.models import Book, BookEvent, ReadingShelf, BookEventCode, UserBook
+
+from app.models import (
+    Book,
+    BookEvent,
+    BookEventCode,
+    ReadingDate,
+    ReadingDatePrecision,
+    ReadingShelf,
+    UserBook,
+)
 
 
 # User schemas
@@ -77,6 +87,28 @@ class BookResponse(BookBase):
 
 
 # UserBook schemas
+class ReadingDateValue(BaseModel):
+    """A calendar date together with how precisely the user knows it."""
+
+    value: Optional[datetime] = None
+    precision: ReadingDatePrecision
+
+    @model_validator(mode="after")
+    def validate_value(self) -> "ReadingDateValue":
+        # Keep validation and normalization rules in the domain model so the
+        # HTTP contract cannot represent an invalid reading date.
+        reading_date = ReadingDate(self.value, self.precision)
+        self.value = reading_date.value
+        return self
+
+    def to_domain(self) -> ReadingDate:
+        return ReadingDate(self.value, self.precision)
+
+    @classmethod
+    def from_domain(cls, reading_date: ReadingDate) -> "ReadingDateValue":
+        return cls(value=reading_date.value, precision=reading_date.precision)
+
+
 class UserBookBase(BaseModel):
     shelf: ReadingShelf
     notes: Optional[str] = None
@@ -96,15 +128,15 @@ class UserBookShelfUpdate(BaseModel):
 
     shelf: ReadingShelf
     notes: Optional[str] = None
-    occurred_at: Optional[datetime] = None
+    reading_date: Optional[ReadingDateValue] = None
 
 
 class UserBookResponse(UserBookBase):
     id: int
     user_id: int
     book_id: int
-    started_at: Optional[datetime] = None
-    finished_at: Optional[datetime] = None
+    started_at: Optional[ReadingDateValue] = None
+    finished_at: Optional[ReadingDateValue] = None
     current_page: Optional[int] = None
     current_percent: Optional[float] = None
 
@@ -115,13 +147,13 @@ class UserBookResponse(UserBookBase):
         cls,
         user_book: UserBook,
         shelf: ReadingShelf,
-        started_at: Optional[datetime],
-        finished_at: Optional[datetime],
+        started_at: Optional[ReadingDate],
+        finished_at: Optional[ReadingDate],
     ) -> "UserBookResponse":
         """Build the response from a user_book plus its event-derived dates.
 
         Reading dates are not stored on ``UserBook``; the caller derives them
-        (see ``derive_reading_dates``) and passes them in.
+        from the event stream and passes them in.
         """
         # noinspection PyTypeChecker
         return cls(
@@ -130,8 +162,10 @@ class UserBookResponse(UserBookBase):
             book_id=user_book.book_id,
             shelf=shelf,
             notes=user_book.notes,
-            started_at=started_at,
-            finished_at=finished_at,
+            started_at=ReadingDateValue.from_domain(started_at) if started_at else None,
+            finished_at=ReadingDateValue.from_domain(finished_at)
+            if finished_at
+            else None,
             current_page=user_book.current_page,
             current_percent=user_book.current_percent,
         )
@@ -233,8 +267,8 @@ class ExportBookEntry(BaseModel):
     page_count: Optional[int] = None
     shelf: ReadingShelf
     notes: Optional[str] = None
-    started_at: Optional[datetime] = None
-    finished_at: Optional[datetime] = None
+    started_at: Optional[ReadingDateValue] = None
+    finished_at: Optional[ReadingDateValue] = None
     current_page: Optional[int] = None
     current_percent: Optional[float] = None
 
@@ -244,8 +278,8 @@ class ExportBookEntry(BaseModel):
         book: Book,
         user_book: UserBook,
         shelf: ReadingShelf,
-        started_at: Optional[datetime],
-        finished_at: Optional[datetime],
+        started_at: Optional[ReadingDate],
+        finished_at: Optional[ReadingDate],
     ) -> "ExportBookEntry":
         # noinspection PyTypeChecker
         return cls(
@@ -258,14 +292,18 @@ class ExportBookEntry(BaseModel):
             page_count=book.page_count,
             shelf=shelf,
             notes=user_book.notes,
-            started_at=started_at,
-            finished_at=finished_at,
+            started_at=ReadingDateValue.from_domain(started_at) if started_at else None,
+            finished_at=ReadingDateValue.from_domain(finished_at)
+            if finished_at
+            else None,
             current_page=user_book.current_page,
             current_percent=user_book.current_percent,
         )
 
 
 class UserBooksExportResponse(BaseModel):
+    # A small note: In theory, we should have bumped this already. Since, in practice,
+    # this isn't really used yet; we didn't yet bump it.
     schema_version: str = "v1"
     exported_at: datetime
     user: UserResponse
@@ -279,6 +317,7 @@ class BookEventResponse(BaseModel):
     id: str
     event_type: BookEventCode
     occurred_at: datetime
+    reading_date: Optional[ReadingDateValue] = None
     note: Optional[str] = None
     page: Optional[int] = None
     percent: Optional[float] = None
@@ -293,10 +332,22 @@ class BookEventResponse(BaseModel):
     @classmethod
     def from_event(cls, event: BookEvent) -> "BookEventResponse":
         """Flatten a BookEvent and its detail rows into a response object."""
+        reading_date = (
+            ReadingDateValue.from_domain(
+                ReadingDate(
+                    event.reading_date_entry.value,
+                    event.reading_date_entry.precision,
+                )
+            )
+            if event.reading_date_entry
+            else None
+        )
+
         return cls(
             id=str(event.id),
             event_type=cast(BookEventCode, event.event_type.code),
             occurred_at=event.occurred_at,
+            reading_date=reading_date,
             note=event.note_entry.note if event.note_entry else None,
             page=event.progress_entry.page if event.progress_entry else None,
             percent=event.progress_entry.percent if event.progress_entry else None,

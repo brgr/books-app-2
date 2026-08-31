@@ -6,7 +6,7 @@ from pathlib import Path
 
 from fastapi import status
 
-from app.book_events import current_reading_shelf, derive_reading_dates
+from app.book_events import current_reading_shelf, derive_reading_date_values
 from app.models import (
     Book,
     BookEvent,
@@ -14,6 +14,7 @@ from app.models import (
     BookEventImportSource,
     BookEventType,
     Import,
+    ReadingDate,
     ReadingShelf,
     Shelf,
     ShelfKind,
@@ -578,16 +579,20 @@ def test_import_real_export_currently_reading(client, auth_headers, db_session):
         "UNIX and Linux System Administration Handbook, 5/e",
     }
 
-    # started_at is now derived from the event stream, not a stored column.
+    # Reading dates are derived from the event stream, not stored on user_books.
     ekel = next(ub for book, ub in started if book.title == "Der Ekel")
-    assert derive_reading_dates(db_session, ekel.id)[0] == datetime(2026, 4, 13)
+    assert derive_reading_date_values(db_session, ekel.id)[
+        0
+    ] == ReadingDate.from_datetime(datetime(2026, 4, 13))
 
     unix = next(
         ub
         for book, ub in started
         if book.title == "UNIX and Linux System Administration Handbook, 5/e"
     )
-    assert derive_reading_dates(db_session, unix.id)[0] == datetime(2026, 4, 18)
+    assert derive_reading_date_values(db_session, unix.id)[
+        0
+    ] == ReadingDate.from_datetime(datetime(2026, 4, 18))
 
 
 def test_import_real_export_creates_no_custom_shelves(client, auth_headers, db_session):

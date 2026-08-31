@@ -409,34 +409,10 @@ def record_cover_changed(
     return event
 
 
-def derive_reading_dates(
-    session: Session, user_book_id: int
-) -> tuple[datetime | None, datetime | None]:
-    """Derive ``(started_at, finished_at)`` for a user_book from its event stream."""
-    latest_start = _latest_event(session, user_book_id, BookEventCode.STARTED_READING)
-    latest_finish = _latest_event(session, user_book_id, BookEventCode.FINISHED_READING)
-
-    started = _reading_date_for_event(latest_start)
-    started_at = started.value if started else None
-
-    if latest_finish and _is_after(latest_finish, latest_start):
-        finished = _reading_date_for_event(latest_finish)
-        finished_at = finished.value if finished else None
-    else:
-        finished_at = None
-
-    return started_at, finished_at
-
-
-# TODO: Once, the REST API is changed, switch it only to this function and remove the above
 def derive_reading_date_values(
     session: Session, user_book_id: int
 ) -> tuple[ReadingDate | None, ReadingDate | None]:
-    """Derive precise or partial reading dates.
-
-    The established ``derive_reading_dates`` remains the outward-facing,
-    full-datetime projection until the REST contract is extended.
-    """
+    """Derive precise or partial reading dates."""
     latest_start = _latest_event(session, user_book_id, BookEventCode.STARTED_READING)
     latest_finish = _latest_event(session, user_book_id, BookEventCode.FINISHED_READING)
 
@@ -508,11 +484,9 @@ def move_reading_shelf_placement(
 def project_user_book_state(session: Session, user_book: UserBook) -> UserBook:
     """Project the current reading state from the event stream onto the user_book snapshot fields.
 
-    Reading dates are *not* stored on the user_book. Instead, they are derived on demand via
-    ``derive_reading_dates`` for serialization. This only projects the persisted snapshot columns
-    (shelf, current page/percent).
+    Reading dates are not stored on the user_book. This only projects the
+    persisted snapshot columns (shelf, current page/percent).
     """
-    # noinspection PyTypeChecker
     user_book_id: int = user_book.id
     latest_progress = _latest_event(session, user_book_id, BookEventCode.PROGRESS_SET)
 
@@ -538,8 +512,7 @@ def build_user_book_response(session: Session, user_book: UserBook) -> UserBookR
     dates. This is the single seam that produces the read model; the ORM
     ``UserBook`` itself carries no date attributes.
     """
-    # noinspection PyTypeChecker
-    started_at, finished_at = derive_reading_dates(session, user_book.id)
-    return UserBookResponse.from_user_book(
-        user_book, current_reading_shelf(session, user_book.id), started_at, finished_at
-    )
+    started_at, finished_at = derive_reading_date_values(session, user_book.id)
+    shelf = current_reading_shelf(session, user_book.id)
+
+    return UserBookResponse.from_user_book(user_book, shelf, started_at, finished_at)
