@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { mount } from "@vue/test-utils";
 import BookReadingCard from "./BookReadingCard.vue";
-import { ReadingShelf } from "../../api/types";
+import { ReadingDatePrecision, type ReadingDateValue, ReadingShelf } from "../../api/types";
 
 function makeProps(
   overrides: Partial<{
@@ -10,8 +10,8 @@ function makeProps(
     currentPage: number | null;
     currentPercent: number | null;
     pageCount: number | null;
-    startedAt: string | null;
-    finishedAt: string | null;
+    startedAt: ReadingDateValue | null;
+    finishedAt: ReadingDateValue | null;
     progressSaving: boolean;
   }> = {},
 ) {
@@ -129,7 +129,10 @@ describe("BookReadingCard", () => {
 
   it("shows started and finished dates when provided", () => {
     const wrapper = mount(BookReadingCard, {
-      props: makeProps({ startedAt: "2026-01-02", finishedAt: "2026-02-03" }),
+      props: makeProps({
+        startedAt: { value: "2026-01-02", precision: ReadingDatePrecision.DAY },
+        finishedAt: { value: "2026-02-03", precision: ReadingDatePrecision.DAY },
+      }),
     });
     expect(wrapper.text()).toContain("since");
     expect(wrapper.find(".dates").exists()).toBe(true);
@@ -141,5 +144,26 @@ describe("BookReadingCard", () => {
       props: makeProps({ startedAt: null, finishedAt: null }),
     });
     expect(wrapper.find(".dates").exists()).toBe(false);
+  });
+
+  it("shows an imprecise reading date without inventing a day", () => {
+    // First, we need to make sure the locale is set; otherwise this test would fail in environments with
+    // different default locales.
+    const NativeDateTimeFormat = Intl.DateTimeFormat;
+    const dateTimeFormat = vi.spyOn(Intl, "DateTimeFormat").mockImplementation(function (locales, options) {
+      return new NativeDateTimeFormat(locales ?? "en-US", options);
+    } as typeof Intl.DateTimeFormat);
+
+    try {
+      const wrapper = mount(BookReadingCard, {
+        props: makeProps({
+          startedAt: { value: "2026-01-01T12:00:00Z", precision: ReadingDatePrecision.MONTH },
+        }),
+      });
+      expect(wrapper.text()).toContain("Jan 2026");
+      expect(wrapper.text()).not.toContain("Jan 1, 2026");
+    } finally {
+      dateTimeFormat.mockRestore();
+    }
   });
 });

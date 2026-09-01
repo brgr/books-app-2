@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { type Book } from "../../../api/types";
-import { formatShortDate } from "../../../utils/date";
+import { formatReadingDate } from "../../../utils/date";
 import { getShelfColor, getShelfLabel } from "../../../book/shelf";
 
 const props = defineProps<{
@@ -20,10 +20,8 @@ const shelf = computed(() => props.book.user_book?.shelf || null);
   </div>
 
   <div v-if="book.user_book" class="book-dates text-small text-muted">
-    <div v-if="book.user_book.started_at?.value">Started: {{ formatShortDate(book.user_book.started_at.value) }}</div>
-    <div v-if="book.user_book.finished_at?.value">
-      Finished: {{ formatShortDate(book.user_book.finished_at.value) }}
-    </div>
+    <div v-if="book.user_book.started_at">Started: {{ formatReadingDate(book.user_book.started_at) }}</div>
+    <div v-if="book.user_book.finished_at">Finished: {{ formatReadingDate(book.user_book.finished_at) }}</div>
     <div v-if="book.user_book.current_percent !== null">Progress: {{ book.user_book.current_percent }}%</div>
     <div v-else-if="book.user_book.current_page !== null">
       Progress: {{ book.user_book.current_page }}

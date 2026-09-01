@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import BookShelfButton from "./BookShelfButton.vue";
-import { type BookProgressUpdate, ReadingShelf } from "../../api/types";
-import { formatShortDate } from "../../utils/date";
+import BookShelfButton from "./BookShelfButton/BookShelfButton.vue";
+import { type BookProgressUpdate, type ReadingDateValue, ReadingShelf } from "../../api/types";
+import { formatReadingDate } from "../../utils/date";
 
 type ProgressUnit = "page" | "percent";
 
@@ -12,13 +12,13 @@ const props = defineProps<{
   currentPage?: number | null;
   currentPercent?: number | null;
   pageCount?: number | null;
-  startedAt?: string | null;
-  finishedAt?: string | null;
+  startedAt?: ReadingDateValue | null;
+  finishedAt?: ReadingDateValue | null;
   progressSaving?: boolean;
 }>();
 
 const emit = defineEmits<{
-  change: [shelf: ReadingShelf, occurredAt?: string];
+  change: [shelf: ReadingShelf, readingDate?: ReadingDateValue];
   "update-progress": [progress: BookProgressUpdate];
 }>();
 
@@ -112,7 +112,7 @@ function cancelEditingProgress() {
   <div class="reading-card" data-test="reading-card">
     <div class="reading-header">
       <span class="reading-label">Currently Reading</span>
-      <span v-if="showStartedInHeader" class="since">since {{ formatShortDate(startedAt ?? null) }}</span>
+      <span v-if="showStartedInHeader" class="since">since {{ formatReadingDate(startedAt ?? null) }}</span>
     </div>
 
     <div v-if="editingProgress" class="progress-line">
@@ -189,15 +189,15 @@ function cancelEditingProgress() {
     </div>
 
     <div v-if="(startedAt && !showStartedInHeader) || finishedAt" class="dates">
-      <span v-if="startedAt && !showStartedInHeader">Started {{ formatShortDate(startedAt) }}</span>
-      <span v-if="finishedAt">· Finished {{ formatShortDate(finishedAt) }}</span>
+      <span v-if="startedAt && !showStartedInHeader">Started {{ formatReadingDate(startedAt) }}</span>
+      <span v-if="finishedAt">· Finished {{ formatReadingDate(finishedAt) }}</span>
     </div>
 
     <div class="reading-actions">
       <BookShelfButton
         :shelf="shelf"
         :updating="updating ?? false"
-        @change="(shelf, occurredAt) => emit('change', shelf, occurredAt)"
+        @change="(shelf, readingDate) => emit('change', shelf, readingDate)"
       />
     </div>
   </div>

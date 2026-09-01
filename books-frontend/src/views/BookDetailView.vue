@@ -5,15 +5,22 @@ import { addBookProgress, getBook, getBookEvents, setShelf } from "../api/books"
 import { getMediaUrl } from "../api/client";
 import BookNotes from "../components/book/BookNotes.vue";
 import BookSearchModal from "../components/modals/BookSearchModal.vue";
-import BookShelfButton from "../components/book/BookShelfButton.vue";
+import BookShelfButton from "../components/book/BookShelfButton/BookShelfButton.vue";
 import BookReadingCard from "../components/book/BookReadingCard.vue";
 import NavigationBar from "../components/ui/NavigationBar.vue";
 import CollapsibleText from "../components/ui/CollapsibleText.vue";
 import BookMetadata from "../components/book/BookMetadata.vue";
 import EventTimeline from "../components/book/EventTimeline.vue";
 import BookCustomShelves from "../components/book/BookCustomShelves.vue";
-import { type Book, type BookEvent, type BookProgressUpdate, ReadingDatePrecision, ReadingShelf } from "../api/types";
-import { formatShortDate } from "../utils/date";
+import {
+  type Book,
+  type BookEvent,
+  type BookProgressUpdate,
+  type ReadingDateValue,
+  ReadingDatePrecision,
+  ReadingShelf,
+} from "../api/types";
+import { formatReadingDate } from "../utils/date";
 import { useCachedQuery } from "../composables/useCachedQuery";
 import { useAddBook } from "../composables/useAddBook";
 import { cacheKeys } from "../cache/keys";
@@ -56,16 +63,16 @@ const progressSaving = ref(false);
 
 const canUpdateProgress = computed(() => book.value?.user_book?.shelf === ReadingShelf.STARTED);
 
-async function changeShelf(shelf: ReadingShelf, occurredAt?: string) {
+async function changeShelf(shelf: ReadingShelf, readingDate?: ReadingDateValue) {
   if (!book.value) return;
   updatingShelf.value = true;
 
   try {
-    let readingDate = {
-      value: occurredAt ?? new Date().toISOString(),
+    const date = readingDate ?? {
+      value: new Date().toISOString(),
       precision: ReadingDatePrecision.DAY,
     };
-    await setShelf(book.value.id, { shelf, reading_date: readingDate });
+    await setShelf(book.value.id, { shelf, reading_date: date });
     await invalidateCache.shelfChanged(book.value.id);
 
     await refreshBook();
@@ -165,8 +172,8 @@ const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(() =
                 :current-page="book.user_book?.current_page ?? null"
                 :current-percent="book.user_book?.current_percent ?? null"
                 :page-count="book.page_count ?? null"
-                :started-at="book.user_book?.started_at?.value ?? null"
-                :finished-at="book.user_book?.finished_at?.value ?? null"
+                :started-at="book.user_book?.started_at ?? null"
+                :finished-at="book.user_book?.finished_at ?? null"
                 :progress-saving="progressSaving"
                 @change="changeShelf"
                 @update-progress="handleSaveProgress"
@@ -174,11 +181,11 @@ const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(() =
             </div>
 
             <div v-if="book.user_book && !canUpdateProgress" class="book-dates">
-              <div v-if="book.user_book.started_at?.value" class="date-item">
-                <strong>Started:</strong> {{ formatShortDate(book.user_book.started_at.value) }}
+              <div v-if="book.user_book.started_at" class="date-item">
+                <strong>Started:</strong> {{ formatReadingDate(book.user_book.started_at) }}
               </div>
-              <div v-if="book.user_book.finished_at?.value" class="date-item">
-                <strong>Finished:</strong> {{ formatShortDate(book.user_book.finished_at.value) }}
+              <div v-if="book.user_book.finished_at" class="date-item">
+                <strong>Finished:</strong> {{ formatReadingDate(book.user_book.finished_at) }}
               </div>
             </div>
           </div>
