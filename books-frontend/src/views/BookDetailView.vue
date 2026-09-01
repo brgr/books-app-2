@@ -16,8 +16,8 @@ import {
   type Book,
   type BookEvent,
   type BookProgressUpdate,
-  type ReadingDateValue,
   ReadingDatePrecision,
+  type ReadingDateValue,
   ReadingShelf,
 } from "../api/types";
 import { formatReadingDate } from "../utils/date";
@@ -63,13 +63,31 @@ const progressSaving = ref(false);
 
 const canUpdateProgress = computed(() => book.value?.user_book?.shelf === ReadingShelf.STARTED);
 
+/**
+ * Represents the browser's local calendar day as an ISO timestamp in the local timezone.
+ *
+ * Example:
+ * - 2026-09-01 in Rome (UTC+02:00) becomes `2026-09-01T00:00:00+02:00`
+ */
+function localDayValue(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  const localMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const offsetMinutes = -localMidnight.getTimezoneOffset();
+  const offsetSign = offsetMinutes >= 0 ? "+" : "-";
+  const offsetHours = pad(Math.floor(Math.abs(offsetMinutes) / 60));
+  const offsetRemainder = pad(Math.abs(offsetMinutes) % 60);
+
+  return `${localMidnight.getFullYear()}-${pad(localMidnight.getMonth() + 1)}-${pad(localMidnight.getDate())}T00:00:00${offsetSign}${offsetHours}:${offsetRemainder}`;
+}
+
 async function changeShelf(shelf: ReadingShelf, readingDate?: ReadingDateValue) {
   if (!book.value) return;
   updatingShelf.value = true;
 
   try {
+    const now = new Date();
     const date = readingDate ?? {
-      value: new Date().toISOString(),
+      value: localDayValue(now),
       precision: ReadingDatePrecision.DAY,
     };
     await setShelf(book.value.id, { shelf, reading_date: date });
