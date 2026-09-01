@@ -49,6 +49,22 @@ describe("BookShelfButton", () => {
     ]);
   });
 
+  it.each([
+    ["a fractional", "2025.5", "Enter a whole year."],
+    ["a future", String(new Date().getUTCFullYear() + 1), `Enter a year from 1900 to ${new Date().getUTCFullYear()}.`],
+  ])("explains why it cannot confirm %s year", async (_description, year, message) => {
+    const wrapper = mountButton();
+    await wrapper.find('[data-test="shelf-caret"]').trigger("click");
+    await wrapper.find('[data-test="shelf-date-precision"]').setValue(ReadingDatePrecision.YEAR);
+    await wrapper.find('[data-test="shelf-date-input"]').setValue(year);
+
+    const confirmButton = wrapper.find<HTMLButtonElement>('[data-test="shelf-date-confirm"]');
+    expect(confirmButton.element.disabled).toBe(true);
+    expect(wrapper.find('[data-test="shelf-date-error"]').text()).toBe(message);
+    await confirmButton.trigger("click");
+    expect(wrapper.emitted("change")).toBeUndefined();
+  });
+
   it("sends an unknown reading date without a calendar value", async () => {
     const wrapper = mountButton();
     await wrapper.find('[data-test="shelf-caret"]').trigger("click");
