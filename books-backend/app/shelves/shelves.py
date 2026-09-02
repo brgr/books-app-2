@@ -9,6 +9,8 @@ from app.models import ReadingShelf, Shelf, ShelfKind, ShelfPlacement, UserBook
 
 SORT_ORDER_GAP = Decimal("1000")
 
+# TODO: Why do we have a separate display name mapping? I don't think we use that in the frontend? (for display)
+#  And if we do... we shouldn't!
 READING_SHELF_DISPLAY_NAMES: dict[ReadingShelf, str] = {
     ReadingShelf.WANT_TO_READ: "Want to Read",
     ReadingShelf.STARTED: "Currently Reading",
