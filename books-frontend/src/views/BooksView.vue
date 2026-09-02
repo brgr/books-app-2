@@ -13,9 +13,15 @@ const route = useRoute();
 const router = useRouter();
 
 const searchQuery = ref("");
-// The shelf lives in the URL: /shelves/:shelf drives it, while bare "/" implies "to-read".
-const shelfFilter = computed<"to-read" | "finished">(() =>
-  route.params.shelf === "finished" ? "finished" : "to-read",
+// The shelf lives in the URL: /shelves/:shelf. Bare "/" is the shelf "to-read".
+const shelfFilter = computed<"to-read" | "finished" | "abandoned">(() => {
+  if (route.params.shelf === "finished") return "finished";
+  if (route.params.shelf === "abandoned") return "abandoned";
+  return "to-read";
+});
+
+const navSurface = computed<"to-read" | "finished" | "shelves">(() =>
+  shelfFilter.value === "abandoned" ? "shelves" : shelfFilter.value,
 );
 
 function goToShelf(shelf: "to-read" | "finished" | "shelves") {
@@ -31,7 +37,7 @@ const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(refr
   <div class="books-view">
     <NavigationBar @add-book="openSearch">
       <template #nav>
-        <LibraryNav :model-value="shelfFilter" @update:model-value="goToShelf" />
+        <LibraryNav :model-value="navSurface" @update:model-value="goToShelf" />
       </template>
     </NavigationBar>
 
@@ -52,7 +58,8 @@ const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(refr
           <BookShelf shelf="reading:paused" title="Paused Books" :page-size="100" />
           <BookShelf shelf="reading:want_to_read" title="Want to read" paginated />
         </template>
-        <BookShelf v-else shelf="reading:finished" paginated />
+        <BookShelf v-else-if="shelfFilter === 'finished'" shelf="reading:finished" paginated />
+        <BookShelf v-else shelf="reading:abandoned" title="Abandoned Books" paginated />
       </div>
     </div>
 

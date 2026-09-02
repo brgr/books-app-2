@@ -26,6 +26,7 @@ describe("BookShelfButton", () => {
     const notStarted = mountButton();
     await notStarted.find('[data-test="shelf-caret"]').trigger("click");
     expect(notStarted.find('[data-test="pause-reading"]').exists()).toBe(false);
+    expect(notStarted.find('[data-test="abandon-reading"]').exists()).toBe(false);
   });
 
   it("resumes a paused book", async () => {
@@ -36,6 +37,16 @@ describe("BookShelfButton", () => {
     expect(wrapper.find('[data-test="shelf-button"]').text()).toBe("Resume Reading");
     await wrapper.find('[data-test="shelf-button"]').trigger("click");
     expect(wrapper.emitted("change")?.[0]).toEqual([ReadingShelf.STARTED]);
+  });
+
+  it.each([ReadingShelf.STARTED, ReadingShelf.PAUSED])("allows abandoning a %s book", async (shelf) => {
+    const wrapper = mount(BookShelfButton, { props: { shelf, updating: false } });
+
+    expect(wrapper.find('[data-test="shelf-caret"]').attributes("aria-label")).toBe("More reading actions");
+    await wrapper.find('[data-test="shelf-caret"]').trigger("click");
+    await wrapper.find('[data-test="abandon-reading"]').trigger("click");
+
+    expect(wrapper.emitted("change")?.[0]).toEqual([ReadingShelf.ABANDONED]);
   });
 
   it("sends an exact-day reading date", async () => {

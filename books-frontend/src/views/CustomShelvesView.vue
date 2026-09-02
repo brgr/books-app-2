@@ -13,6 +13,7 @@ import { useCachedQuery } from "../composables/useCachedQuery";
 const router = useRouter();
 const { data: shelves, error, refresh } = useCachedQuery<Shelf[]>(cacheKeys.shelves, getShelves);
 const customShelves = computed(() => (shelves.value ?? []).filter((shelf) => shelf.ref.startsWith("custom:")));
+const abandonedShelf = computed(() => (shelves.value ?? []).find((shelf) => shelf.ref === "reading:abandoned"));
 const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(refresh);
 const showCreateShelf = ref(false);
 const newShelfName = ref("");
@@ -85,7 +86,23 @@ function goTo(surface: "to-read" | "finished" | "shelves") {
             <span aria-hidden="true">+</span>
           </button>
         </header>
-        <div v-if="!customShelves.length" class="empty-state">No shelves yet. Create one to get started.</div>
+
+        <section
+          v-if="abandonedShelf && abandonedShelf.book_count > 0"
+          class="reading-shelves"
+          aria-label="Reading shelves"
+        >
+          <button
+            type="button"
+            class="shelf-row"
+            @click="router.push({ name: 'shelf', params: { shelf: 'abandoned' } })"
+          >
+            <span>{{ abandonedShelf.display_name }}</span>
+            <span>{{ abandonedShelf.book_count }} {{ abandonedShelf.book_count === 1 ? "book" : "books" }}</span>
+          </button>
+        </section>
+
+        <div v-if="!customShelves.length" class="empty-state">No custom shelves yet. Create one to get started.</div>
         <div v-else class="shelf-list">
           <button
             v-for="shelf in customShelves"
@@ -156,6 +173,9 @@ function goTo(surface: "to-read" | "finished" | "shelves") {
 .shelves-header h1 {
   margin: 0;
   font-size: 1.5rem;
+}
+.reading-shelves {
+  margin-top: var(--spacing-lg);
 }
 .add-shelf-button {
   display: grid;

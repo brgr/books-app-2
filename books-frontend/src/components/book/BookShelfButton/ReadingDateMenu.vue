@@ -6,10 +6,11 @@ import MonthPrecision from "./precision/MonthPrecision.vue";
 import UnknownPrecision from "./precision/UnknownPrecision.vue";
 import YearPrecision from "./precision/YearPrecision.vue";
 
-defineProps<{ dateLabel: string; actionLabel: string; showPause?: boolean }>();
+defineProps<{ dateLabel: string; actionLabel: string; showPause?: boolean; showAbandon?: boolean }>();
 const emit = defineEmits<{
   confirm: [readingDate: ReadingDateValue];
   pause: [];
+  abandon: [];
 }>();
 
 const precision = ref<ReadingDatePrecision>(ReadingDatePrecision.DAY);
@@ -33,7 +34,17 @@ const precisionComponent = computed(() => {
       Pause Reading
     </button>
 
-    <div v-if="showPause" class="menu-divider" aria-hidden="true"></div>
+    <button
+      v-if="showAbandon"
+      type="button"
+      class="abandon-action"
+      data-test="abandon-reading"
+      @click="emit('abandon')"
+    >
+      Abandon Book
+    </button>
+
+    <div v-if="showPause || showAbandon" class="menu-divider" aria-hidden="true"></div>
 
     <label class="shelf-menu-label">{{ dateLabel }}</label>
     <label class="shelf-menu-label" for="reading-date-precision">Date precision</label>
@@ -77,7 +88,8 @@ const precisionComponent = computed(() => {
   font-size: 0.85rem;
   color: var(--color-text-secondary);
 }
-.pause-action {
+.pause-action,
+.abandon-action {
   padding: 7px 8px;
   border: 0;
   border-radius: var(--border-radius);
@@ -87,7 +99,8 @@ const precisionComponent = computed(() => {
   text-align: left;
   cursor: pointer;
 }
-.pause-action:hover {
+.pause-action:hover,
+.abandon-action:hover {
   background: var(--color-bg);
 }
 .menu-divider {

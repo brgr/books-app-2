@@ -25,7 +25,7 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: "/shelves/:shelf(to-read|finished)",
+      path: "/shelves/:shelf(to-read|finished|abandoned)",
       name: "shelf",
       component: BooksView,
       meta: { requiresAuth: true },

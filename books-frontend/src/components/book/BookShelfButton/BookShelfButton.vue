@@ -59,6 +59,13 @@ function pauseReading() {
   closeMenu();
 }
 
+function abandonReading() {
+  if (props.updating || (props.shelf !== ReadingShelf.STARTED && props.shelf !== ReadingShelf.PAUSED)) return;
+
+  emit("change", ReadingShelf.ABANDONED);
+  closeMenu();
+}
+
 function onDocPointer(e: PointerEvent) {
   if (rootEl.value && !rootEl.value.contains(e.target as Node)) closeMenu();
 }
@@ -89,7 +96,9 @@ onBeforeUnmount(() => {
         class="shelf-caret"
         :disabled="updating"
         :aria-expanded="menuOpen"
-        :aria-label="shelf === ReadingShelf.STARTED ? 'More reading actions' : 'Choose a date'"
+        :aria-label="
+          shelf === ReadingShelf.STARTED || shelf === ReadingShelf.PAUSED ? 'More reading actions' : 'Choose a date'
+        "
         data-test="shelf-caret"
         @click="toggleMenu"
       >
@@ -102,7 +111,9 @@ onBeforeUnmount(() => {
       :date-label="dateLabel"
       :action-label="action.label"
       :show-pause="shelf === ReadingShelf.STARTED"
+      :show-abandon="shelf === ReadingShelf.STARTED || shelf === ReadingShelf.PAUSED"
       @pause="pauseReading"
+      @abandon="abandonReading"
       @confirm="confirmDate"
     />
   </div>
