@@ -7,7 +7,14 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.book_events import build_user_book_response
-from app.models import Book, Shelf, ShelfKind, ShelfPlacement, User, UserBook
+from app.models import (
+    Book,
+    Shelf,
+    ShelfKind,
+    ShelfPlacement,
+    User,
+    UserBook,
+)
 from app.schemas import CustomShelfNamePayload, ShelfReorderRequest, ShelfResponse
 from app.shelves.refs import CustomShelfRef, ReadingShelfRef, ShelfRef
 from app.shelves.shelves import (
@@ -160,17 +167,23 @@ class ShelfService:
         return [self._to_response(shelf) for shelf in shelves]
 
     def create_shelf(self, payload: CustomShelfNamePayload) -> ShelfResponse:
+        self._ensure_name_is_not_reserved(payload.name)
+
         shelf = Shelf(user_id=self._user_id, kind=ShelfKind.CUSTOM, name=payload.name)
         self.db.add(shelf)
         self._commit_unique_name(payload.name)
+
         return self._to_response(shelf)
 
     def update_shelf(
         self, ref: ShelfRef, payload: CustomShelfNamePayload
     ) -> ShelfResponse:
+        self._ensure_name_is_not_reserved(payload.name)
+
         shelf = self._custom_shelf(ref)
         shelf.name = payload.name
         self._commit_unique_name(payload.name)
+
         return self._to_response(shelf)
 
     def delete_shelf(self, ref: ShelfRef) -> None:
@@ -185,6 +198,20 @@ class ShelfService:
             raise CustomShelfNameTakenError(
                 f"You already have a shelf called '{name}'"
             ) from None
+
+    @staticmethod
+    def _ensure_name_is_not_reserved(name: str) -> None:
+        # For now, we simply create a list of reserved names here
+        reserved_shelf_names = [
+            n.casefold() for n in READING_SHELF_DISPLAY_NAMES.values()
+        ]
+        reserved_shelf_names.append("paused books".casefold())
+        reserved_shelf_names.append("abandoned books".casefold())
+
+        if name.casefold() in reserved_shelf_names:
+            raise CustomShelfNameTakenError(
+                f"'{name}' is reserved for the paused reading shelf"
+            )
 
     def _get_user_book(self, book_id: int) -> UserBook | None:
         return (

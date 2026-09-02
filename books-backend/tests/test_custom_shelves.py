@@ -121,6 +121,21 @@ def test_create_shelf_rejects_duplicate_name(client, auth_headers):
     assert response.status_code == status.HTTP_409_CONFLICT
 
 
+def test_create_and_rename_reject_paused_books_name(client, auth_headers):
+    response = client.post(
+        "/api/shelves", json={"name": "paused books"}, headers=auth_headers
+    )
+    assert response.status_code == status.HTTP_409_CONFLICT
+
+    shelf_ref = _create_shelf(client, auth_headers, "On hold")
+    response = client.patch(
+        f"/api/shelves/{shelf_ref}",
+        json={"name": "Paused Books"},
+        headers=auth_headers,
+    )
+    assert response.status_code == status.HTTP_409_CONFLICT
+
+
 def test_create_shelf_rejects_blank_name(client, auth_headers):
     response = client.post("/api/shelves", json={"name": "   "}, headers=auth_headers)
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
