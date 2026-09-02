@@ -11,8 +11,14 @@ function formatEventType(event: BookEvent): string {
       return event.import_id != null ? "Imported to library" : "Added to library";
     case BookEventType.STARTED_READING:
       return "Started reading";
+    case BookEventType.PAUSED_READING:
+      return "Paused reading";
+    case BookEventType.RESUMED_READING:
+      return "Resumed reading";
     case BookEventType.FINISHED_READING:
       return "Finished reading";
+    case BookEventType.ABANDONED_READING:
+      return "Stopped reading";
     case BookEventType.NOTE_SET:
       return event.note ? "Note updated" : "Note cleared";
     case BookEventType.PROGRESS_SET:

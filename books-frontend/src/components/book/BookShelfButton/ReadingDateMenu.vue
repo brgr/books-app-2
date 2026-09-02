@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { type ReadingDateValue, ReadingDatePrecision } from "../../../api/types";
+import { ReadingDatePrecision, type ReadingDateValue } from "../../../api/types";
 import DayPrecision from "./precision/DayPrecision.vue";
 import MonthPrecision from "./precision/MonthPrecision.vue";
 import UnknownPrecision from "./precision/UnknownPrecision.vue";
 import YearPrecision from "./precision/YearPrecision.vue";
 
-defineProps<{ dateLabel: string; actionLabel: string }>();
-const emit = defineEmits<{ confirm: [readingDate: ReadingDateValue] }>();
+defineProps<{ dateLabel: string; actionLabel: string; showPause?: boolean }>();
+const emit = defineEmits<{
+  confirm: [readingDate: ReadingDateValue];
+  pause: [];
+}>();
 
 const precision = ref<ReadingDatePrecision>(ReadingDatePrecision.DAY);
 const precisionComponent = computed(() => {
@@ -26,6 +29,12 @@ const precisionComponent = computed(() => {
 
 <template>
   <div class="shelf-menu" role="dialog" :aria-label="dateLabel">
+    <button v-if="showPause" type="button" class="pause-action" data-test="pause-reading" @click="emit('pause')">
+      Pause Reading
+    </button>
+
+    <div v-if="showPause" class="menu-divider" aria-hidden="true"></div>
+
     <label class="shelf-menu-label">{{ dateLabel }}</label>
     <label class="shelf-menu-label" for="reading-date-precision">Date precision</label>
     <select
@@ -67,6 +76,23 @@ const precisionComponent = computed(() => {
 .shelf-menu-label {
   font-size: 0.85rem;
   color: var(--color-text-secondary);
+}
+.pause-action {
+  padding: 7px 8px;
+  border: 0;
+  border-radius: var(--border-radius);
+  background: transparent;
+  color: var(--color-text);
+  font: 500 0.9rem inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pause-action:hover {
+  background: var(--color-bg);
+}
+.menu-divider {
+  height: 1px;
+  background: var(--color-border);
 }
 .shelf-precision-select {
   padding: 6px 8px;

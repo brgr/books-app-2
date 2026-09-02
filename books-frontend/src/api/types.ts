@@ -149,7 +149,10 @@ export interface GoogleBookResult {
 export const BookEventType = {
   ADDED_TO_LIBRARY: "added_to_library",
   STARTED_READING: "started_reading",
+  PAUSED_READING: "paused_reading",
+  RESUMED_READING: "resumed_reading",
   FINISHED_READING: "finished_reading",
+  ABANDONED_READING: "abandoned_reading",
   NOTE_SET: "note_set",
   PROGRESS_SET: "progress_set",
 } as const;

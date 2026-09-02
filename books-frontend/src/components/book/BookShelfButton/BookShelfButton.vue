@@ -18,6 +18,8 @@ const action = computed<Action>(() => {
   switch (props.shelf) {
     case ReadingShelf.STARTED:
       return { label: "Finish", target: ReadingShelf.FINISHED };
+    case ReadingShelf.PAUSED:
+      return { label: "Resume Reading", target: ReadingShelf.STARTED };
     case ReadingShelf.FINISHED:
       return { label: "Read Again", target: ReadingShelf.STARTED };
     default:
@@ -47,6 +49,13 @@ function closeMenu() {
 function confirmDate(readingDate: ReadingDateValue) {
   if (props.updating) return;
   emit("change", action.value.target, readingDate);
+  closeMenu();
+}
+
+function pauseReading() {
+  if (props.updating || props.shelf !== ReadingShelf.STARTED) return;
+
+  emit("change", ReadingShelf.PAUSED);
   closeMenu();
 }
 
@@ -80,7 +89,7 @@ onBeforeUnmount(() => {
         class="shelf-caret"
         :disabled="updating"
         :aria-expanded="menuOpen"
-        aria-label="Choose a date"
+        :aria-label="shelf === ReadingShelf.STARTED ? 'More reading actions' : 'Choose a date'"
         data-test="shelf-caret"
         @click="toggleMenu"
       >
@@ -88,7 +97,14 @@ onBeforeUnmount(() => {
       </button>
     </div>
 
-    <ReadingDateMenu v-if="menuOpen" :date-label="dateLabel" :action-label="action.label" @confirm="confirmDate" />
+    <ReadingDateMenu
+      v-if="menuOpen"
+      :date-label="dateLabel"
+      :action-label="action.label"
+      :show-pause="shelf === ReadingShelf.STARTED"
+      @pause="pauseReading"
+      @confirm="confirmDate"
+    />
   </div>
 </template>
 

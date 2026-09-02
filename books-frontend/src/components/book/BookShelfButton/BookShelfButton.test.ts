@@ -9,7 +9,35 @@ function mountButton() {
   });
 }
 
+function mountStartedButton() {
+  return mount(BookShelfButton, {
+    props: { shelf: ReadingShelf.STARTED, updating: false },
+  });
+}
+
 describe("BookShelfButton", () => {
+  it("offers pausing only while a book is currently being read", async () => {
+    const started = mountStartedButton();
+    await started.find('[data-test="shelf-caret"]').trigger("click");
+    await started.find('[data-test="pause-reading"]').trigger("click");
+
+    expect(started.emitted("change")?.[0]).toEqual([ReadingShelf.PAUSED]);
+
+    const notStarted = mountButton();
+    await notStarted.find('[data-test="shelf-caret"]').trigger("click");
+    expect(notStarted.find('[data-test="pause-reading"]').exists()).toBe(false);
+  });
+
+  it("resumes a paused book", async () => {
+    const wrapper = mount(BookShelfButton, {
+      props: { shelf: ReadingShelf.PAUSED, updating: false },
+    });
+
+    expect(wrapper.find('[data-test="shelf-button"]').text()).toBe("Resume Reading");
+    await wrapper.find('[data-test="shelf-button"]').trigger("click");
+    expect(wrapper.emitted("change")?.[0]).toEqual([ReadingShelf.STARTED]);
+  });
+
   it("sends an exact-day reading date", async () => {
     const wrapper = mountButton();
     await wrapper.find('[data-test="shelf-caret"]').trigger("click");
