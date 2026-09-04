@@ -121,6 +121,29 @@ def test_import_creates_user_book(client, auth_headers, db_session):
     assert current_reading_shelf(db_session, ub.id) == ReadingShelf.WANT_TO_READ
 
 
+def test_import_preserves_optional_rating(client, auth_headers, db_session):
+    zip_bytes = _make_zip(
+        [
+            {
+                "Reading List ID": "AAA",
+                "Title": "Rated",
+                "Authors": "A, B",
+                "Rating": "4.5",
+            },
+            {"Reading List ID": "BBB", "Title": "Unrated", "Authors": "A, B"},
+        ]
+    )
+
+    response = _upload_zip(client, auth_headers, zip_bytes)
+    assert response.status_code == status.HTTP_200_OK
+
+    ratings_by_title = {
+        user_book.book.title: float(user_book.rating) if user_book.rating else None
+        for user_book in db_session.query(UserBook).all()
+    }
+    assert ratings_by_title == {"Rated": 4.5, "Unrated": None}
+
+
 # --- Status mapping ---
 
 

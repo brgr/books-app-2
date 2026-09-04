@@ -13,6 +13,7 @@ from app.book_events import (
     project_user_book_state,
     record_finished_reading,
     record_note_event,
+    record_rating_event,
     record_reading_event,
     record_started_reading,
 )
@@ -28,6 +29,7 @@ from app.models import (
 from app.schemas import (
     BookProgressUpdate,
     ReadingDateValue,
+    UserBookRatingUpdate,
     UserBookResponse,
     UserBookShelfUpdate,
 )
@@ -63,6 +65,35 @@ class ReadingService:
 
         return build_user_book_response(self.db, user_book)
 
+    def set_rating(
+        self, book_id: int, rating_data: UserBookRatingUpdate
+    ) -> UserBookResponse | None:
+        user_book = get_user_book(self.db, user_id=self._user_id, book_id=book_id)
+        if user_book is None:
+            return None
+
+        if user_book.rating != rating_data.rating:
+            record_rating_event(self.db, user_book.id, rating_data.rating)
+            user_book.rating = rating_data.rating
+
+        self.db.commit()
+        self.db.refresh(user_book)
+
+        return build_user_book_response(self.db, user_book)
+
+    def clear_rating(self, book_id: int) -> bool:
+        user_book = get_user_book(self.db, user_id=self._user_id, book_id=book_id)
+        if user_book is None:
+            return False
+
+        if user_book.rating is not None:
+            record_rating_event(self.db, user_book.id, None)
+            user_book.rating = None
+
+        self.db.commit()
+
+        return True
+
     def remove_from_library(self, book_id: int) -> bool:
         user_book = get_user_book(self.db, user_id=self._user_id, book_id=book_id)
         if not user_book:
@@ -81,6 +112,7 @@ class ReadingService:
             self.db.query(BookEvent)
             .options(
                 joinedload(BookEvent.note_entry),
+                joinedload(BookEvent.rating_entry),
                 joinedload(BookEvent.progress_entry),
                 joinedload(BookEvent.cover_entry),
                 joinedload(BookEvent.import_source),

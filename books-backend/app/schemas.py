@@ -131,10 +131,17 @@ class UserBookShelfUpdate(BaseModel):
     reading_date: Optional[ReadingDateValue] = None
 
 
+class UserBookRatingUpdate(BaseModel):
+    """Set a user's optional half-star rating for a book."""
+
+    rating: float = Field(gt=0, le=5, multiple_of=0.5)
+
+
 class UserBookResponse(UserBookBase):
     id: int
     user_id: int
     book_id: int
+    rating: Optional[float] = None
     started_at: Optional[ReadingDateValue] = None
     finished_at: Optional[ReadingDateValue] = None
     current_page: Optional[int] = None
@@ -162,6 +169,7 @@ class UserBookResponse(UserBookBase):
             book_id=user_book.book_id,
             shelf=shelf,
             notes=user_book.notes,
+            rating=user_book.rating,
             started_at=ReadingDateValue.from_domain(started_at) if started_at else None,
             finished_at=ReadingDateValue.from_domain(finished_at)
             if finished_at
@@ -267,6 +275,7 @@ class ExportBookEntry(BaseModel):
     page_count: Optional[int] = None
     shelf: ReadingShelf
     notes: Optional[str] = None
+    rating: Optional[float] = None
     started_at: Optional[ReadingDateValue] = None
     finished_at: Optional[ReadingDateValue] = None
     current_page: Optional[int] = None
@@ -292,6 +301,7 @@ class ExportBookEntry(BaseModel):
             page_count=book.page_count,
             shelf=shelf,
             notes=user_book.notes,
+            rating=user_book.rating,
             started_at=ReadingDateValue.from_domain(started_at) if started_at else None,
             finished_at=ReadingDateValue.from_domain(finished_at)
             if finished_at
@@ -319,6 +329,7 @@ class BookEventResponse(BaseModel):
     occurred_at: datetime
     reading_date: Optional[ReadingDateValue] = None
     note: Optional[str] = None
+    rating: Optional[float] = None
     page: Optional[int] = None
     percent: Optional[float] = None
     old_cover_image_url: Optional[str] = None
@@ -349,6 +360,7 @@ class BookEventResponse(BaseModel):
             occurred_at=event.occurred_at,
             reading_date=reading_date,
             note=event.note_entry.note if event.note_entry else None,
+            rating=event.rating_entry.rating if event.rating_entry else None,
             page=event.progress_entry.page if event.progress_entry else None,
             percent=event.progress_entry.percent if event.progress_entry else None,
             old_cover_image_url=event.cover_entry.old_cover_image_url

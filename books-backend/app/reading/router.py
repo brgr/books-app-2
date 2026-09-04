@@ -11,6 +11,7 @@ from app.reading.service import ReadingService
 from app.schemas import (
     BookEventResponse,
     BookProgressUpdate,
+    UserBookRatingUpdate,
     UserBookResponse,
     UserBookShelfUpdate,
 )
@@ -44,6 +45,39 @@ def set_shelf(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
         ) from exc
+
+
+@router.put("/books/{book_id}/rating", response_model=UserBookResponse)
+def set_rating(
+    book_id: int,
+    rating_data: UserBookRatingUpdate,
+    service: Annotated[ReadingService, Depends(get_reading_service)],
+):
+    """Set a rating for a book in the current user's library."""
+    response = service.set_rating(book_id, rating_data)
+
+    if response is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Book not in your reading list",
+        )
+
+    return response
+
+
+@router.delete("/books/{book_id}/rating", status_code=status.HTTP_204_NO_CONTENT)
+def clear_rating(
+    book_id: int,
+    service: Annotated[ReadingService, Depends(get_reading_service)],
+):
+    """Clear the current user's rating for a book."""
+    rating_cleared = service.clear_rating(book_id)
+
+    if not rating_cleared:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Book not in your reading list",
+        )
 
 
 @router.delete("/books/{book_id}/shelf", status_code=status.HTTP_204_NO_CONTENT)

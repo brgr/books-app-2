@@ -34,6 +34,58 @@ def test_set_shelf(client, auth_headers, created_book):
     assert data["started_at"] is not None
 
 
+def test_set_and_clear_rating(client, auth_headers, created_book):
+    book_id = created_book["id"]
+
+    response = client.put(
+        f"/api/books/{book_id}/shelf",
+        json={"shelf": "want_to_read"},
+        headers=auth_headers,
+    )
+    assert response.status_code == status.HTTP_200_OK
+
+    response = client.put(
+        f"/api/books/{book_id}/rating",
+        json={"rating": 4.5},
+        headers=auth_headers,
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["rating"] == 4.5
+
+    events = client.get(f"/api/books/{book_id}/events", headers=auth_headers).json()
+    rating_events = [event for event in events if event["event_type"] == "rating_set"]
+    assert [event["rating"] for event in rating_events] == [4.5]
+
+    response = client.delete(
+        f"/api/books/{book_id}/rating",
+        headers=auth_headers,
+    )
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    events = client.get(f"/api/books/{book_id}/events", headers=auth_headers).json()
+    rating_events = [event for event in events if event["event_type"] == "rating_set"]
+    assert [event["rating"] for event in rating_events] == [None, 4.5]
+
+    response = client.get(f"/api/books/{book_id}", headers=auth_headers)
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["user_book"]["rating"] is None
+
+
+@pytest.mark.parametrize("rating", [0, 0.25, 5.5])
+def test_set_rating_rejects_invalid_rating(client, auth_headers, created_book, rating):
+    client.put(
+        f"/api/books/{created_book['id']}/shelf",
+        json={"shelf": "want_to_read"},
+        headers=auth_headers,
+    )
+    response = client.put(
+        f"/api/books/{created_book['id']}/rating",
+        json={"rating": rating},
+        headers=auth_headers,
+    )
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+
 def test_update_shelf(client, auth_headers, created_book):
     """Test updating an existing shelf assignment."""
     book_id = created_book["id"]

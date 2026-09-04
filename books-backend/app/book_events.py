@@ -12,6 +12,7 @@ from app.models import (
     BookEventImportSource,
     BookEventNote,
     BookEventProgress,
+    BookEventRating,
     BookEventReadingDate,
     BookEventType,
     ReadingDate,
@@ -319,6 +320,32 @@ def record_note_event(
     session.flush()
     session.add(BookEventNote(event_id=event.id, note=note))
     session.flush()
+    return event
+
+
+def record_rating_event(
+    session: Session,
+    user_book_id: int,
+    rating: Optional[float],
+    occurred_at: Optional[datetime] = None,
+    import_id: Optional[int] = None,
+) -> BookEvent:
+    """Add a rating event; a null rating represents an explicit removal of the rating."""
+    event = BookEvent(
+        user_book_id=user_book_id,
+        event_type_id=_get_event_type(session, BookEventCode.RATING_SET).id,
+        occurred_at=occurred_at or datetime.now(UTC),
+    )
+
+    session.add(event)
+    session.flush()
+    session.add(BookEventRating(event_id=event.id, rating=rating))
+
+    if import_id is not None:
+        session.add(BookEventImportSource(event_id=event.id, import_id=import_id))
+
+    session.flush()
+
     return event
 
 

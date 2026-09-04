@@ -42,6 +42,7 @@ class BookEventCode(enum.Enum):
     FINISHED_READING = "finished_reading"
     ABANDONED_READING = "abandoned_reading"
     NOTE_SET = "note_set"
+    RATING_SET = "rating_set"
     PROGRESS_SET = "progress_set"
     COVER_CHANGED = "cover_changed"
 
@@ -189,6 +190,7 @@ class UserBook(Base):
         Integer, ForeignKey("books.id"), nullable=False
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rating: Mapped[float | None] = mapped_column(Numeric(2, 1), nullable=True)
     current_page: Mapped[int | None] = mapped_column(Integer, nullable=True)
     current_percent: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
 
@@ -240,6 +242,11 @@ class BookEvent(Base):
     user_book: Mapped["UserBook"] = relationship(back_populates="events")
     event_type: Mapped["BookEventType"] = relationship()
     note_entry: Mapped["BookEventNote | None"] = relationship(
+        back_populates="event",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    rating_entry: Mapped["BookEventRating | None"] = relationship(
         back_populates="event",
         uselist=False,
         cascade="all, delete-orphan",
@@ -303,6 +310,22 @@ class BookEventNote(Base):
 
     def __repr__(self):
         return f"<BookEventNote(event_id='{self.event_id}')>"
+
+
+class BookEventRating(Base):
+    """The rating assigned by a rating-set event; null means it was cleared."""
+
+    __tablename__ = "book_event_ratings"
+
+    event_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("book_events.id", ondelete="CASCADE"), primary_key=True
+    )
+    rating: Mapped[float | None] = mapped_column(Numeric(2, 1), nullable=True)
+
+    event: Mapped["BookEvent"] = relationship(back_populates="rating_entry")
+
+    def __repr__(self):
+        return f"<BookEventRating(event_id='{self.event_id}', rating={self.rating})>"
 
 
 class BookEventProgress(Base):

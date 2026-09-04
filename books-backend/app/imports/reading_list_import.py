@@ -12,6 +12,7 @@ from app.book_events import (
     record_finished_reading,
     record_progress_event,
     record_reading_event,
+    record_rating_event,
     record_started_reading,
 )
 from app.image_utils import store_cover_image
@@ -146,6 +147,8 @@ def import_reading_list_from_bytes(
         started_at = _parse_date((row.get("Started Reading") or "").strip())
         finished_at = _parse_date((row.get("Finished Reading") or "").strip())
         notes = (row.get("Notes") or "").strip() or None
+        rating_raw = (row.get("Rating") or "").strip()
+        rating = float(rating_raw) if rating_raw else None
         current_page_raw = (row.get("Current Page") or "").strip()
         current_page = int(current_page_raw) if current_page_raw else None
 
@@ -153,6 +156,7 @@ def import_reading_list_from_bytes(
             user_id=user_id,
             book_id=book_id,
             notes=notes,
+            rating=rating,
             current_page=current_page,
         )
         db.add(user_book)
@@ -179,6 +183,8 @@ def import_reading_list_from_bytes(
             record_reading_event(db, user_book.id, BookEventCode.ABANDONED_READING)
         if current_page is not None:
             record_progress_event(db, user_book.id, page=current_page)
+        if rating is not None:
+            record_rating_event(db, user_book.id, rating=rating, import_id=import_id)
 
         move_reading_shelf_placement(db, user_book, derived_shelf)
         project_user_book_state(db, user_book)
