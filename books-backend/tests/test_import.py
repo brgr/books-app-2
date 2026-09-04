@@ -15,6 +15,7 @@ from app.models import (
     BookEventType,
     Import,
     ReadingDate,
+    ReadingDatePrecision,
     ReadingShelf,
     Shelf,
     ShelfKind,
@@ -257,6 +258,29 @@ def test_import_status_paused(client, auth_headers, db_session):
         .one()
     )
     assert pause_event.occurred_at.date() == datetime(2025, 4, 1).date()
+
+
+def test_import_preserves_month_precision_reading_date(
+    client, auth_headers, db_session
+):
+    zip_bytes = _make_zip(
+        [
+            {
+                "Reading List ID": "AAA",
+                "Title": "Month Dated Book",
+                "Authors": "A, B",
+                "Started Reading": "2025-02",
+            },
+        ]
+    )
+
+    resp = _upload_zip(client, auth_headers, zip_bytes)
+    assert resp.status_code == status.HTTP_200_OK
+
+    user_book = db_session.query(UserBook).one()
+    assert derive_reading_date_values(db_session, user_book.id)[0] == ReadingDate(
+        datetime(2025, 2, 1), ReadingDatePrecision.MONTH
+    )
 
 
 # --- Notes and progress ---

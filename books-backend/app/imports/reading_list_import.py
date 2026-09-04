@@ -11,12 +11,20 @@ from app.book_events import (
     project_user_book_state,
     record_finished_reading,
     record_progress_event,
-    record_reading_event,
     record_rating_event,
+    record_reading_event,
     record_started_reading,
 )
 from app.image_utils import store_cover_image
-from app.models import Book, BookEventCode, Import, ReadingDate, ReadingShelf, UserBook
+from app.models import (
+    Book,
+    BookEventCode,
+    Import,
+    ReadingDate,
+    ReadingDatePrecision,
+    ReadingShelf,
+    UserBook,
+)
 
 
 class ImportReadingListError(ValueError):
@@ -56,6 +64,28 @@ def _reading_date_or_unknown(value: datetime | None) -> ReadingDate:
     if value is None:
         return ReadingDate.unknown()
     return ReadingDate.from_datetime(value)
+
+
+def _parse_reading_date(value: str) -> ReadingDate:
+    """Parse Reading List dates while retaining their stated precision."""
+    value = value.strip()
+
+    if not value or value == "Unknown":
+        return ReadingDate.unknown()
+
+    for fmt, precision in (
+        ("%Y-%m-%d", ReadingDatePrecision.DAY),
+        ("%Y-%m", ReadingDatePrecision.MONTH),
+        ("%Y", ReadingDatePrecision.YEAR),
+    ):
+        try:
+            parsed = datetime.strptime(value, fmt)
+        except ValueError:
+            continue
+
+        return ReadingDate(parsed, precision)
+
+    return ReadingDate.unknown()
 
 
 def import_reading_list_from_bytes(
@@ -146,9 +176,9 @@ def import_reading_list_from_bytes(
             continue
 
         derived_shelf = _derive_shelf(row)
-        started_at = _parse_date((row.get("Started Reading") or "").strip())
+        started_at = _parse_reading_date(row.get("Started Reading") or "")
         paused_at = _parse_date((row.get("Paused") or "").strip())
-        finished_at = _parse_date((row.get("Finished Reading") or "").strip())
+        finished_at = _parse_reading_date(row.get("Finished Reading") or "")
         notes = (row.get("Notes") or "").strip() or None
         rating_raw = (row.get("Rating") or "").strip()
         rating = float(rating_raw) if rating_raw else None
@@ -178,7 +208,7 @@ def import_reading_list_from_bytes(
             record_started_reading(
                 db,
                 user_book_id=user_book.id,
-                reading_date=_reading_date_or_unknown(started_at),
+                reading_date=started_at,
             )
         if derived_shelf == ReadingShelf.PAUSED:
             record_reading_event(
@@ -191,7 +221,7 @@ def import_reading_list_from_bytes(
             record_finished_reading(
                 db,
                 user_book_id=user_book.id,
-                reading_date=_reading_date_or_unknown(finished_at),
+                reading_date=finished_at,
             )
         if derived_shelf == ReadingShelf.ABANDONED:
             record_reading_event(db, user_book.id, BookEventCode.ABANDONED_READING)
