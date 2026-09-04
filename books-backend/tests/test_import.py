@@ -229,6 +229,36 @@ def test_import_status_started(client, auth_headers, db_session):
     assert current_reading_shelf(db_session, ub.id) == ReadingShelf.STARTED
 
 
+def test_import_status_paused(client, auth_headers, db_session):
+    zip_bytes = _make_zip(
+        [
+            {
+                "Reading List ID": "AAA",
+                "Title": "Paused Book",
+                "Authors": "A, B",
+                "Started Reading": "2025-03-01",
+                "Paused": "2025-04-01",
+            },
+        ]
+    )
+
+    resp = _upload_zip(client, auth_headers, zip_bytes)
+    assert resp.status_code == status.HTTP_200_OK
+
+    ub = db_session.query(UserBook).one()
+    assert current_reading_shelf(db_session, ub.id) == ReadingShelf.PAUSED
+    pause_event = (
+        db_session.query(BookEvent)
+        .join(BookEventType)
+        .filter(
+            BookEvent.user_book_id == ub.id,
+            BookEventType.code == BookEventCode.PAUSED_READING.value,
+        )
+        .one()
+    )
+    assert pause_event.occurred_at.date() == datetime(2025, 4, 1).date()
+
+
 # --- Notes and progress ---
 
 

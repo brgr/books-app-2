@@ -36,6 +36,8 @@ def _derive_shelf(row: dict) -> ReadingShelf:
         return ReadingShelf.ABANDONED
     if row.get("Finished Reading"):
         return ReadingShelf.FINISHED
+    if row.get("Paused"):
+        return ReadingShelf.PAUSED
     if row.get("Started Reading"):
         return ReadingShelf.STARTED
     return ReadingShelf.WANT_TO_READ
@@ -145,6 +147,7 @@ def import_reading_list_from_bytes(
 
         derived_shelf = _derive_shelf(row)
         started_at = _parse_date((row.get("Started Reading") or "").strip())
+        paused_at = _parse_date((row.get("Paused") or "").strip())
         finished_at = _parse_date((row.get("Finished Reading") or "").strip())
         notes = (row.get("Notes") or "").strip() or None
         rating_raw = (row.get("Rating") or "").strip()
@@ -165,6 +168,7 @@ def import_reading_list_from_bytes(
         ensure_added_event(db, user_id=user_id, book_id=book_id, import_id=import_id)
         if derived_shelf in (
             ReadingShelf.STARTED,
+            ReadingShelf.PAUSED,
             ReadingShelf.FINISHED,
             ReadingShelf.ABANDONED,
         ):
@@ -172,6 +176,13 @@ def import_reading_list_from_bytes(
                 db,
                 user_book_id=user_book.id,
                 reading_date=_reading_date_or_unknown(started_at),
+            )
+        if derived_shelf == ReadingShelf.PAUSED:
+            record_reading_event(
+                db,
+                user_book.id,
+                BookEventCode.PAUSED_READING,
+                occurred_at=paused_at,
             )
         if derived_shelf == ReadingShelf.FINISHED:
             record_finished_reading(
