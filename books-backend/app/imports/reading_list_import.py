@@ -32,10 +32,10 @@ def _parse_author(raw: str) -> str:
 
 
 def _derive_shelf(row: dict) -> ReadingShelf:
-    if row.get("Finished Reading"):
-        return ReadingShelf.FINISHED
     if row.get("Did Not Finish"):
         return ReadingShelf.ABANDONED
+    if row.get("Finished Reading"):
+        return ReadingShelf.FINISHED
     if row.get("Started Reading"):
         return ReadingShelf.STARTED
     return ReadingShelf.WANT_TO_READ

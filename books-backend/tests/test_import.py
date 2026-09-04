@@ -186,6 +186,30 @@ def test_import_status_abandoned(client, auth_headers, db_session):
     assert current_reading_shelf(db_session, ub.id) == ReadingShelf.ABANDONED
 
 
+def test_import_did_not_finish_takes_precedence_over_finished_date(
+    client, auth_headers, db_session
+):
+    """Exports include a terminal finish date for abandoned books."""
+    zip_bytes = _make_zip(
+        [
+            {
+                "Reading List ID": "AAA",
+                "Title": "Gave Up With End Date",
+                "Authors": "A, B",
+                "Started Reading": "2025-01-01",
+                "Finished Reading": "2025-02-01",
+                "Did Not Finish": "Y",
+            },
+        ]
+    )
+
+    resp = _upload_zip(client, auth_headers, zip_bytes)
+    assert resp.status_code == status.HTTP_200_OK
+
+    ub = db_session.query(UserBook).one()
+    assert current_reading_shelf(db_session, ub.id) == ReadingShelf.ABANDONED
+
+
 def test_import_status_started(client, auth_headers, db_session):
     zip_bytes = _make_zip(
         [
@@ -509,7 +533,9 @@ def test_import_real_export_counts_match_csv(client, auth_headers, db_session):
         unique_rows.append(r)
 
     expected_imported = len(unique_rows)
-    expected_finished = sum(1 for r in unique_rows if r["Finished Reading"])
+    expected_finished = sum(
+        1 for r in unique_rows if r["Finished Reading"] and not r["Did Not Finish"]
+    )
     expected_started = sum(
         1
         for r in unique_rows
@@ -517,9 +543,7 @@ def test_import_real_export_counts_match_csv(client, auth_headers, db_session):
         and not r["Finished Reading"]
         and not r["Did Not Finish"]
     )
-    expected_abandoned = sum(
-        1 for r in unique_rows if r["Did Not Finish"] and not r["Finished Reading"]
-    )
+    expected_abandoned = sum(1 for r in unique_rows if r["Did Not Finish"])
     expected_with_notes = sum(1 for r in unique_rows if r["Notes"])
 
     resp = _upload_zip(client, auth_headers, _zip_from_csv(csv_path))
