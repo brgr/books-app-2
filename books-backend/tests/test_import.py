@@ -283,6 +283,27 @@ def test_import_preserves_month_precision_reading_date(
     )
 
 
+def test_import_preserves_year_precision_reading_date(client, auth_headers, db_session):
+    zip_bytes = _make_zip(
+        [
+            {
+                "Reading List ID": "AAA",
+                "Title": "Year Dated Book",
+                "Authors": "A, B",
+                "Started Reading": "2023",
+            },
+        ]
+    )
+
+    resp = _upload_zip(client, auth_headers, zip_bytes)
+    assert resp.status_code == status.HTTP_200_OK
+
+    user_book = db_session.query(UserBook).one()
+    assert derive_reading_date_values(db_session, user_book.id)[0] == ReadingDate(
+        datetime(2023, 1, 1), ReadingDatePrecision.YEAR
+    )
+
+
 # --- Notes and progress ---
 
 
@@ -350,6 +371,24 @@ def test_import_current_percentage(client, auth_headers, db_session):
     assert progress.progress_entry.percent == 11
 
 
+def test_import_preserves_multiline_markdown_notes(client, auth_headers, db_session):
+    notes = "Recommended here:\n\nhttps://example.com/book\n\n**Worth reading.**"
+    zip_bytes = _make_zip(
+        [
+            {
+                "Reading List ID": "AAA",
+                "Title": "Noted Book",
+                "Authors": "A, B",
+                "Notes": notes,
+            },
+        ]
+    )
+
+    resp = _upload_zip(client, auth_headers, zip_bytes)
+    assert resp.status_code == status.HTTP_200_OK
+    assert db_session.query(UserBook).one().notes == notes
+
+
 # --- Cover images ---
 
 
@@ -371,6 +410,33 @@ def test_import_cover_image(client, auth_headers, db_session):
     book = db_session.query(Book).one()
     assert book.cover_image_url is not None
     assert "covers" in book.cover_image_url
+
+
+def test_import_cover_image_without_filename_extension(
+    client, auth_headers, db_session
+):
+    from PIL import Image
+
+    img_buf = io.BytesIO()
+    Image.new("RGB", (100, 150), color="blue").save(img_buf, format="JPEG")
+
+    zip_bytes = _make_zip(
+        [
+            {
+                "Reading List ID": "COVER-ID",
+                "Title": "Extensionless Cover",
+                "Authors": "A, B",
+            }
+        ],
+        images={"COVER-ID": img_buf.getvalue()},
+    )
+
+    resp = _upload_zip(client, auth_headers, zip_bytes)
+    assert resp.status_code == status.HTTP_200_OK
+
+    book = db_session.query(Book).one()
+    assert book.cover_image_url is not None
+    assert book.cover_thumbnail_url is not None
 
 
 # --- Multiple books ---
