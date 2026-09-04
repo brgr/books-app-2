@@ -295,6 +295,37 @@ def test_import_notes_and_current_page(client, auth_headers, db_session):
     assert progress.progress_entry.page == 42
 
 
+def test_import_current_percentage(client, auth_headers, db_session):
+    zip_bytes = _make_zip(
+        [
+            {
+                "Reading List ID": "AAA",
+                "Title": "Percent Progress",
+                "Authors": "A, B",
+                "Started Reading": "2025-01-01",
+                "Current Percentage": "11",
+            },
+        ]
+    )
+
+    resp = _upload_zip(client, auth_headers, zip_bytes)
+    assert resp.status_code == status.HTTP_200_OK
+
+    ub = db_session.query(UserBook).one()
+    assert ub.current_percent == 11
+    progress = (
+        db_session.query(BookEvent)
+        .join(BookEventType)
+        .filter(
+            BookEvent.user_book_id == ub.id,
+            BookEventType.code == BookEventCode.PROGRESS_SET.value,
+        )
+        .one()
+    )
+    assert progress.progress_entry is not None
+    assert progress.progress_entry.percent == 11
+
+
 # --- Cover images ---
 
 

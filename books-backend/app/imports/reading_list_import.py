@@ -154,6 +154,8 @@ def import_reading_list_from_bytes(
         rating = float(rating_raw) if rating_raw else None
         current_page_raw = (row.get("Current Page") or "").strip()
         current_page = int(current_page_raw) if current_page_raw else None
+        current_percent_raw = (row.get("Current Percentage") or "").strip()
+        current_percent = float(current_percent_raw) if current_percent_raw else None
 
         user_book = UserBook(
             user_id=user_id,
@@ -161,6 +163,7 @@ def import_reading_list_from_bytes(
             notes=notes,
             rating=rating,
             current_page=current_page,
+            current_percent=current_percent,
         )
         db.add(user_book)
         db.flush()
@@ -193,7 +196,14 @@ def import_reading_list_from_bytes(
         if derived_shelf == ReadingShelf.ABANDONED:
             record_reading_event(db, user_book.id, BookEventCode.ABANDONED_READING)
         if current_page is not None:
-            record_progress_event(db, user_book.id, page=current_page)
+            record_progress_event(
+                db,
+                user_book.id,
+                page=current_page,
+                percent=current_percent,
+            )
+        elif current_percent is not None:
+            record_progress_event(db, user_book.id, percent=current_percent)
         if rating is not None:
             record_rating_event(db, user_book.id, rating=rating, import_id=import_id)
 
