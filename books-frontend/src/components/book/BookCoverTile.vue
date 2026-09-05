@@ -129,6 +129,13 @@ const progressPercent = computed(() => {
       @touchcancel.passive="onTouchCancel"
     >
       <span v-if="showBadge" class="grid-progress-badge"> {{ progressPercent }}% </span>
+      <span
+        v-if="book.user_book?.rating != null"
+        class="grid-rating-badge"
+        :aria-label="`Your rating: ${book.user_book.rating} out of 5 stars`"
+      >
+        <span aria-hidden="true">★ {{ book.user_book.rating }}</span>
+      </span>
       <img
         v-if="coverUrl"
         :src="coverUrl"
@@ -238,6 +245,7 @@ const progressPercent = computed(() => {
   max-height: 100%;
 }
 
+.grid-rating-badge,
 .grid-progress-badge {
   position: absolute;
   right: 6px;
@@ -255,6 +263,11 @@ const progressPercent = computed(() => {
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease;
+}
+
+.grid-rating-badge {
+  bottom: auto;
+  top: 6px;
 }
 
 .grid-cover-link:hover .grid-progress-badge {

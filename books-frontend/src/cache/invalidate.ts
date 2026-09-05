@@ -42,4 +42,7 @@ export const invalidateCache = {
   // Shelf tiles render the reading progress, so their cached pages go stale along with the timeline.
   progressSaved: (bookId: number) =>
     drop({ keys: [cacheKeys.bookEvents(bookId)], prefixes: [cacheKeys.shelvesPrefix()] }),
+
+  ratingSaved: (bookId: number) =>
+    drop({ keys: [cacheKeys.bookEvents(bookId)], prefixes: [cacheKeys.shelvesPrefix()] }),
 };

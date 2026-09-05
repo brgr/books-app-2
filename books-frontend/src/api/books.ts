@@ -1,5 +1,4 @@
 import { apiClient } from "./client";
-import { parseShelfRef } from "./types";
 import type {
   Book,
   BookCreate,
@@ -11,12 +10,13 @@ import type {
   GoogleBookResult,
   ImportRecord,
   PaginatedBooks,
-  ShelfReorderRequest,
   Shelf,
   ShelfRef,
+  ShelfReorderRequest,
   UserBook,
   UserBookShelfUpdate,
 } from "./types";
+import { parseShelfRef } from "./types";
 
 export async function getBooks(page = 1, pageSize = 20): Promise<PaginatedBooks> {
   const response = await apiClient.get<PaginatedBooks>("/books", {
@@ -98,6 +98,15 @@ export async function setShelf(bookId: number, data: UserBookShelfUpdate): Promi
 
 export async function removeFromLibrary(bookId: number): Promise<void> {
   await apiClient.delete(`/books/${bookId}/shelf`);
+}
+
+export async function setRating(bookId: number, rating: number): Promise<UserBook> {
+  const response = await apiClient.put<UserBook>(`/books/${bookId}/rating`, { rating });
+  return response.data;
+}
+
+export async function clearRating(bookId: number): Promise<void> {
+  await apiClient.delete(`/books/${bookId}/rating`);
 }
 
 export async function searchGoogleBooks(query: string): Promise<GoogleBookResult[]> {

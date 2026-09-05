@@ -23,6 +23,8 @@ function formatEventType(event: BookEvent): string {
       return event.note ? "Note updated" : "Note cleared";
     case BookEventType.PROGRESS_SET:
       return "Progress updated";
+    case BookEventType.RATING_SET:
+      return event.rating == null ? "Rating cleared" : `Rated ${event.rating} / 5 stars`;
     default:
       return event.event_type;
   }

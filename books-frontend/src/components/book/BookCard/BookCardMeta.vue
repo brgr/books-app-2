@@ -9,6 +9,9 @@ defineProps<{
 
 <template>
   <div class="book-meta">
+    <span v-if="book.user_book?.rating != null" class="meta-item">
+      <strong>Your rating:</strong> {{ book.user_book.rating }} / 5 <span aria-hidden="true">★</span>
+    </span>
     <span v-if="book.isbn" class="meta-item"> <strong>ISBN:</strong> {{ book.isbn }} </span>
     <span v-if="book.page_count" class="meta-item"> <strong>Pages:</strong> {{ book.page_count }} </span>
     <span v-if="book.published_date" class="meta-item">

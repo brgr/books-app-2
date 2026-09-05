@@ -76,6 +76,7 @@ export interface UserBook {
   notes: string | null;
   current_page: number | null;
   current_percent: number | null;
+  rating: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -155,6 +156,7 @@ export const BookEventType = {
   ABANDONED_READING: "abandoned_reading",
   NOTE_SET: "note_set",
   PROGRESS_SET: "progress_set",
+  RATING_SET: "rating_set",
 } as const;
 
 export type BookEventType = (typeof BookEventType)[keyof typeof BookEventType];
@@ -166,6 +168,7 @@ export interface BookEvent {
   reading_date?: ReadingDateValue | null;
   note?: string | null;
   page?: number | null;
+  rating?: number | null;
   import_id?: number | null;
 }
 

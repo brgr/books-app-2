@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, toRaw } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { addBookProgress, getBook, getBookEvents, setShelf } from "../api/books";
+import { addBookProgress, clearRating, getBook, getBookEvents, setRating, setShelf } from "../api/books";
 import { getMediaUrl } from "../api/client";
 import BookNotes from "../components/book/BookNotes.vue";
 import BookSearchModal from "../components/modals/BookSearchModal.vue";
 import BookShelfButton from "../components/book/BookShelfButton/BookShelfButton.vue";
 import BookReadingCard from "../components/book/BookReadingCard.vue";
+import BookRating from "../components/book/BookRating.vue";
 import NavigationBar from "../components/ui/NavigationBar.vue";
 import CollapsibleText from "../components/ui/CollapsibleText.vue";
 import BookMetadata from "../components/book/BookMetadata.vue";
@@ -60,6 +61,42 @@ const error = computed(() => {
 const updatingShelf = ref(false);
 const notesSaving = ref(false);
 const progressSaving = ref(false);
+const ratingSaving = ref(false);
+const ratingError = ref("");
+
+async function handleRatingChange(rating: number | null) {
+  const currentBook = book.value;
+
+  if (!currentBook?.user_book || ratingSaving.value || rating === (currentBook.user_book.rating ?? null)) return;
+
+  ratingSaving.value = true;
+  ratingError.value = "";
+
+  try {
+    let userBook;
+
+    if (rating === null) {
+      await clearRating(currentBook.id);
+      // Copy the underlying data so nested reading dates remain serializable in IndexedDB.
+      userBook = { ...toRaw(currentBook.user_book), rating: null };
+    } else {
+      userBook = await setRating(currentBook.id, rating);
+    }
+
+    if (bookId.value === currentBook.id) {
+      await setBook({ ...book.value!, user_book: userBook });
+    }
+
+    await invalidateCache.ratingSaved(currentBook.id);
+
+    if (bookId.value === currentBook.id) await refreshEvents();
+  } catch (error) {
+    console.error("Failed to save rating:", error);
+    if (bookId.value === currentBook.id) ratingError.value = "Failed to save rating. Please try again.";
+  } finally {
+    ratingSaving.value = false;
+  }
+}
 
 const canUpdateProgress = computed(() => book.value?.user_book?.shelf === ReadingShelf.STARTED);
 
@@ -197,6 +234,15 @@ const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(() =
                 @update-progress="handleSaveProgress"
               />
             </div>
+
+            <BookRating
+              v-if="book.user_book"
+              :key="book.id"
+              :rating="book.user_book.rating ?? null"
+              :saving="ratingSaving"
+              :error="ratingError"
+              @change="handleRatingChange"
+            />
 
             <div v-if="book.user_book && !canUpdateProgress" class="book-dates">
               <div v-if="book.user_book.started_at" class="date-item">
