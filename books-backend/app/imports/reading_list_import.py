@@ -1,5 +1,6 @@
 import csv
 import io
+import re
 import zipfile
 from datetime import datetime
 
@@ -23,8 +24,11 @@ from app.models import (
     ReadingDate,
     ReadingDatePrecision,
     ReadingShelf,
+    Shelf,
+    ShelfKind,
     UserBook,
 )
+from app.shelves.shelves import place_on_shelf
 
 
 class ImportReadingListError(ValueError):
@@ -88,6 +92,29 @@ def _parse_reading_date(value: str) -> ReadingDate:
     return ReadingDate.unknown()
 
 
+def _import_lists(db: Session, user_book: UserBook, raw: str) -> None:
+    for entry in raw.split(";"):
+        # Entries end with a signed list position; parentheses can also be
+        # part of the name, e.g. "Short Book (< ~200 Pages) (31)".
+        name = re.sub(r"\s+\(-?\d+\)$", "", entry.strip()).strip()
+
+        if not name:
+            continue
+
+        shelf = (
+            db.query(Shelf)
+            .filter_by(user_id=user_book.user_id, kind=ShelfKind.CUSTOM, name=name)
+            .first()
+        )
+
+        if shelf is None:
+            shelf = Shelf(user_id=user_book.user_id, kind=ShelfKind.CUSTOM, name=name)
+            db.add(shelf)
+            db.flush()
+
+        place_on_shelf(db, shelf, user_book)
+
+
 def import_reading_list_from_bytes(
     db: Session, user_id: int, content: bytes, filename: str | None = None
 ) -> dict[str, int]:
@@ -137,6 +164,7 @@ def import_reading_list_from_bytes(
                 .first()
             )
             if already_in_library:
+                _import_lists(db, already_in_library, row.get("Lists") or "")
                 skipped += 1
                 continue
         else:
@@ -172,6 +200,7 @@ def import_reading_list_from_bytes(
             .first()
         )
         if existing_ub:
+            _import_lists(db, existing_ub, row.get("Lists") or "")
             imported += 1
             continue
 
@@ -240,8 +269,7 @@ def import_reading_list_from_bytes(
         move_reading_shelf_placement(db, user_book, derived_shelf)
         project_user_book_state(db, user_book)
 
-        # The export's "Lists" column is ignored: a book sits on exactly one
-        # reading shelf, the one its ReadingShelf puts it on.
+        _import_lists(db, user_book, row.get("Lists") or "")
 
         imported += 1
 

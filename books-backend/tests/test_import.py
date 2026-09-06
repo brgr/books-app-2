@@ -793,25 +793,96 @@ def test_import_real_export_currently_reading(client, auth_headers, db_session):
     ] == ReadingDate.from_datetime(datetime(2026, 4, 18))
 
 
-def test_import_real_export_creates_no_custom_shelves(client, auth_headers, db_session):
-    """The real export names many lists; none of them become shelves."""
+def test_import_real_export_creates_custom_shelves(client, auth_headers, db_session):
     csv_path = FIXTURES / "reading_list_sample.csv"
-    with open(csv_path) as f:
-        rows = list(csv.DictReader(f))
-
-    named_in_export = {row["Lists"].strip() for row in rows if row["Lists"].strip()}
-    assert len(named_in_export) > 5  # sanity check: the fixture does name lists
-
     resp = _upload_zip(client, auth_headers, _zip_from_csv(csv_path))
     assert resp.status_code == status.HTTP_200_OK
 
-    assert db_session.query(Shelf).filter(Shelf.kind == ShelfKind.CUSTOM).count() == 0
-
-    # Every imported book has exactly one position on a reading shelf.
-    positions = (
-        db_session.query(ShelfPlacement)
-        .join(Shelf)
-        .filter(Shelf.kind == ShelfKind.READING)
+    book = db_session.query(Book).filter_by(title="Das Orangenmädchen").one()
+    shelves = (
+        db_session.query(Shelf)
+        .join(ShelfPlacement)
+        .join(UserBook)
+        .filter(UserBook.book_id == book.id, Shelf.kind == ShelfKind.CUSTOM)
         .all()
     )
-    assert positions and all(position is not None for position in positions)
+    assert {shelf.name for shelf in shelves} == {
+        "Novels",
+        "Philosophie",
+        "Short Book (< ~200 Pages)",
+    }
+    user_book = db_session.query(UserBook).filter_by(book_id=book.id).one()
+    assert current_reading_shelf(db_session, user_book.id) == ReadingShelf.WANT_TO_READ
+
+
+def test_import_lists_reuses_shelves_and_ignores_empty_names(
+    client, auth_headers, db_session
+):
+    from app.models import User
+
+    user = db_session.query(User).filter_by(username="testuser").one()
+    other_user = User(username="other", hashed_password="unused")
+    db_session.add(other_user)
+    db_session.flush()
+    existing = Shelf(user_id=user.id, kind=ShelfKind.CUSTOM, name="Science")
+    other = Shelf(user_id=other_user.id, kind=ShelfKind.CUSTOM, name="Novels")
+    db_session.add_all([existing, other])
+    db_session.commit()
+
+    response = _upload_zip(
+        client,
+        auth_headers,
+        _make_zip(
+            [
+                {
+                    "Title": "First",
+                    "Lists": "Science (2); Novels (-13); Science (2); ;",
+                },
+                {
+                    "Title": "Second",
+                    "Lists": "Science (1); Short Book (< ~200 Pages) (31)",
+                },
+                {"Title": "Third", "Lists": ""},
+            ]
+        ),
+    )
+    assert response.status_code == status.HTTP_200_OK
+
+    shelves = (
+        db_session.query(Shelf).filter_by(user_id=user.id, kind=ShelfKind.CUSTOM).all()
+    )
+    assert {shelf.name for shelf in shelves} == {
+        "Science",
+        "Novels",
+        "Short Book (< ~200 Pages)",
+    }
+    assert next(shelf for shelf in shelves if shelf.name == "Science").id == existing.id
+    assert {
+        shelf.name: {placement.user_book.book.title for placement in shelf.placements}
+        for shelf in shelves
+    } == {
+        "Science": {"First", "Second"},
+        "Novels": {"First"},
+        "Short Book (< ~200 Pages)": {"Second"},
+    }
+    assert other.placements == []
+
+
+def test_import_lists_adds_memberships_to_existing_books(
+    client, auth_headers, db_session
+):
+    row = {"Title": "Existing", "ISBN-13": "9781234567890"}
+    assert _upload_zip(client, auth_headers, _make_zip([row])).status_code == 200
+
+    row["Lists"] = "Science (1)"
+
+    for _ in range(2):
+        response = _upload_zip(client, auth_headers, _make_zip([row]))
+        assert response.json() == {"imported": 0, "skipped": 1}
+
+    shelf = (
+        db_session.query(Shelf).filter_by(kind=ShelfKind.CUSTOM, name="Science").one()
+    )
+
+    assert len(shelf.placements) == 1
+    assert shelf.placements[0].user_book.book.title == "Existing"
