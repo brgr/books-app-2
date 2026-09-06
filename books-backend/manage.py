@@ -10,7 +10,7 @@ from pydantic import ValidationError
 
 from app.auth.security import create_user
 from app.database import SessionLocal
-from app.models import User
+from app.models import ReadingShelf, User
 from app.schemas import UserCreate
 
 
@@ -93,6 +93,29 @@ def handle_seed_reading_list(args: argparse.Namespace) -> int:
     return 0
 
 
+def handle_seed_sample_books(args: argparse.Namespace) -> int:
+    """Create synthetic books directly in an existing user's library."""
+    from scripts.sample_books import create_sample_books
+
+    with SessionLocal() as session:
+        user = session.query(User).filter_by(username=args.username.strip()).first()
+        if user is None:
+            print(f"Error: user '{args.username}' not found.", file=sys.stderr)
+            return 1
+        create_sample_books(session, user.id, args.count, ReadingShelf(args.shelf))
+        session.commit()
+
+    print(f"Created {args.count} sample book(s) on {args.shelf}.")
+    return 0
+
+
+def nonnegative_int(value: str) -> int:
+    number = int(value)
+    if number < 0:
+        raise argparse.ArgumentTypeError("must be zero or greater")
+    return number
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Books backend management commands.")
     subparsers = parser.add_subparsers(dest="command")
@@ -123,6 +146,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to the Reading List ZIP to import.",
     )
 
+    sample_parser = subparsers.add_parser(
+        "seed-sample-books", help="Add generated development books to an existing user."
+    )
+    sample_parser.add_argument("--username", "-u", required=True)
+    sample_parser.add_argument("--count", type=nonnegative_int, required=True)
+    sample_parser.add_argument(
+        "--shelf",
+        choices=[shelf.value for shelf in ReadingShelf],
+        default=ReadingShelf.WANT_TO_READ.value,
+    )
+
     return parser
 
 
@@ -134,6 +168,8 @@ def main(argv: list[str] | None = None) -> int:
         return handle_create_superuser(args)
     if args.command == "seed-reading-list":
         return handle_seed_reading_list(args)
+    if args.command == "seed-sample-books":
+        return handle_seed_sample_books(args)
 
     parser.print_help()
     return 1

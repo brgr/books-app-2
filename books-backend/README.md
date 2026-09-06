@@ -22,7 +22,26 @@ one.
 
 ## Development
 
-Type checking, linting, tests:
+### Backend Dev Server
+
+You can generate some sample books using the following dev script (which also automatically resets the existing dev
+data, and starts the dev server):
+
+```bash
+cd books-backend
+uv run python scripts/dev_with_sample_data.py --sample-books 1000
+```
+
+Run it with `--help` to see all options.
+
+Generated books use the backend's book and reading-event helpers directly. To add
+900 books to Want to Read in an existing library without resetting it, run from `books-backend`:
+
+```bash
+uv run python manage.py seed-sample-books --username dev --count 900
+```
+
+### Type Checking, Linting, Tests
 
 ```bash
 cd books-backend
