@@ -142,6 +142,7 @@ const progressPercent = computed(() => {
         :alt="book.title"
         :title="book.title + ' by ' + book.author"
         class="grid-cover"
+        loading="lazy"
         draggable="false"
       />
       <div v-else class="grid-cover-placeholder" :title="book.title + ' by ' + book.author">

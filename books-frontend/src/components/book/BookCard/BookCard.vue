@@ -28,7 +28,13 @@ const coverUrl = computed(() => props.book.cover_thumbnail_url || props.book.cov
     <KebabButton class="card-menu-button" aria-label="Book actions" @click="openMenu" />
     <div class="book-content">
       <router-link :to="detailRoute" class="book-cover-link">
-        <img v-if="coverUrl" :src="getMediaUrl(coverUrl)" :alt="book.title" class="book-cover book-cover-clickable" />
+        <img
+          v-if="coverUrl"
+          :src="getMediaUrl(coverUrl)"
+          :alt="book.title"
+          class="book-cover book-cover-clickable"
+          loading="lazy"
+        />
         <div class="book-cover-placeholder book-cover-clickable" v-else>No Cover</div>
       </router-link>
 
