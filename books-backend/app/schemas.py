@@ -184,6 +184,19 @@ class ShelfReorderRequest(BaseModel):
     moved_book_id: int
     before_book_id: Optional[int] = None
     after_book_id: Optional[int] = None
+    edge: Literal["top", "bottom"] | None = None
+
+    @model_validator(mode="after")
+    def validate_destination(self):
+        if self.edge and (
+            self.before_book_id is not None or self.after_book_id is not None
+        ):
+            raise ValueError("Choose an edge or neighbours, not both")
+
+        if self.moved_book_id in (self.before_book_id, self.after_book_id):
+            raise ValueError("A book cannot be its own neighbour")
+
+        return self
 
 
 class CustomShelfNamePayload(BaseModel):

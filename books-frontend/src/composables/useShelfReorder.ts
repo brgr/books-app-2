@@ -1,19 +1,18 @@
 import { ref, type Ref } from "vue";
 import { reorderShelfItem } from "../api/books";
-import type { Book, ShelfRef } from "../api/types";
+import type { Book, ShelfRef, ShelfReorderRequest } from "../api/types";
 
 export interface ShelfReorderOptions {
   /**
-   * The very array being rendered: vuedraggable reorders it in place, and moving a book to an edge
-   * splices it directly, so this has to be the same ref the shelf draws from.
+   * The very array being rendered: vuedraggable reorders it in place.
    */
   books: Ref<Book[]>;
   /** Positions are persisted against this shelf. */
   shelf: ShelfRef;
-  /** Whether reordering is allowed at all. Normally off while the shelf shows only part of itself. */
+  /** Whether reordering is allowed (no search filter or page load in progress). */
   enabled: Ref<boolean>;
-  /** Mirrors a persisted order back into the caller's accumulated items. */
-  onPersisted: (order: Book[]) => Promise<void>;
+  /** Reconcile loaded pages with the server's order. */
+  refresh: () => Promise<void>;
 }
 
 /** How long after a drag a stray click from the same gesture can still land. */
@@ -24,10 +23,13 @@ const clickGraceMs = 200;
  * click is really the tail of a drag rather than a tap on a book.
  */
 export function useShelfReorder(options: ShelfReorderOptions) {
-  const { books, shelf, enabled, onPersisted } = options;
+  const { books, shelf, enabled, refresh } = options;
 
   const isDragging = ref(false);
   const lastDragTime = ref(0);
+  const isSaving = ref(false);
+  const message = ref("");
+  const error = ref("");
 
   const dragOptions = {
     animation: 150,
@@ -46,18 +48,24 @@ export function useShelfReorder(options: ShelfReorderOptions) {
     return isDragging.value || Date.now() - lastDragTime.value < clickGraceMs;
   }
 
-  // Persists a reorder against the shelf, then mirrors the new order back into the accumulated
-  // items so it survives future page loads
-  async function persist(order: Book[], movedId: number, beforeId: number | null, afterId: number | null) {
+  async function persist(payload: ShelfReorderRequest) {
+    isSaving.value = true;
+    message.value = "";
+    error.value = "";
     try {
-      await reorderShelfItem(shelf, {
-        moved_book_id: movedId,
-        before_book_id: beforeId,
-        after_book_id: afterId,
-      });
-      await onPersisted([...order]);
+      await reorderShelfItem(shelf, payload);
     } catch (err) {
       console.error("Failed to reorder books:", err);
+      error.value = "Could not move the book. Please try again.";
+    }
+    try {
+      await refresh();
+      if (!error.value) message.value = payload.edge ? `Moved to ${payload.edge}.` : "Book order updated.";
+    } catch (err) {
+      console.error("Failed to refresh shelf:", err);
+      error.value = "Could not refresh the shelf. Reload before moving more books.";
+    } finally {
+      isSaving.value = false;
     }
   }
 
@@ -75,7 +83,7 @@ export function useShelfReorder(options: ShelfReorderOptions) {
     if (event.newIndex === event.oldIndex) {
       return;
     }
-    if (!enabled.value) {
+    if (!enabled.value || isSaving.value) {
       return;
     }
 
@@ -85,27 +93,28 @@ export function useShelfReorder(options: ShelfReorderOptions) {
     const beforeBook = event.newIndex > 0 ? list[event.newIndex - 1] : null;
     const afterBook = event.newIndex < list.length - 1 ? list[event.newIndex + 1] : null;
 
-    await persist(list, movedBook.id, beforeBook?.id ?? null, afterBook?.id ?? null);
+    await persist({
+      moved_book_id: movedBook.id,
+      before_book_id: beforeBook?.id ?? null,
+      after_book_id: afterBook?.id ?? null,
+    });
   }
 
   /** Jumps a book to the top or bottom of the shelf, as the context menu offers. */
   async function moveBookToEdge(bookId: number, edge: "top" | "bottom") {
-    if (!enabled.value) return;
-
-    const list = books.value;
-    const idx = list.findIndex((book) => book.id === bookId);
-    const targetIndex = edge === "top" ? 0 : list.length - 1;
-    if (idx === -1 || idx === targetIndex) return;
-
-    const [moved] = list.splice(idx, 1);
-    if (edge === "top") list.unshift(moved);
-    else list.push(moved);
-
-    const beforeBook = edge === "bottom" ? (list[list.length - 2] ?? null) : null;
-    const afterBook = edge === "top" ? (list[1] ?? null) : null;
-
-    await persist(list, moved.id, beforeBook?.id ?? null, afterBook?.id ?? null);
+    if (!enabled.value || isSaving.value) return;
+    await persist({ moved_book_id: bookId, edge });
   }
 
-  return { isDragging, dragOptions, ignoresClick, handleDragStart, handleDragEnd, moveBookToEdge };
+  return {
+    isDragging,
+    isSaving,
+    message,
+    error,
+    dragOptions,
+    ignoresClick,
+    handleDragStart,
+    handleDragEnd,
+    moveBookToEdge,
+  };
 }

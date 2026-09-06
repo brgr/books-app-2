@@ -54,6 +54,8 @@ export interface PaginatedList<T> {
   loadMore: () => void;
   /** Reset to page 1 and refetch the current resource. */
   reload: () => Promise<void>;
+  /** Refetch the loaded prefix after a mutation changes page boundaries. */
+  refreshLoaded: () => Promise<void>;
 }
 
 /**
@@ -145,6 +147,49 @@ export function usePaginatedList<T, R extends string | number = number>(
     await cacheInvalidateByPrefix(options.cacheKeyPrefix(resourceId));
   }
 
+  async function refreshLoaded() {
+    const resourceId = toValue(options.resourceId);
+
+    if (resourceId === null) return;
+
+    const gen = ++generation;
+    const lastPage = page.value;
+    isLoadingMore.value = true;
+    error.value = null;
+
+    try {
+      await cacheInvalidateByPrefix(options.cacheKeyPrefix(resourceId));
+      const next: T[] = [];
+      let result: PageResult<T>;
+      let target = 1;
+
+      do {
+        result = await options.fetchPage(resourceId, target);
+
+        if (gen !== generation) return;
+
+        next.push(...result.items);
+
+        if (target >= result.pages || target >= lastPage) break;
+
+        target += 1;
+      } while (true);
+
+      items.value = next;
+      page.value = target;
+      totalPages.value = result.pages;
+      loaded.value = true;
+    } catch (err) {
+      if (gen === generation) error.value = err;
+      throw err;
+    } finally {
+      if (gen === generation) {
+        isLoading.value = false;
+        isLoadingMore.value = false;
+      }
+    }
+  }
+
   function loadMore() {
     if (isLoadingMore.value || !hasMore.value) return;
     page.value += 1;
@@ -158,5 +203,5 @@ export function usePaginatedList<T, R extends string | number = number>(
     { immediate: true },
   );
 
-  return { items, replaceItems, hasMore, isLoading, isLoadingMore, loaded, error, loadMore, reload };
+  return { items, replaceItems, hasMore, isLoading, isLoadingMore, loaded, error, loadMore, reload, refreshLoaded };
 }

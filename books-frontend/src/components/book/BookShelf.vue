@@ -39,7 +39,7 @@ const { searchQuery } = useLibraryPage();
 // Deliberately this shelf's own, not the page's: shelves on one page can be laid out differently.
 const viewMode = useShelfViewMode(props.shelf, props.defaultViewMode);
 
-const { books: filteredBooks, error, hasMore, isLoadingMore, loadMore, reload, replaceItems } = useShelfBooks(props);
+const { books: filteredBooks, error, hasMore, isLoadingMore, loadMore, reload, refreshLoaded } = useShelfBooks(props);
 
 /**
  * vuedraggable reorders the array it renders from in place, so the shelf draws from a mutable
@@ -55,21 +55,34 @@ watch(
   { immediate: true },
 );
 
-// Reordering persists positions against the shelf, which only makes sense while the full shelf is
-// on screen (i.e., no search filter is active)
-const isReorderable = computed(() => !searchQuery.value.trim());
+// A filtered list hides potential neighbors, so it cannot be reordered.
+// Reordering is also disabled while more books are loading, or if the shelf has an error.
+const isReorderable = computed(() => !searchQuery.value.trim() && !isLoadingMore.value && !error.value);
 
-const { dragOptions, ignoresClick, handleDragStart, handleDragEnd, moveBookToEdge } = useShelfReorder({
+const {
+  isDragging,
+  isSaving,
+  message,
+  error: reorderError,
+  dragOptions,
+  ignoresClick,
+  handleDragStart,
+  handleDragEnd,
+  moveBookToEdge,
+} = useShelfReorder({
   books,
   shelf: props.shelf,
   enabled: isReorderable,
-  onPersisted: replaceItems,
+  refresh: refreshLoaded,
 });
 
 const showSentinel = computed(() => props.paginated && (hasMore.value || isLoadingMore.value));
 
 const sentinelEl = ref<HTMLElement | null>(null);
-const { reobserve } = useInfiniteScroll(sentinelEl, loadMore);
+const { reobserve } = useInfiniteScroll(sentinelEl, () => {
+  if (!isDragging.value && !isSaving.value && !error.value) loadMore();
+});
+watch([isDragging, isSaving], () => void nextTick(reobserve));
 
 // Re-observe once a fresh page has rendered, so the sentinel keeps triggering.
 watch(filteredBooks, () => void nextTick(reobserve));
@@ -123,6 +136,8 @@ async function handleContextRemove() {
     <div v-if="error" class="error">
       {{ error }}
     </div>
+    <p v-if="reorderError" role="alert" class="error">{{ reorderError }}</p>
+    <p v-if="message" role="status">{{ message }}</p>
 
     <template v-if="books.length">
       <!-- Titleless shelves still get the shelf header row, so their toggle stays where a titled shelf's would be. -->
@@ -136,7 +151,7 @@ async function handleContextRemove() {
         class="books-container books-grid"
         :list="books"
         item-key="id"
-        :disabled="!isReorderable"
+        :disabled="!isReorderable || isSaving"
         v-bind="dragOptions"
         @start="startDrag"
         @end="handleDragEnd"
@@ -162,6 +177,7 @@ async function handleContextRemove() {
       :x="contextMenu.x"
       :y="contextMenu.y"
       :can-remove-from-shelf="canRemoveFromShelf"
+      :can-reorder="isReorderable && !isSaving"
       @view="handleContextView"
       @move="handleContextMove"
       @remove-from-shelf="handleContextRemove"

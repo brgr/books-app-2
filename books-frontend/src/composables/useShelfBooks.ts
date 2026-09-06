@@ -22,6 +22,7 @@ export function useShelfBooks(options: ShelfBooksOptions) {
     error: loadError,
     loadMore,
     reload,
+    refreshLoaded,
   } = usePaginatedList<Book, ShelfRef>({
     resourceId: options.shelf,
     cacheKey: (shelf, page) => cacheKeys.shelfBooks(shelf, page, options.pageSize),
@@ -51,5 +52,5 @@ export function useShelfBooks(options: ShelfBooksOptions) {
 
   registerShelf(computed(() => ({ loaded: loaded.value, count: books.value.length })));
 
-  return { books, error, hasMore, isLoadingMore, loadMore, reload, replaceItems };
+  return { books, error, hasMore, isLoadingMore, loadMore, reload, replaceItems, refreshLoaded };
 }

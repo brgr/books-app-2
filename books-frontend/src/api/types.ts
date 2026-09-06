@@ -83,6 +83,7 @@ export interface UserBook {
 
 export interface ShelfReorderRequest {
   moved_book_id: number;
+  edge?: "top" | "bottom";
   before_book_id?: number | null;
   after_book_id?: number | null;
 }

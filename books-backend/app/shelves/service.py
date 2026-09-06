@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 
-from sqlalchemy import func
+from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -267,6 +267,58 @@ class ShelfService:
 
         before = self._neighbour(shelf, payload.before_book_id)
         after = self._neighbour(shelf, payload.after_book_id)
+        others = self.db.query(ShelfPlacement).filter(
+            ShelfPlacement.shelf_id == shelf.id, ShelfPlacement.id != moved.id
+        )
+
+        if payload.edge:
+            position = others.with_entities(
+                func.min(ShelfPlacement.sort_order)
+                if payload.edge == "top"
+                else func.max(ShelfPlacement.sort_order)
+            ).scalar()
+            moved.sort_order = (
+                SORT_ORDER_GAP
+                if position is None
+                else position
+                + (-SORT_ORDER_GAP if payload.edge == "top" else SORT_ORDER_GAP)
+            )
+
+            self.db.commit()
+
+            return
+
+        # A missing neighbor means we are at the edge of the client's loaded window,
+        # but that doesn't need to be the edge of the shelf. We need to see if
+        # there is a neighbor
+        if before and not after:
+            after = (
+                others.filter(
+                    or_(
+                        ShelfPlacement.sort_order > before.sort_order,
+                        and_(
+                            ShelfPlacement.sort_order == before.sort_order,
+                            ShelfPlacement.id > before.id,
+                        ),
+                    )
+                )
+                .order_by(ShelfPlacement.sort_order, ShelfPlacement.id)
+                .first()
+            )
+        elif after and not before:
+            before = (
+                others.filter(
+                    or_(
+                        ShelfPlacement.sort_order < after.sort_order,
+                        and_(
+                            ShelfPlacement.sort_order == after.sort_order,
+                            ShelfPlacement.id < after.id,
+                        ),
+                    )
+                )
+                .order_by(ShelfPlacement.sort_order.desc(), ShelfPlacement.id.desc())
+                .first()
+            )
         if before and after:
             if before.sort_order >= after.sort_order:
                 self._rebalance(shelf)

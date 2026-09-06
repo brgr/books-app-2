@@ -5,6 +5,7 @@ const props = defineProps<{
   x: number;
   y: number;
   canRemoveFromShelf?: boolean;
+  canReorder?: boolean;
 }>();
 
 type MoveEdge = "top" | "bottom";
@@ -65,8 +66,12 @@ onBeforeUnmount(() => {
         @click.stop
       >
         <button type="button" class="ctx-item" role="menuitem" @click="emit('view')">View Book</button>
-        <button type="button" class="ctx-item" role="menuitem" @click="emit('move', 'top')">Move to Top</button>
-        <button type="button" class="ctx-item" role="menuitem" @click="emit('move', 'bottom')">Move to Bottom</button>
+        <button type="button" class="ctx-item" role="menuitem" :disabled="!canReorder" @click="emit('move', 'top')">
+          Move to Top
+        </button>
+        <button type="button" class="ctx-item" role="menuitem" :disabled="!canReorder" @click="emit('move', 'bottom')">
+          Move to Bottom
+        </button>
         <button
           v-if="canRemoveFromShelf"
           type="button"
@@ -123,5 +128,10 @@ onBeforeUnmount(() => {
 
 .ctx-item-danger {
   color: var(--color-danger, #c0392b);
+}
+
+.ctx-item:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 </style>

@@ -1,3 +1,4 @@
+import pytest
 from fastapi import status
 
 
@@ -8,6 +9,64 @@ def _create_book(client, auth_headers, sample_book_data, title_suffix, isbn_suff
     response = client.post("/api/books", json=payload, headers=auth_headers)
     assert response.status_code == status.HTTP_201_CREATED
     return response.json()["id"]
+
+
+@pytest.mark.parametrize("edge", ["top", "bottom"])
+def test_reorder_to_true_shelf_edge(client, auth_headers, sample_book_data, edge):
+    # Create books and add them to the "want_to_read" shelf
+    ids = [
+        _create_book(client, auth_headers, sample_book_data, str(i), str(i))
+        for i in range(4)
+    ]
+
+    # Move the second book (book ID ids[1]) to the edge
+    response = client.post(
+        "/api/shelves/reading:want_to_read/items/reorder",
+        json={"moved_book_id": ids[1], "edge": edge},
+        headers=auth_headers,
+    )
+    assert response.status_code == 204
+
+    # Ensure the order of books in the shelf is as expected after the reorder
+    remaining = [ids[0], ids[2], ids[3]]
+    expected = [ids[1], *remaining] if edge == "top" else [*remaining, ids[1]]
+    result = client.get("/api/shelves/reading:want_to_read/books", headers=auth_headers)
+    assert [book["id"] for book in result.json()["items"]] == expected
+
+
+# This test simulates a request the frontend might make when not all books are loaded in the UI
+def test_drag_after_loaded_boundary_uses_unloaded_successor(
+    client, auth_headers, sample_book_data
+):
+    book_a = _create_book(client, auth_headers, sample_book_data, "A", "0")
+    book_b = _create_book(client, auth_headers, sample_book_data, "B", "1")
+    book_c = _create_book(client, auth_headers, sample_book_data, "C", "2")
+    book_d = _create_book(client, auth_headers, sample_book_data, "D", "3")
+
+    # Move D before A => D, A, B, C
+    response = client.post(
+        "/api/shelves/reading:want_to_read/items/reorder",
+        json={"moved_book_id": book_d, "after_book_id": book_a},
+        headers=auth_headers,
+    )
+    assert response.status_code == 204
+
+    # Say in the frontend only D, A, B are loaded and the user moves D after B;
+    # the backend must find unseen C and keep D before it, producing A, B, D, C
+    response = client.post(
+        "/api/shelves/reading:want_to_read/items/reorder",
+        json={"moved_book_id": book_d, "before_book_id": book_b},
+        headers=auth_headers,
+    )
+    assert response.status_code == 204
+
+    result = client.get("/api/shelves/reading:want_to_read/books", headers=auth_headers)
+    assert [book["id"] for book in result.json()["items"]] == [
+        book_a,
+        book_b,
+        book_d,
+        book_c,
+    ]
 
 
 def test_shelves_default_and_books_ordering(client, auth_headers, sample_book_data):
