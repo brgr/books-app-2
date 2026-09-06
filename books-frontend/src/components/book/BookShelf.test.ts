@@ -38,7 +38,7 @@ function makeBook(overrides: Partial<Book> = {}): Book {
 const books = [makeBook(), makeBook({ id: 2, title: "Europe", author: "Tim Flannery" })];
 
 function page(items: Book[]): PaginatedBooks {
-  return { items, total: items.length, page: 1, page_size: 30, pages: 1 };
+  return { items, total: items.length, page: 1, page_size: 100, pages: 1 };
 }
 
 async function flush(times = 20) {

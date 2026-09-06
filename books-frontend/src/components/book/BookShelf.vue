@@ -30,7 +30,7 @@ const props = withDefaults(
     /** Whether this shelf supports removing a book without removing it from the library. */
     canRemoveFromShelf?: boolean;
   }>(),
-  { title: null, showProgress: false, paginated: false, pageSize: 30, defaultViewMode: "list" },
+  { title: null, showProgress: false, paginated: false, pageSize: 100, defaultViewMode: "list" },
 );
 
 const router = useRouter();
@@ -79,9 +79,13 @@ const {
 const showSentinel = computed(() => props.paginated && (hasMore.value || isLoadingMore.value));
 
 const sentinelEl = ref<HTMLElement | null>(null);
-const { reobserve } = useInfiniteScroll(sentinelEl, () => {
-  if (!isDragging.value && !isSaving.value && !error.value) loadMore();
-});
+const { reobserve } = useInfiniteScroll(
+  sentinelEl,
+  () => {
+    if (!isDragging.value && !isSaving.value && !error.value) loadMore();
+  },
+  "1200px 0px",
+);
 watch([isDragging, isSaving], () => void nextTick(reobserve));
 
 // Re-observe once a fresh page has rendered, so the sentinel keeps triggering.
