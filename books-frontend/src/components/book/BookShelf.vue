@@ -231,8 +231,8 @@ async function handleContextRemove() {
   max-width: 100%;
   padding-top: 6px;
   padding-bottom: var(--spacing-sm);
-  overflow-x: clip;
-  overflow-y: visible;
+  /* Make sure that covers on the left and right edge, when hovered, have their shadows visible */
+  overflow: visible;
 }
 
 /*noinspection CssUnusedSymbol*/
