@@ -1,6 +1,17 @@
 <script lang="ts" setup>
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { stagePendingCover } from "../book/pendingCoverUploads.ts";
+
+const props = defineProps<{
+  title?: string;
+  author?: string;
+}>();
+
+const coverSearchQuery = computed(() => {
+  const author = props.author?.trim();
+  const details = [props.title?.trim(), author?.toLowerCase() === "unknown" ? "" : author].filter(Boolean).join(" ");
+  return details ? encodeURIComponent(`${details} book cover`) : "";
+});
 
 const emit = defineEmits<{
   select: [imageUrl: string];
@@ -71,8 +82,30 @@ function acceptUrl() {
 
     <div class="or-divider"><span>or paste an image URL</span></div>
 
+    <div v-if="coverSearchQuery" class="cover-search">
+      <div class="cover-search-links">
+        <span>Find a cover:</span>
+        <a
+          :href="`https://www.google.com/search?tbm=isch&q=${coverSearchQuery}`"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Google Images</a
+        >
+        <a :href="`https://www.bing.com/images/search?q=${coverSearchQuery}`" target="_blank" rel="noopener noreferrer"
+          >Bing Images</a
+        >
+      </div>
+      <p class="mode-hint">Opens in a new tab. Copy the image address, then return here and paste it below.</p>
+    </div>
+
     <div class="url-row">
-      <input v-model="imageUrl" type="url" placeholder="https://example.com/cover.jpg" @keyup.enter="acceptUrl" />
+      <input
+        v-model="imageUrl"
+        type="url"
+        aria-label="Cover image URL"
+        placeholder="https://example.com/cover.jpg"
+        @keyup.enter="acceptUrl"
+      />
       <button type="button" class="btn-primary" :disabled="!imageUrl.trim()" @click="acceptUrl">Use URL</button>
     </div>
 
@@ -145,6 +178,18 @@ function acceptUrl() {
 .url-row {
   display: flex;
   gap: var(--spacing-sm);
+}
+
+.cover-search-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  font-size: 0.9rem;
+}
+
+.cover-search-links a {
+  color: var(--color-primary);
+  text-decoration: underline;
 }
 
 .url-row input {

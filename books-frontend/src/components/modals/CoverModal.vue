@@ -68,7 +68,7 @@ function selectMode(next: Mode) {
           />
         </div>
         <div v-show="mode === 'upload'">
-          <CoverUploadTab @select="emit('select', $event)" />
+          <CoverUploadTab :title="initialTitle" :author="initialAuthor" @select="emit('select', $event)" />
         </div>
         <div v-if="upgradeActivated && bookId" v-show="mode === 'upgrade'">
           <CoverUpgradeTab :book-id="bookId" @select="emit('select', $event)" />
