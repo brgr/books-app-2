@@ -346,36 +346,41 @@ def test_removing_a_book_from_the_library_clears_its_shelf_entries(
 
 def test_custom_shelf_keeps_its_own_order(client, auth_headers, sample_book_data):
     """Position on a custom shelf is independent of position on a reading shelf."""
+    # Create two books and a custom shelf to hold them
     book_a = _create_book(client, auth_headers, sample_book_data, "A", "1")
     book_b = _create_book(client, auth_headers, sample_book_data, "B", "2")
     shelf_ref = _create_shelf(client, auth_headers, "Beach reads")
 
-    for book_id in (book_a, book_b):
+    # Add book B, then book A
+    # In custom shelves, when a book is added later, it is lower in the shelf
+    for book_id in (book_b, book_a):
         client.post(
             f"/api/shelves/{shelf_ref}/books",
             json={"book_id": book_id},
             headers=auth_headers,
         )
 
+    # Move A to the beginning of the shelf, with B as its following neighbor
     reorder = client.post(
         f"/api/shelves/{shelf_ref}/items/reorder",
         json={
-            "moved_book_id": book_b,
+            "moved_book_id": book_a,
             "before_book_id": None,
-            "after_book_id": book_a,
+            "after_book_id": book_b,
         },
         headers=auth_headers,
     )
     assert reorder.status_code == status.HTTP_204_NO_CONTENT
 
+    # Check that the shelf now lists A before B
     books = client.get(f"/api/shelves/{shelf_ref}/books", headers=auth_headers).json()
-    assert [item["id"] for item in books["items"]] == [book_b, book_a]
+    assert [item["id"] for item in books["items"]] == [book_a, book_b]
 
-    # The reading shelf both books also sit on is untouched.
+    # Check that the reading shelf where both books also sit on is untouched
     reading_shelf = client.get(
         "/api/shelves/reading:want_to_read/books", headers=auth_headers
     ).json()
-    assert [item["id"] for item in reading_shelf["items"]] == [book_a, book_b]
+    assert [item["id"] for item in reading_shelf["items"]] == [book_b, book_a]
 
 
 def test_reorder_between_two_books_on_a_custom_shelf(

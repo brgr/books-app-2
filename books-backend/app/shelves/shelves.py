@@ -47,21 +47,31 @@ def find_shelf_placement(
     )
 
 
-def place_on_shelf(db: Session, shelf: Shelf, user_book: UserBook) -> ShelfPlacement:
-    """Add a placement at the end, preserving an existing placement's order."""
+def place_on_shelf(
+    db: Session, shelf: Shelf, user_book: UserBook, *, at_top: bool = False
+) -> ShelfPlacement:
+    """Add a placement at either edge, preserving an existing placement's order."""
     existing = find_shelf_placement(db, shelf, user_book.book_id)
     if existing is not None:
         return existing
 
-    max_sort = (
-        db.query(func.max(ShelfPlacement.sort_order))
+    edge_sort = (
+        db.query(
+            func.min(ShelfPlacement.sort_order)
+            if at_top
+            else func.max(ShelfPlacement.sort_order)
+        )
         .filter(ShelfPlacement.shelf_id == shelf.id)
         .scalar()
     )
     placement = ShelfPlacement(
         shelf_id=shelf.id,
         user_book_id=user_book.id,
-        sort_order=(max_sort or Decimal("0")) + SORT_ORDER_GAP,
+        sort_order=(
+            SORT_ORDER_GAP
+            if edge_sort is None
+            else edge_sort + (-SORT_ORDER_GAP if at_top else SORT_ORDER_GAP)
+        ),
     )
 
     db.add(placement)

@@ -116,7 +116,7 @@ def _ensure_user_book(session: Session, user_id: int, book_id: int) -> UserBook:
         .one()
     )
 
-    place_on_shelf(session, wanted, user_book)
+    place_on_shelf(session, wanted, user_book, at_top=True)
 
     return user_book
 
@@ -176,7 +176,7 @@ def ensure_added_event(
             )
             .one()
         )
-        place_on_shelf(session, shelf, user_book)
+        place_on_shelf(session, shelf, user_book, at_top=True)
 
     return user_book
 

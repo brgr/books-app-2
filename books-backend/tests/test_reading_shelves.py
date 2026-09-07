@@ -28,7 +28,7 @@ def test_reorder_to_true_shelf_edge(client, auth_headers, sample_book_data, edge
     assert response.status_code == 204
 
     # Ensure the order of books in the shelf is as expected after the reorder
-    remaining = [ids[0], ids[2], ids[3]]
+    remaining = [ids[3], ids[2], ids[0]]
     expected = [ids[1], *remaining] if edge == "top" else [*remaining, ids[1]]
     result = client.get("/api/shelves/reading:want_to_read/books", headers=auth_headers)
     assert [book["id"] for book in result.json()["items"]] == expected
@@ -43,29 +43,29 @@ def test_drag_after_loaded_boundary_uses_unloaded_successor(
     book_c = _create_book(client, auth_headers, sample_book_data, "C", "2")
     book_d = _create_book(client, auth_headers, sample_book_data, "D", "3")
 
-    # Move D before A => D, A, B, C
+    # Initial order: D, C, B, A. Move A before D => A, D, C, B
     response = client.post(
         "/api/shelves/reading:want_to_read/items/reorder",
-        json={"moved_book_id": book_d, "after_book_id": book_a},
+        json={"moved_book_id": book_a, "after_book_id": book_d},
         headers=auth_headers,
     )
     assert response.status_code == 204
 
-    # Say in the frontend only D, A, B are loaded and the user moves D after B;
-    # the backend must find unseen C and keep D before it, producing A, B, D, C
+    # Say in the frontend only A, D, C are loaded and the user moves A after C;
+    # the backend must find unseen B and keep A before it, producing D, C, A, B
     response = client.post(
         "/api/shelves/reading:want_to_read/items/reorder",
-        json={"moved_book_id": book_d, "before_book_id": book_b},
+        json={"moved_book_id": book_a, "before_book_id": book_c},
         headers=auth_headers,
     )
     assert response.status_code == 204
 
     result = client.get("/api/shelves/reading:want_to_read/books", headers=auth_headers)
     assert [book["id"] for book in result.json()["items"]] == [
-        book_a,
-        book_b,
         book_d,
         book_c,
+        book_a,
+        book_b,
     ]
 
 
@@ -151,12 +151,13 @@ def test_shelf_reorder_updates_order(client, auth_headers, sample_book_data):
     )
     assert response.status_code == status.HTTP_200_OK
 
+    # Initial order: Beta, Alpha. Move Alpha before Beta.
     reorder_response = client.post(
         "/api/shelves/reading:want_to_read/items/reorder",
         json={
-            "moved_book_id": book_two_id,
+            "moved_book_id": book_one_id,
             "before_book_id": None,
-            "after_book_id": book_one_id,
+            "after_book_id": book_two_id,
         },
         headers=auth_headers,
     )
@@ -167,7 +168,7 @@ def test_shelf_reorder_updates_order(client, auth_headers, sample_book_data):
     )
     assert want_to_read_response.status_code == status.HTTP_200_OK
     ordered_ids = [item["id"] for item in want_to_read_response.json()["items"]]
-    assert ordered_ids[0] == book_two_id
+    assert ordered_ids == [book_one_id, book_two_id]
 
 
 def test_shelf_reorder_between_two_items(client, auth_headers, sample_book_data):
@@ -183,12 +184,12 @@ def test_shelf_reorder_between_two_items(client, auth_headers, sample_book_data)
             headers=auth_headers,
         )
 
-    # Initial order: A, B, C. Move C between A and B.
+    # Initial order: C, B, A. Move A between C and B.
     reorder_response = client.post(
         "/api/shelves/reading:want_to_read/items/reorder",
         json={
-            "moved_book_id": book_c_id,
-            "before_book_id": book_a_id,
+            "moved_book_id": book_a_id,
+            "before_book_id": book_c_id,
             "after_book_id": book_b_id,
         },
         headers=auth_headers,
@@ -199,7 +200,7 @@ def test_shelf_reorder_between_two_items(client, auth_headers, sample_book_data)
         "/api/shelves/reading:want_to_read/books", headers=auth_headers
     )
     ordered_ids = [item["id"] for item in books_response.json()["items"]]
-    assert ordered_ids == [book_a_id, book_c_id, book_b_id]
+    assert ordered_ids == [book_c_id, book_a_id, book_b_id]
 
 
 def test_shelf_reorder_with_inverted_neighbours_rebalances(
@@ -222,13 +223,13 @@ def test_shelf_reorder_with_inverted_neighbours_rebalances(
             headers=auth_headers,
         )
 
-    # Initial order: A, B, C. Ask for C between B and A (i.e. inverted)
+    # Initial order: C, B, A. Ask for A between B and C (i.e. inverted)
     reorder_response = client.post(
         "/api/shelves/reading:want_to_read/items/reorder",
         json={
-            "moved_book_id": book_c_id,
+            "moved_book_id": book_a_id,
             "before_book_id": book_b_id,
-            "after_book_id": book_a_id,
+            "after_book_id": book_c_id,
         },
         headers=auth_headers,
     )
@@ -238,10 +239,23 @@ def test_shelf_reorder_with_inverted_neighbours_rebalances(
         "/api/shelves/reading:want_to_read/books", headers=auth_headers
     )
     ordered_ids = [item["id"] for item in books_response.json()["items"]]
-    assert ordered_ids == [book_a_id, book_c_id, book_b_id]
+    assert ordered_ids == [book_c_id, book_a_id, book_b_id]
 
 
-def test_create_book_adds_to_want_to_read_shelf(client, auth_headers, sample_book_data):
+def test_create_book_adds_to_top_of_want_to_read_shelf(
+    client, auth_headers, sample_book_data
+):
+    existing_ids = [
+        _create_book(client, auth_headers, sample_book_data, str(i), str(i))
+        for i in range(3)
+    ]
+    reorder = client.post(
+        "/api/shelves/reading:want_to_read/items/reorder",
+        json={"moved_book_id": existing_ids[0], "edge": "top"},
+        headers=auth_headers,
+    )
+    assert reorder.status_code == status.HTTP_204_NO_CONTENT
+
     create_response = client.post(
         "/api/books", json=sample_book_data, headers=auth_headers
     )
@@ -253,4 +267,4 @@ def test_create_book_adds_to_want_to_read_shelf(client, auth_headers, sample_boo
     )
     assert want_to_read_response.status_code == status.HTTP_200_OK
     ordered_ids = [item["id"] for item in want_to_read_response.json()["items"]]
-    assert book_id in ordered_ids
+    assert ordered_ids == [book_id, existing_ids[0], existing_ids[2], existing_ids[1]]
