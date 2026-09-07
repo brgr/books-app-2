@@ -224,7 +224,7 @@ async function handleContextRemove() {
 
 .books-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, 120px);
   gap: 1.25rem;
   align-items: center;
   width: 100%;
@@ -244,13 +244,6 @@ async function handleContextRemove() {
 .books-grid :deep(.sortable-drag .grid-cover-placeholder) {
   transform: none;
   box-shadow: var(--shadow);
-}
-
-@media (max-width: 768px) {
-  .books-grid {
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 1.25rem;
-  }
 }
 
 @media (max-width: 480px) {
