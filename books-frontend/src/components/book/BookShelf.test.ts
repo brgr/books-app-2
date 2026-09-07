@@ -9,7 +9,9 @@ import { cacheClear } from "../../cache/store";
 import { provideLibraryPage } from "../../composables/useLibraryPage";
 
 const push = vi.fn();
-vi.mock("vue-router", () => ({ useRouter: () => ({ push }) }));
+vi.mock("vue-router", () => ({
+  useRouter: () => ({ push, resolve: ({ params }: { params: { id: number } }) => ({ href: `/books/${params.id}` }) }),
+}));
 
 const getShelfBooks = vi.fn();
 vi.mock("../../api/books", () => ({

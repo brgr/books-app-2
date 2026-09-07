@@ -161,7 +161,13 @@ async function handleContextRemove() {
         @end="handleDragEnd"
       >
         <template #item="{ element: book }">
-          <BookCoverTile :book="book" :show-progress="showProgress" @click="handleCoverClick" @menu="openContextMenu" />
+          <BookCoverTile
+            :book="book"
+            :href="router.resolve({ name: 'book-detail', params: { id: book.id } }).href"
+            :show-progress="showProgress"
+            @click="handleCoverClick"
+            @menu="openContextMenu"
+          />
         </template>
       </draggable>
 

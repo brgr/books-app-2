@@ -6,6 +6,7 @@ import { getMediaUrl } from "../../api/client";
 const props = withDefaults(
   defineProps<{
     book: Book;
+    href: string;
     showProgress?: boolean;
   }>(),
   { showProgress: false },
@@ -76,11 +77,17 @@ function onTouchCancel() {
   touchActive = false;
 }
 
-function onClick() {
+function onClick(event: MouseEvent) {
   if (menuShown) {
+    event.preventDefault();
     menuShown = false;
     return;
   }
+
+  // Ordinary clicks are handled by ourselves; for clicks with special keys, keep the browser's usual (link) behavior
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+  event.preventDefault();
   emit("click", props.book.id);
 }
 
@@ -118,8 +125,9 @@ const progressPercent = computed(() => {
 
 <template>
   <div class="grid-item">
-    <button
-      type="button"
+    <a
+      :href="href"
+      draggable="false"
       class="grid-cover-link"
       @click="onClick"
       @contextmenu="onContextMenu"
@@ -148,7 +156,7 @@ const progressPercent = computed(() => {
       <div v-else class="grid-cover-placeholder" :title="book.title + ' by ' + book.author">
         <div class="grid-no-cover-text">{{ book.title }}</div>
       </div>
-    </button>
+    </a>
   </div>
 </template>
 
