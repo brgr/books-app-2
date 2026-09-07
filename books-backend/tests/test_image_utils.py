@@ -113,3 +113,27 @@ async def test_download_cover_image_nonexistent_url():
     """Test that nonexistent URLs return None."""
     result = await download_cover_image("https://example.com/nonexistent-image.jpg")
     assert result is None
+
+
+@pytest.mark.parametrize(
+    "content", [b"", b"<html>Image unavailable</html>", b"\xff\xd8\xff"]
+)
+async def test_download_rejects_invalid_image_without_storing(
+    monkeypatch, tmp_path, content
+):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "uploads_dir", str(tmp_path))
+
+    async def fake_get(self, url, headers=None):
+        return httpx.Response(
+            204 if not content else 200,
+            content=content,
+            headers={"content-type": "image/jpeg"},
+            request=httpx.Request("GET", url),
+        )
+
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+
+    assert await download_cover_image("https://example.com/cover.jpg") is None
+    assert list(tmp_path.iterdir()) == []

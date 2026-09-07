@@ -272,3 +272,32 @@ def test_get_book_events_includes_cover_changes_for_user(
     assert len(cover_events) == 1
     assert cover_events[0]["new_cover_image_url"] == "/uploads/covers/v2.jpg"
     assert cover_events[0]["old_cover_image_url"] == "/uploads/covers/old.jpg"
+
+
+async def test_failed_cover_download_preserves_book_and_history(
+    client, auth_headers, db_session, monkeypatch
+):
+    book = _make_book(db_session)
+
+    async def failed_download(_url):
+        return None
+
+    monkeypatch.setattr("app.books.service.download_cover_image", failed_download)
+    response = client.put(
+        f"/api/books/{book.id}",
+        json={
+            "title": "Should not be saved",
+            "cover_image_url": "https://example.com/empty.jpg",
+        },
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 422
+    assert "valid cover image" in response.json()["detail"]
+
+    db_session.refresh(book)
+
+    assert book.title == "Test Book"
+    assert book.cover_image_url == "/uploads/covers/old.jpg"
+    assert book.cover_thumbnail_url == "/uploads/covers/thumbnails/old.jpg"
+    assert db_session.query(BookEventCover).count() == 0

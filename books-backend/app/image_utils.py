@@ -171,6 +171,10 @@ async def download_cover_image(url: str) -> tuple[str, str | None] | None:
                     if not _is_google_books_placeholder(fb_content):
                         content, extension = fb_content, fb_extension
 
+            # A successful HTTP response can still be empty or contain an error page.
+            # Decode before writing anything, so we can catch errors early.
+            with Image.open(BytesIO(content)) as image:
+                image.load()
             return store_cover_image(content, extension)
 
     except httpx.HTTPError as e:

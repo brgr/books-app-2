@@ -1,5 +1,6 @@
 """Orchestration layer for book operations."""
 
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.book_events import (
@@ -48,11 +49,28 @@ class BookService:
         old_cover_image_url = book.cover_image_url
         old_cover_thumbnail_url = book.cover_thumbnail_url
 
-        book.apply_update(book_data)
-
         cover_changed = "cover_image_url" in book_data.model_fields_set
+        remote_cover = None
+
         if cover_changed:
             remote_cover = await self._download_if_remote(book_data.cover_image_url)
+
+            if (
+                book_data.cover_image_url
+                and book_data.cover_image_url.startswith("http")
+                and not remote_cover
+            ):
+                # We found an URL that looks like a remote image, but we couldn't download it (in this case, it was
+                # a book cover URL from Athesia). Before, it wouldn't give a useful error message, so this
+                # now should be a bit more helpful.
+                raise HTTPException(
+                    status_code=422,
+                    detail="Could not download a valid cover image from that URL. Try another image URL or upload a file.",
+                )
+
+        book.apply_update(book_data)
+
+        if cover_changed:
             if remote_cover:
                 book.cover_image_url, book.cover_thumbnail_url = remote_cover
             elif not book_data.cover_image_url:
