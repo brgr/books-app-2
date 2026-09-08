@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { useRouter } from "vue-router";
-import NavigationBar from "../components/ui/NavigationBar.vue";
+import NavigationBar from "../components/navigation/NavigationBar.vue";
 import { createBook, searchGoogleBooks } from "../api/books";
 import { invalidateCache } from "../cache/invalidate";
 import type { GoogleBookResult } from "../api/types";

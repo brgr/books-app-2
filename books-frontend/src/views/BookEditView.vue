@@ -5,7 +5,7 @@ import { deleteBook, getBook, updateBook } from "../api/books";
 import { uploadBookCover } from "../api/covers";
 import { isPendingCover, takePendingCover } from "../components/book/cover/pendingCoverUploads";
 import type { Book, BookUpdate } from "../api/types";
-import NavigationBar from "../components/ui/NavigationBar.vue";
+import NavigationBar from "../components/navigation/NavigationBar.vue";
 import CoverEditField from "../components/book/cover/CoverEditField.vue";
 import { useCachedQuery } from "../composables/useCachedQuery";
 import { cacheKeys } from "../cache/keys";

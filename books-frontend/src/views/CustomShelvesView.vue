@@ -3,7 +3,7 @@ import { computed, nextTick, ref } from "vue";
 import { useRouter } from "vue-router";
 import { createShelf, getShelves } from "../api/books";
 import type { Shelf } from "../api/types";
-import NavigationBar from "../components/ui/NavigationBar.vue";
+import NavigationBar from "../components/navigation/NavigationBar.vue";
 import { cacheKeys } from "../cache/keys";
 import { useCachedQuery } from "../composables/useCachedQuery";
 

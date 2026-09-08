@@ -7,7 +7,7 @@ import BookNotes from "../components/book/BookNotes.vue";
 import BookShelfButton from "../components/book/BookShelfButton/BookShelfButton.vue";
 import BookReadingCard from "../components/book/BookReadingCard.vue";
 import BookRating from "../components/book/BookRating.vue";
-import NavigationBar from "../components/ui/NavigationBar.vue";
+import NavigationBar from "../components/navigation/NavigationBar.vue";
 import CollapsibleText from "../components/ui/CollapsibleText.vue";
 import BookMetadata from "../components/book/BookMetadata.vue";
 import EventTimeline from "../components/book/EventTimeline.vue";

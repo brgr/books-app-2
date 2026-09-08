@@ -2,8 +2,8 @@
 import { computed, ref } from "vue";
 import { useRoute } from "vue-router";
 import BookShelf from "../components/book/BookShelf.vue";
-import BooksSearchHeader from "../components/ui/BooksSearchHeader.vue";
-import NavigationBar from "../components/ui/NavigationBar.vue";
+import BooksSearchHeader from "../components/book/BooksSearchHeader.vue";
+import NavigationBar from "../components/navigation/NavigationBar.vue";
 import { provideLibraryPage } from "../composables/useLibraryPage";
 
 const route = useRoute();
