@@ -2,10 +2,8 @@
 import { computed, ref } from "vue";
 import { useRoute } from "vue-router";
 import BookShelf from "../components/book/BookShelf.vue";
-import BookSearchModal from "../components/modals/BookSearchModal.vue";
 import BooksSearchHeader from "../components/ui/BooksSearchHeader.vue";
 import NavigationBar from "../components/ui/NavigationBar.vue";
-import { useAddBook } from "../composables/useAddBook";
 import { provideLibraryPage } from "../composables/useLibraryPage";
 
 const route = useRoute();
@@ -18,14 +16,12 @@ const shelfFilter = computed<"to-read" | "finished" | "abandoned">(() => {
   return "to-read";
 });
 
-const { allShelvesEmpty, refreshShelves } = provideLibraryPage({ searchQuery });
-
-const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(refreshShelves);
+const { allShelvesEmpty } = provideLibraryPage({ searchQuery });
 </script>
 
 <template>
   <div class="books-view">
-    <NavigationBar @add-book="openSearch" />
+    <NavigationBar />
 
     <div class="container">
       <BooksSearchHeader v-model:search-query="searchQuery" />
@@ -48,8 +44,6 @@ const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(refr
         <BookShelf v-else shelf="reading:abandoned" title="Abandoned Books" paginated />
       </div>
     </div>
-
-    <BookSearchModal v-if="showSearchModal" @close="closeSearch" @select="selectBook" />
   </div>
 </template>
 

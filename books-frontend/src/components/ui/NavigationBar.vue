@@ -4,10 +4,6 @@ import LibraryNavLink from "./LibraryNavLink.vue";
 import { useRoute, useRouter } from "vue-router";
 import { isAuthenticated, logout } from "../../api/auth";
 
-const emit = defineEmits<{
-  addBook: [];
-}>();
-
 const router = useRouter();
 const route = useRoute();
 const surface = computed(() => {
@@ -126,7 +122,8 @@ function closeMenu() {
       </div>
 
       <div class="navbar-right">
-        <button @click="emit('addBook')" class="btn-primary btn-add">Add book</button>
+        <RouterLink :to="{ name: 'book-add' }" class="btn btn-primary btn-add">Add book</RouterLink>
+
         <div v-if="showMenu" class="navbar-user">
           <button
             class="menu-toggle"

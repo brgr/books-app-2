@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import { isAuthenticated, checkAuthStatus } from "../api/auth";
 import { setupAuthInterceptor } from "../api/client";
 import LoginView from "../views/LoginView.vue";
+import BookAddView from "../views/BookAddView.vue";
 import BooksView from "../views/BooksView.vue";
 import BookDetailView from "../views/BookDetailView.vue";
 import BookEditView from "../views/BookEditView.vue";
@@ -40,6 +41,12 @@ const router = createRouter({
       path: "/shelves/custom/:id(\\d+)",
       name: "custom-shelf",
       component: CustomShelfView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/books/add",
+      name: "book-add",
+      component: BookAddView,
       meta: { requiresAuth: true },
     },
     {

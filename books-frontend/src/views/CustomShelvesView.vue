@@ -3,17 +3,14 @@ import { computed, nextTick, ref } from "vue";
 import { useRouter } from "vue-router";
 import { createShelf, getShelves } from "../api/books";
 import type { Shelf } from "../api/types";
-import BookSearchModal from "../components/modals/BookSearchModal.vue";
 import NavigationBar from "../components/ui/NavigationBar.vue";
 import { cacheKeys } from "../cache/keys";
-import { useAddBook } from "../composables/useAddBook";
 import { useCachedQuery } from "../composables/useCachedQuery";
 
 const router = useRouter();
 const { data: shelves, error, refresh } = useCachedQuery<Shelf[]>(cacheKeys.shelves, getShelves);
 const customShelves = computed(() => (shelves.value ?? []).filter((shelf) => shelf.ref.startsWith("custom:")));
 const abandonedShelf = computed(() => (shelves.value ?? []).find((shelf) => shelf.ref === "reading:abandoned"));
-const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(refresh);
 const showCreateShelf = ref(false);
 const newShelfName = ref("");
 const creating = ref(false);
@@ -60,7 +57,7 @@ async function createNewShelf() {
 
 <template>
   <div class="shelves-page">
-    <NavigationBar @add-book="openSearch" />
+    <NavigationBar />
 
     <main class="container">
       <div v-if="error" class="error">Failed to load shelves. Please try again.</div>
@@ -110,7 +107,6 @@ async function createNewShelf() {
       </template>
     </main>
 
-    <BookSearchModal v-if="showSearchModal" @close="closeSearch" @select="selectBook" />
     <Teleport to="body">
       <div v-if="showCreateShelf" class="modal-overlay" @click.self="closeCreateShelf">
         <div

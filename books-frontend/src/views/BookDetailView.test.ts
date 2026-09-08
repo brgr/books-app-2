@@ -59,7 +59,6 @@ async function renderBook() {
         BookNotes: true,
         BookCustomShelves: true,
         BookMetadata: true,
-        BookSearchModal: true,
       },
     },
   });

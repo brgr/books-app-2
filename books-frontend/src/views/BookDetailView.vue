@@ -4,7 +4,6 @@ import { useRoute, useRouter } from "vue-router";
 import { addBookProgress, clearRating, getBook, getBookEvents, setRating, setShelf } from "../api/books";
 import { getMediaUrl } from "../api/client";
 import BookNotes from "../components/book/BookNotes.vue";
-import BookSearchModal from "../components/modals/BookSearchModal.vue";
 import BookShelfButton from "../components/book/BookShelfButton/BookShelfButton.vue";
 import BookReadingCard from "../components/book/BookReadingCard.vue";
 import BookRating from "../components/book/BookRating.vue";
@@ -23,7 +22,6 @@ import {
 } from "../api/types";
 import { formatReadingDate } from "../utils/date";
 import { useCachedQuery } from "../composables/useCachedQuery";
-import { useAddBook } from "../composables/useAddBook";
 import { cacheKeys } from "../cache/keys";
 import { invalidateCache } from "../cache/invalidate";
 
@@ -181,13 +179,11 @@ function handleEdit() {
   if (!book.value) return;
   router.push({ name: "book-edit", params: { id: book.value.id } });
 }
-
-const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(() => router.push({ name: "books" }));
 </script>
 
 <template>
   <div class="book-detail-page">
-    <NavigationBar @add-book="openSearch" />
+    <NavigationBar />
 
     <div class="container">
       <div v-if="!book && !error" class="loading">Loading book...</div>
@@ -275,8 +271,6 @@ const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(() =
         </div>
       </div>
     </div>
-
-    <BookSearchModal v-if="showSearchModal" @close="closeSearch" @select="selectBook" />
   </div>
 </template>
 

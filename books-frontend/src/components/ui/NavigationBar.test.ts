@@ -11,6 +11,7 @@ async function mountNavigation(path: string) {
       { path: "/shelves/:shelf", name: "shelf" },
       { path: "/shelves", name: "custom-shelves" },
       { path: "/shelves/custom/:id", name: "custom-shelf" },
+      { path: "/books/add", name: "book-add" },
       { path: "/books/:id", name: "book-detail" },
       { path: "/books/:id/edit", name: "book-edit" },
       { path: "/settings", name: "settings" },
@@ -24,6 +25,16 @@ async function mountNavigation(path: string) {
 }
 
 describe("library navigation", () => {
+  it.each(["/", "/settings", "/books/12/edit"])("opens the add-book page from %s", async (path) => {
+    const { router, wrapper } = await mountNavigation(path);
+    await wrapper.get('a[href="/books/add"]').trigger("click");
+    await flushPromises();
+
+    expect(router.currentRoute.value.name).toBe("book-add");
+
+    wrapper.unmount();
+  });
+
   it("navigates from the bar without page-provided slots or handlers", async () => {
     const { router, wrapper } = await mountNavigation("/");
     const nav = wrapper.get('nav[aria-label="Library"]');

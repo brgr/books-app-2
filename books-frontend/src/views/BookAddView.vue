@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { searchGoogleBooks } from "../../api/books";
-import type { GoogleBookResult } from "../../api/types";
+import { useRouter } from "vue-router";
+import NavigationBar from "../components/ui/NavigationBar.vue";
+import { createBook, searchGoogleBooks } from "../api/books";
+import { invalidateCache } from "../cache/invalidate";
+import type { GoogleBookResult } from "../api/types";
 
-const emit = defineEmits<{
-  close: [];
-  select: [book: GoogleBookResult];
-}>();
+const router = useRouter();
+const addingBook = ref(false);
 
 const searchQuery = ref("");
 const searchResults = ref<GoogleBookResult[]>([]);
@@ -15,6 +16,8 @@ const error = ref("");
 const hasSearched = ref(false);
 
 async function handleSearch() {
+  if (loading.value || addingBook.value) return;
+
   if (!searchQuery.value.trim()) {
     error.value = "Please enter a search query";
     return;
@@ -34,51 +37,65 @@ async function handleSearch() {
   }
 }
 
-function handleSelectBook(book: GoogleBookResult) {
-  emit("select", book);
-}
+async function handleSelectBook(book: GoogleBookResult) {
+  if (addingBook.value) return;
 
-function handleClose() {
-  if (!loading.value) {
-    emit("close");
-  }
-}
+  addingBook.value = true;
+  error.value = "";
 
-function handleKeyPress(event: KeyboardEvent) {
-  if (event.key === "Enter") {
-    handleSearch();
+  try {
+    await createBook({
+      title: book.title,
+      author: book.author,
+      isbn: book.isbn || undefined,
+      description: book.description || undefined,
+      published_date: book.published_date || undefined,
+      page_count: book.page_count ?? undefined,
+      cover_image_url: book.thumbnail || undefined,
+    });
+
+    await invalidateCache.bookAdded();
+
+    await router.push({ name: "books" });
+  } catch (err: any) {
+    console.error("Failed to add book:", err);
+    error.value = err.response?.data?.detail || "Failed to add book. Please try again.";
+  } finally {
+    addingBook.value = false;
   }
 }
 </script>
 
 <template>
-  <div class="modal-overlay" @click.self="handleClose">
-    <div class="modal">
-      <div class="modal-header">
-        <h3>Search for a Book</h3>
-        <button @click="handleClose" :disabled="loading" class="btn-small">Close</button>
+  <div class="book-add-view">
+    <NavigationBar />
+    <main class="container-narrow">
+      <div class="page-header">
+        <h1>Add book</h1>
+
+        <RouterLink :to="{ name: 'books' }" class="btn btn-small">Cancel</RouterLink>
       </div>
 
-      <div class="modal-body">
+      <div>
         <div class="search-section">
           <p class="search-description">Search Google Books to quickly add book details</p>
 
-          <div class="search-input-group">
+          <form class="search-input-group" @submit.prevent="handleSearch">
             <input
               v-model="searchQuery"
               type="text"
+              aria-label="Book title, author, or ISBN"
               placeholder="Enter book title, author, or ISBN..."
               class="search-input"
-              :disabled="loading"
-              @keypress="handleKeyPress"
+              :disabled="loading || addingBook"
             />
-            <button @click="handleSearch" class="btn-primary" :disabled="loading || !searchQuery.trim()">
+            <button type="submit" class="btn-primary" :disabled="loading || addingBook || !searchQuery.trim()">
               {{ loading ? "Searching..." : "Search" }}
             </button>
-          </div>
+          </form>
         </div>
 
-        <div v-if="error" class="error">
+        <div v-if="error" class="error" role="alert">
           {{ error }}
         </div>
 
@@ -110,16 +127,26 @@ function handleKeyPress(event: KeyboardEvent) {
                   </p>
                 </div>
               </div>
-              <button @click="handleSelectBook(book)" class="btn-select">Select</button>
+              <button @click="handleSelectBook(book)" class="btn-select" :disabled="addingBook">
+                {{ addingBook ? "Adding..." : "Add book" }}
+              </button>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </main>
   </div>
 </template>
 
 <style scoped>
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
 .search-section {
   margin-bottom: var(--spacing-lg);
 }
@@ -155,8 +182,6 @@ function handleKeyPress(event: KeyboardEvent) {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
-  max-height: 400px;
-  overflow-y: auto;
 }
 
 .result-item {

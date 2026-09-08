@@ -4,13 +4,11 @@ import { useRoute, useRouter } from "vue-router";
 import { deleteShelf, getShelves, renameShelf } from "../api/books";
 import { parseShelfRef, type Shelf, type ShelfRef } from "../api/types";
 import BookShelf from "../components/book/BookShelf.vue";
-import BookSearchModal from "../components/modals/BookSearchModal.vue";
 import CustomShelfEditModal from "../components/modals/CustomShelfEditModal.vue";
 import BooksSearchHeader from "../components/ui/BooksSearchHeader.vue";
 import NavigationBar from "../components/ui/NavigationBar.vue";
 import { cacheKeys } from "../cache/keys";
 import { cacheDel } from "../cache/store";
-import { useAddBook } from "../composables/useAddBook";
 import { provideLibraryPage } from "../composables/useLibraryPage";
 import { useCachedQuery } from "../composables/useCachedQuery";
 
@@ -25,8 +23,7 @@ const shelfRef = computed<ShelfRef>(() => {
 
 const { data: shelves, error: shelvesError, refresh } = useCachedQuery<Shelf[]>(cacheKeys.shelves, getShelves);
 const shelf = computed(() => (shelves.value ?? []).find((item) => item.ref === shelfRef.value));
-const { allShelvesEmpty, refreshShelves } = provideLibraryPage({ searchQuery });
-const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(refreshShelves);
+const { allShelvesEmpty } = provideLibraryPage({ searchQuery });
 const showEditShelf = ref(false);
 const saving = ref(false);
 const actionError = ref("");
@@ -86,7 +83,7 @@ async function confirmDeleteShelf() {
 
 <template>
   <div class="custom-shelf-page">
-    <NavigationBar @add-book="openSearch" />
+    <NavigationBar />
 
     <div class="container">
       <BooksSearchHeader v-model:search-query="searchQuery" />
@@ -108,7 +105,6 @@ async function confirmDeleteShelf() {
       </template>
     </div>
 
-    <BookSearchModal v-if="showSearchModal" @close="closeSearch" @select="selectBook" />
     <CustomShelfEditModal
       v-if="showEditShelf"
       :shelf-name="shelf?.display_name ?? ''"
