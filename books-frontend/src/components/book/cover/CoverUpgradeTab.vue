@@ -3,6 +3,8 @@ import { ref, onMounted, onBeforeUnmount } from "vue";
 import { startCoverUpgradeSearch, getCoverUpgradeSearch } from "../../../api/covers";
 import type { CoverUpgradeCandidate } from "../../../api/types";
 import { getMediaUrl } from "../../../api/client";
+import CoverCandidateGrid from "./CoverCandidateGrid.vue";
+import CoverCandidateTile from "./CoverCandidateTile.vue";
 
 const props = defineProps<{
   bookId: number;
@@ -82,25 +84,23 @@ onBeforeUnmount(() => {
     <p>No better cover found. The current one looks like the best available.</p>
   </div>
 
-  <div v-else-if="status === 'done'" class="cover-grid">
-    <button
+  <CoverCandidateGrid v-else-if="status === 'done'">
+    <CoverCandidateTile
       v-for="(c, index) in results"
       :key="index"
-      class="cover-tile"
-      @click="emit('select', c.image_url)"
+      :thumbnail-url="getMediaUrl(c.thumbnail_url)"
+      :alt="`Candidate ${index + 1}`"
+      @select="emit('select', c.image_url)"
       :title="`${c.width}×${c.height} · ${c.source}`"
     >
-      <img :src="getMediaUrl(c.thumbnail_url)" :alt="`Candidate ${index + 1}`" loading="lazy" />
-      <span class="cover-caption">
-        <span class="cover-size">{{ c.width }}&times;{{ c.height }}</span>
-        <span class="cover-meta">
-          {{ c.source }} &middot;
-          <span :class="['quality', c.match_quality]">{{ c.match_quality }}</span>
-          &middot; {{ c.size_ratio.toFixed(1) }}&times;
-        </span>
+      <span class="cover-size">{{ c.width }}&times;{{ c.height }}</span>
+      <span class="cover-meta">
+        {{ c.source }} &middot;
+        <span :class="['quality', c.match_quality]">{{ c.match_quality }}</span>
+        &middot; {{ c.size_ratio.toFixed(1) }}&times;
       </span>
-    </button>
-  </div>
+    </CoverCandidateTile>
+  </CoverCandidateGrid>
 </template>
 
 <style scoped>
@@ -108,49 +108,6 @@ onBeforeUnmount(() => {
   color: var(--color-text-secondary);
   font-size: 0.9rem;
   margin-bottom: var(--spacing-md);
-}
-
-.cover-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: var(--spacing-md);
-  max-height: 60vh;
-  overflow-y: auto;
-}
-
-.cover-tile {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 6px;
-  background-color: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  text-align: left;
-  transition:
-    border-color 0.15s ease,
-    transform 0.15s ease;
-}
-
-.cover-tile:hover {
-  border-color: var(--color-primary);
-  transform: translateY(-2px);
-}
-
-.cover-tile img {
-  width: 100%;
-  aspect-ratio: 2 / 3;
-  object-fit: cover;
-  border-radius: 4px;
-  background-color: var(--color-bg);
-}
-
-.cover-caption {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 12px;
 }
 
 .cover-size {

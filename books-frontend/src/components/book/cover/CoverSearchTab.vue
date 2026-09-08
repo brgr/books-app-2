@@ -2,6 +2,8 @@
 import { ref, watch } from "vue";
 import { searchBookCovers } from "../../../api/covers";
 import type { CoverSearchResult } from "../../../api/types";
+import CoverCandidateGrid from "./CoverCandidateGrid.vue";
+import CoverCandidateTile from "./CoverCandidateTile.vue";
 
 const props = defineProps<{
   initialTitle?: string;
@@ -78,21 +80,19 @@ watch(
     <p>No covers found. Try a different combination.</p>
   </div>
 
-  <div v-else-if="results.length > 0" class="cover-grid">
-    <button
+  <CoverCandidateGrid v-else-if="results.length > 0">
+    <CoverCandidateTile
       v-for="(result, index) in results"
       :key="result.google_books_id || index"
-      class="cover-tile"
-      @click="emit('select', result.image_url)"
+      :thumbnail-url="result.thumbnail"
+      :alt="result.title"
+      @select="emit('select', result.image_url)"
       :title="`${result.title}${result.author ? ' — ' + result.author : ''}`"
     >
-      <img :src="result.thumbnail" :alt="result.title" loading="lazy" />
-      <span class="cover-caption">
-        <span class="cover-title">{{ result.title }}</span>
-        <span v-if="result.author" class="cover-author">{{ result.author }}</span>
-      </span>
-    </button>
-  </div>
+      <span class="cover-title">{{ result.title }}</span>
+      <span v-if="result.author" class="cover-author">{{ result.author }}</span>
+    </CoverCandidateTile>
+  </CoverCandidateGrid>
 </template>
 
 <style scoped>
@@ -108,47 +108,7 @@ watch(
   grid-column: span 2;
 }
 
-.cover-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: var(--spacing-md);
-  max-height: 60vh;
-  overflow-y: auto;
-}
-
-.cover-tile {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 6px;
-  background-color: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  text-align: left;
-  transition:
-    border-color 0.15s ease,
-    transform 0.15s ease;
-}
-
-.cover-tile:hover {
-  border-color: var(--color-primary);
-  transform: translateY(-2px);
-}
-
-.cover-tile img {
-  width: 100%;
-  aspect-ratio: 2 / 3;
-  object-fit: cover;
-  border-radius: 4px;
-  background-color: var(--color-bg);
-}
-
-.cover-caption {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 12px;
+.cover-tile :deep(.cover-caption) {
   min-height: 2.4em;
 }
 
