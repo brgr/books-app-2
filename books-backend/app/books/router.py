@@ -18,8 +18,8 @@ from app.google_books import (
 from app.covers.image_utils import (
     CONTENT_TYPE_TO_EXT,
     fetch_cover_image,
-    store_cover_image,
 )
+from app.covers.storage import store_cover_image
 from app.models import Book, User
 from app.schemas import (
     BookCreate,
