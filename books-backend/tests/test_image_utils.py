@@ -5,7 +5,7 @@ from pathlib import Path
 
 import httpx
 import pytest
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from app.image_utils import (
     GOOGLE_BOOKS_PLACEHOLDER_SIZE,
@@ -83,6 +83,52 @@ async def test_download_falls_back_to_zoom1_on_placeholder(monkeypatch):
     cover_url, _ = result
     assert cover_url.endswith(".jpg")  # stored the JPEG cover, not the PNG placeholder
     assert any("zoom=1" in u for u in requested)
+
+
+@pytest.mark.parametrize("variant", ["matching", "cropped", "different"])
+async def test_google_zoom_uses_shared_cover_match(monkeypatch, tmp_path, variant):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "uploads_dir", str(tmp_path))
+    original = Image.new("RGB", (400, 600), "white")
+    draw = ImageDraw.Draw(original)
+    draw.rectangle((20, 20, 350, 130), fill="black")
+    draw.ellipse((60, 220, 320, 530), fill="navy")
+    thumbnail = original.resize((100, 150))
+    full = original
+
+    if variant == "cropped":
+        full = original.crop((0, 230, 400, 280))
+    elif variant == "different":
+        full = original.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+
+    def encode(image):
+        buffer = BytesIO()
+        image.save(buffer, "PNG")
+        return buffer.getvalue()
+
+    full_bytes, thumbnail_bytes = encode(full), encode(thumbnail)
+
+    async def fake_get(self, url, headers=None):
+        return httpx.Response(
+            200,
+            request=httpx.Request("GET", url),
+            content=thumbnail_bytes if "zoom=1" in url else full_bytes,
+            headers={"content-type": "image/png"},
+        )
+
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+    result = await download_cover_image(
+        "https://books.google.com/books/content?id=X&img=1&zoom=2"
+    )
+
+    assert result is not None
+
+    saved = tmp_path / result[0].removeprefix("/uploads/")
+
+    assert saved.read_bytes() == (
+        full_bytes if variant == "matching" else thumbnail_bytes
+    )
 
 
 @pytest.mark.external

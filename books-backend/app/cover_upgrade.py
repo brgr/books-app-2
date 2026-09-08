@@ -19,11 +19,9 @@ import imagehash
 from PIL import Image
 
 from app.config import settings
+from app.cover_matching import MatchQuality, cover_match_quality
 from app.google_books import GoogleBooksRateLimitError, search_cover_images
 
-# Hash distance bands (8x8 pHash, 64-bit).
-EXACT_THRESHOLD = 6
-LIKELY_THRESHOLD = 10
 # Require the upgrade to be meaningfully larger.
 MIN_SIZE_RATIO = 1.3
 # Cap concurrent search jobs across the process.
@@ -34,7 +32,6 @@ JOB_TTL_SECONDS = 60 * 30
 IMAGE_TIMEOUT = 15.0
 
 JobStatus = Literal["running", "done", "failed"]
-MatchQuality = Literal["exact", "likely"]
 
 
 @dataclass
@@ -244,16 +241,18 @@ async def _score_candidates(
     for cand, img in zip(candidates, images):
         if img is None:
             continue
+
         width, height = img.size
+
         if width <= current_width * MIN_SIZE_RATIO:
             continue
+
         dist = current_hash - imagehash.phash(img)
-        if dist <= EXACT_THRESHOLD:
-            quality: MatchQuality = "exact"
-        elif dist <= LIKELY_THRESHOLD:
-            quality = "likely"
-        else:
+        quality = cover_match_quality(dist)
+
+        if quality is None:
             continue
+
         results.append(
             CoverUpgradeCandidate(
                 image_url=cand["image_url"],
@@ -266,6 +265,7 @@ async def _score_candidates(
                 size_ratio=round(width / current_width, 2),
             )
         )
+
     return results
 
 

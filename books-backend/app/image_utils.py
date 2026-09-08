@@ -12,6 +12,7 @@ import httpx
 from PIL import Image, ImageOps
 
 from app.config import settings
+from app.cover_matching import covers_match
 
 # Map content types to file extensions
 CONTENT_TYPE_TO_EXT = {
@@ -145,16 +146,8 @@ async def _fetch_image(client: httpx.AsyncClient, url: str) -> tuple[bytes, str]
     return response.content, extension
 
 
-async def download_cover_image(url: str) -> tuple[str, str | None] | None:
-    """
-    Download an image from a URL and save it locally with a thumbnail.
-
-    Args:
-        url: The URL of the image to download
-
-    Returns:
-        Tuple of (cover_image_url, cover_thumbnail_url) or None if download failed
-    """
+async def fetch_cover_image(url: str) -> tuple[bytes, str] | None:
+    """Fetch a cover, validating Google zoom variants against their thumbnail."""
     if not url or not url.startswith("http"):
         return None
 
@@ -162,24 +155,52 @@ async def download_cover_image(url: str) -> tuple[str, str | None] | None:
         async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
             content, extension = await _fetch_image(client, url)
 
-            # A Google Books volume that has no cover returns the "image not available" placeholder at higher zoom
-            # levels. Fall back to the zoom=1 thumbnail, which holds the real (smaller) cover.
-            if _is_google_books_placeholder(content):
-                fallback_url = _zoom_fallback_url(url)
-                if fallback_url:
+            # A higher Google zoom can return a placeholder or a cropped image.
+            # Therefore, we reuse the upgrade search's perceptual match check before
+            # replacing the thumbnail with a higher-resolution image.
+            fallback_url = _zoom_fallback_url(url)
+            if fallback_url:
+                try:
                     fb_content, fb_extension = await _fetch_image(client, fallback_url)
+
                     if not _is_google_books_placeholder(fb_content):
-                        content, extension = fb_content, fb_extension
+                        with (
+                            Image.open(BytesIO(content)) as full,
+                            Image.open(BytesIO(fb_content)) as thumbnail,
+                        ):
+                            matches = covers_match(full, thumbnail)
+
+                        if _is_google_books_placeholder(content) or not matches:
+                            content, extension = fb_content, fb_extension
+                except (httpx.HTTPError, OSError, ValueError):
+                    # An unavailable thumbnail must not prevent a valid full
+                    # image from being saved.
+                    pass
 
             # A successful HTTP response can still be empty or contain an error page.
             # Decode before writing anything, so we can catch errors early.
             with Image.open(BytesIO(content)) as image:
                 image.load()
-            return store_cover_image(content, extension)
+
+            return content, extension
 
     except httpx.HTTPError as e:
         print(f"Failed to download cover image from {url}: {e}")
         return None
     except Exception as e:
         print(f"Unexpected error downloading cover image: {e}")
+        return None
+
+
+async def download_cover_image(url: str) -> tuple[str, str | None] | None:
+    """Download and store the same validated image used by the cover preview."""
+    result = await fetch_cover_image(url)
+
+    if result is None:
+        return None
+
+    try:
+        return store_cover_image(*result)
+    except Exception as e:
+        print(f"Failed to store cover image: {e}")
         return None

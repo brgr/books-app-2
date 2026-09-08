@@ -1,5 +1,6 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, ref } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { getCoverPreviewUrl } from "../../api/books";
 import { getMediaUrl } from "../../api/client";
 import { discardPendingCover, isPendingCover } from "./pendingCoverUploads";
 import CoverModal from "../modals/CoverModal.vue";
@@ -19,16 +20,51 @@ const emit = defineEmits<{
 
 const showCoverModal = ref(false);
 
-// Google Books sometimes returns an "image not available" placeholder at higher zoom levels for metadata-only volumes.
-// The zoom=1 thumbnail is therefore the more reliable image, so we preview that.
-function previewSafeUrl(value: string): string {
-  if (value.includes("books.google") && /[?&]zoom=[2-9]/.test(value)) {
-    return value.replace(/zoom=\d+/, "zoom=1");
+const previewUrl = ref<string>();
+let fullImage: HTMLImageElement | undefined;
+
+function cancelFullImage() {
+  if (fullImage) {
+    fullImage.onload = null;
+    fullImage.onerror = null;
+    fullImage = undefined;
   }
-  return value;
 }
 
-const previewUrl = computed(() => getMediaUrl(previewSafeUrl(props.modelValue)));
+watch(
+  () => props.modelValue,
+  (value) => {
+    cancelFullImage();
+
+    // Load the lightweight thumbnail before requesting the selected full image.
+    const thumbnail = value.includes("books.google")
+      ? value.replace(/([?&]zoom=)(\d+)/, (match, prefix, zoom) => (Number(zoom) > 1 ? `${prefix}1` : match))
+      : value;
+
+    previewUrl.value = getMediaUrl(thumbnail);
+  },
+  { immediate: true },
+);
+
+function loadFullPreview() {
+  const fullUrl = getMediaUrl(props.modelValue);
+
+  if (!fullUrl || fullUrl === previewUrl.value || fullImage) return;
+
+  const image = new Image();
+  fullImage = image;
+
+  image.onload = () => {
+    previewUrl.value = image.src;
+  };
+
+  // We use the cover-preview API of the backend, as the backend has a perceptual
+  // comparison check and uses that when loading the fully zoomed-in cover
+  // (or falls back to the thumbnail if the fully zoomed-in image doesn't match the thumbnail)
+  image.src = getCoverPreviewUrl(fullUrl);
+}
+
+onBeforeUnmount(cancelFullImage);
 
 // The upgrade search runs against the stored cover; a locally-staged upload isn't stored yet.
 const canUpgrade = computed(
@@ -55,7 +91,7 @@ onBeforeUnmount(() => discardPendingCover(props.modelValue));
     <label>Cover</label>
     <div class="cover-row">
       <div :class="{ empty: !modelValue }" class="cover-preview">
-        <img v-if="previewUrl" :src="previewUrl" alt="Cover preview" />
+        <img v-if="previewUrl" :src="previewUrl" alt="Cover preview" @load="loadFullPreview" />
         <span v-else>No cover</span>
       </div>
       <div class="cover-actions">

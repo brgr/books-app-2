@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { API_BASE_URL, apiClient } from "./client";
 import type {
   Book,
   BookCreate,
@@ -125,6 +125,10 @@ export async function searchBookCovers(params: {
     params,
   });
   return response.data;
+}
+
+export function getCoverPreviewUrl(url: string): string {
+  return `${API_BASE_URL}/books/cover-preview?url=${encodeURIComponent(url)}`;
 }
 
 export async function uploadBookCover(bookId: number, file: File): Promise<Book> {

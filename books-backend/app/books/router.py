@@ -1,6 +1,8 @@
 from typing import Annotated
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.auth.security import get_current_user
@@ -13,7 +15,7 @@ from app.google_books import (
     search_cover_images,
     search_google_books,
 )
-from app.image_utils import CONTENT_TYPE_TO_EXT, store_cover_image
+from app.image_utils import CONTENT_TYPE_TO_EXT, fetch_cover_image, store_cover_image
 from app.models import Book, User
 from app.schemas import (
     BookCreate,
@@ -105,6 +107,41 @@ async def search_covers(
             detail="Google Books rate limit exceeded.",
             headers=headers,
         )
+
+
+@router.get("/books/cover-preview")
+async def preview_cover(
+    url: str,
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    """
+    Preview the same validated Google image that saving will use.
+    We need an endpoint like this since we don't always just the direct Google Books URL.
+    E.g., we sometimes normally change the zoom level for the book cover; but we don't
+    always do that, as we have also seen that sometimes the images with different zoom levels
+    differ.
+    """
+    parsed = urlsplit(url)
+
+    if (
+        parsed.scheme != "https"
+        or parsed.netloc != "books.google.com"
+        or parsed.path != "/books/content"
+    ):
+        raise HTTPException(status_code=400, detail="Expected a Google Books cover URL")
+
+    result = await fetch_cover_image(url)
+
+    if result is None:
+        raise HTTPException(status_code=502, detail="Could not load cover")
+
+    content, extension = result
+    media_type = next(
+        (kind for kind, ext in CONTENT_TYPE_TO_EXT.items() if ext == extension),
+        "image/jpeg",
+    )
+
+    return Response(content=content, media_type=media_type)
 
 
 @router.post(
