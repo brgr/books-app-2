@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import LibraryNavLink from "./LibraryNavLink.vue";
+import BookIcon from "../icons/BookIcon.vue";
+import OpenBookIcon from "../icons/OpenBookIcon.vue";
+import BooksIcon from "../icons/BooksIcon.vue";
+import StackedBooksIcon from "../icons/StackedBooksIcon.vue";
 import { useRoute, useRouter } from "vue-router";
 import { isAuthenticated, logout } from "../../api/auth";
 
@@ -36,20 +40,7 @@ function closeMenu() {
     <div class="navbar-content">
       <div class="navbar-left">
         <router-link to="/" class="navbar-brand">
-          <svg
-            class="navbar-icon"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-          </svg>
+          <BookIcon class="navbar-icon" />
           BOOKS
         </router-link>
 
@@ -60,21 +51,7 @@ function closeMenu() {
             :to="{ name: 'shelf', params: { shelf: 'to-read' } }"
           >
             <template #icon>
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path
-                  d="M2 6.5A2.5 2.5 0 0 1 4.5 4H10a2 2 0 0 1 2 2v13a1.5 1.5 0 0 0-1.5-1.5H4.5A2.5 2.5 0 0 1 2 15V6.5z"
-                />
-                <path
-                  d="M22 6.5A2.5 2.5 0 0 0 19.5 4H14a2 2 0 0 0-2 2v13a1.5 1.5 0 0 1 1.5-1.5h6A2.5 2.5 0 0 0 22 15V6.5z"
-                />
-              </svg>
+              <OpenBookIcon />
             </template>
           </LibraryNavLink>
 
@@ -84,38 +61,13 @@ function closeMenu() {
             :to="{ name: 'shelf', params: { shelf: 'finished' } }"
           >
             <template #icon>
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <rect x="4" y="3" width="4" height="18" rx="1" />
-                <rect x="10" y="3" width="4" height="18" rx="1" />
-                <path d="M17 4.2l3.2.9-3 14.6-3.2-.9" />
-              </svg>
+              <BooksIcon />
             </template>
           </LibraryNavLink>
 
           <LibraryNavLink label="Shelves" :active="surface === 'shelves'" :to="{ name: 'custom-shelves' }">
             <template #icon>
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <g transform="translate(12 12) scale(1.015) translate(-12 -12)">
-                  <path d="M4.5 5.5h13a1.5 1.5 0 0 1 1.5 1.5v3h-14a1.5 1.5 0 0 1-1.5-1.5v-3z" />
-                  <path d="M3.5 10h14.5a1.5 1.5 0 0 1 1.5 1.5v3h-14a1.5 1.5 0 0 1-1.5-1.5v-3z" />
-                  <path d="M4.5 14.5h14a1.5 1.5 0 0 1 1.5 1.5v3h-14a1.5 1.5 0 0 1-1.5-1.5v-3z" />
-                  <path d="M7.5 5.5v4.5M6.5 10v4.5M7.5 14.5V19" />
-                </g>
-              </svg>
+              <StackedBooksIcon />
             </template>
           </LibraryNavLink>
         </nav>
