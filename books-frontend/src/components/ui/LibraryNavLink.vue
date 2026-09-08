@@ -1,13 +1,14 @@
 <script setup lang="ts">
-defineProps<{ label: string; active: boolean }>();
-defineEmits<{ select: [] }>();
+import { type RouteLocationRaw, RouterLink } from "vue-router";
+
+defineProps<{ label: string; active: boolean; to: RouteLocationRaw }>();
 </script>
 
 <template>
-  <button type="button" role="tab" :aria-selected="active" :class="['nav-button', { active }]" @click="$emit('select')">
+  <RouterLink :to="to" :aria-current="active ? 'page' : undefined" :class="['nav-button', { active }]">
     <slot name="icon" />
     <span class="nav-button-label">{{ label }}</span>
-  </button>
+  </RouterLink>
 </template>
 
 <style scoped>
@@ -22,6 +23,7 @@ defineEmits<{ select: [] }>();
   border: none;
   border-radius: 999px;
   color: var(--color-text-secondary);
+  text-decoration: none;
   font-family: inherit;
   font-size: 12px;
   font-weight: 600;

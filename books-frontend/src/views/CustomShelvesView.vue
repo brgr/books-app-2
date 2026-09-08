@@ -4,7 +4,6 @@ import { useRouter } from "vue-router";
 import { createShelf, getShelves } from "../api/books";
 import type { Shelf } from "../api/types";
 import BookSearchModal from "../components/modals/BookSearchModal.vue";
-import LibraryNav from "../components/ui/LibraryNav.vue";
 import NavigationBar from "../components/ui/NavigationBar.vue";
 import { cacheKeys } from "../cache/keys";
 import { useAddBook } from "../composables/useAddBook";
@@ -57,18 +56,11 @@ async function createNewShelf() {
     creating.value = false;
   }
 }
-
-function goTo(surface: "to-read" | "finished" | "shelves") {
-  router.push(surface === "shelves" ? { name: "custom-shelves" } : { name: "shelf", params: { shelf: surface } });
-}
 </script>
 
 <template>
   <div class="shelves-page">
-    <NavigationBar @add-book="openSearch">
-      <!-- TODO: We should move the `goTo` into LibraryNav directly... there's not reason that it doesn't know about this directly -->
-      <template #nav><LibraryNav model-value="shelves" @update:model-value="goTo" /> </template
-    ></NavigationBar>
+    <NavigationBar @add-book="openSearch" />
 
     <main class="container">
       <div v-if="error" class="error">Failed to load shelves. Please try again.</div>

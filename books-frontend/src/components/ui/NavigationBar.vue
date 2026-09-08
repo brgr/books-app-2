@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import { useRouter } from "vue-router";
+import { computed, ref } from "vue";
+import LibraryNavLink from "./LibraryNavLink.vue";
+import { useRoute, useRouter } from "vue-router";
 import { isAuthenticated, logout } from "../../api/auth";
 
 const emit = defineEmits<{
@@ -8,6 +9,13 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
+const route = useRoute();
+const surface = computed(() => {
+  if (route.name === "books") return "to-read";
+  if (route.name === "custom-shelves" || route.name === "custom-shelf") return "shelves";
+  if (route.name === "shelf") return route.params.shelf === "abandoned" ? "shelves" : route.params.shelf;
+  return null;
+});
 const showMenu = ref(isAuthenticated());
 const isMenuOpen = ref(false);
 
@@ -48,7 +56,73 @@ function closeMenu() {
           </svg>
           BOOKS
         </router-link>
-        <slot name="nav"></slot>
+
+        <nav v-if="surface" class="library-nav" aria-label="Library">
+          <LibraryNavLink
+            label="To Read"
+            :active="surface === 'to-read'"
+            :to="{ name: 'shelf', params: { shelf: 'to-read' } }"
+          >
+            <template #icon>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M2 6.5A2.5 2.5 0 0 1 4.5 4H10a2 2 0 0 1 2 2v13a1.5 1.5 0 0 0-1.5-1.5H4.5A2.5 2.5 0 0 1 2 15V6.5z"
+                />
+                <path
+                  d="M22 6.5A2.5 2.5 0 0 0 19.5 4H14a2 2 0 0 0-2 2v13a1.5 1.5 0 0 1 1.5-1.5h6A2.5 2.5 0 0 0 22 15V6.5z"
+                />
+              </svg>
+            </template>
+          </LibraryNavLink>
+
+          <LibraryNavLink
+            label="Finished"
+            :active="surface === 'finished'"
+            :to="{ name: 'shelf', params: { shelf: 'finished' } }"
+          >
+            <template #icon>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="4" y="3" width="4" height="18" rx="1" />
+                <rect x="10" y="3" width="4" height="18" rx="1" />
+                <path d="M17 4.2l3.2.9-3 14.6-3.2-.9" />
+              </svg>
+            </template>
+          </LibraryNavLink>
+
+          <LibraryNavLink label="Shelves" :active="surface === 'shelves'" :to="{ name: 'custom-shelves' }">
+            <template #icon>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <g transform="translate(12 12) scale(1.015) translate(-12 -12)">
+                  <path d="M4.5 5.5h13a1.5 1.5 0 0 1 1.5 1.5v3h-14a1.5 1.5 0 0 1-1.5-1.5v-3z" />
+                  <path d="M3.5 10h14.5a1.5 1.5 0 0 1 1.5 1.5v3h-14a1.5 1.5 0 0 1-1.5-1.5v-3z" />
+                  <path d="M4.5 14.5h14a1.5 1.5 0 0 1 1.5 1.5v3h-14a1.5 1.5 0 0 1-1.5-1.5v-3z" />
+                  <path d="M7.5 5.5v4.5M6.5 10v4.5M7.5 14.5V19" />
+                </g>
+              </svg>
+            </template>
+          </LibraryNavLink>
+        </nav>
       </div>
 
       <div class="navbar-right">
@@ -77,6 +151,40 @@ function closeMenu() {
 </template>
 
 <style scoped>
+/* Mobile: a floating bottom bar within thumb reach. */
+.library-nav {
+  position: fixed;
+  left: 50%;
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(92vw, 420px);
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  box-shadow: var(--modal-shadow);
+  z-index: 30;
+}
+
+/* Desktop: the same links become inline tabs in the header. */
+@media (min-width: 769px) {
+  .library-nav {
+    position: static;
+    transform: none;
+    width: auto;
+    justify-content: flex-start;
+    gap: 4px;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
 .navbar {
   background-color: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
@@ -124,46 +232,6 @@ function closeMenu() {
   width: 24px;
   height: 24px;
   color: var(--color-primary);
-}
-
-.navbar-links {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-}
-
-.navbar-link {
-  color: var(--color-text);
-  text-decoration: none;
-  font-size: 14px;
-  font-weight: 500;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--border-radius);
-  transition: background-color 0.15s ease;
-}
-
-.navbar-link:hover {
-  background-color: var(--color-bg);
-}
-
-.navbar-link.router-link-active {
-  color: var(--color-primary);
-}
-
-.navbar-link-btn {
-  background: none;
-  border: none;
-  color: var(--color-text);
-  font-size: 14px;
-  font-weight: 500;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  cursor: pointer;
-  border-radius: var(--border-radius);
-  transition: background-color 0.15s ease;
-}
-
-.navbar-link-btn:hover {
-  background-color: var(--color-bg);
 }
 
 .navbar-user {
@@ -261,10 +329,6 @@ function closeMenu() {
   .navbar-right {
     flex: 0 0 auto;
     gap: var(--spacing-sm);
-  }
-
-  .navbar-links {
-    display: none;
   }
 
   .btn-add {

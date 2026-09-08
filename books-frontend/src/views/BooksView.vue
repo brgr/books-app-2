@@ -1,16 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 import BookShelf from "../components/book/BookShelf.vue";
 import BookSearchModal from "../components/modals/BookSearchModal.vue";
 import BooksSearchHeader from "../components/ui/BooksSearchHeader.vue";
-import LibraryNav from "../components/ui/LibraryNav.vue";
 import NavigationBar from "../components/ui/NavigationBar.vue";
 import { useAddBook } from "../composables/useAddBook";
 import { provideLibraryPage } from "../composables/useLibraryPage";
 
 const route = useRoute();
-const router = useRouter();
 
 const searchQuery = ref("");
 // The shelf lives in the URL: /shelves/:shelf. Bare "/" is the shelf "to-read".
@@ -20,14 +18,6 @@ const shelfFilter = computed<"to-read" | "finished" | "abandoned">(() => {
   return "to-read";
 });
 
-const navSurface = computed<"to-read" | "finished" | "shelves">(() =>
-  shelfFilter.value === "abandoned" ? "shelves" : shelfFilter.value,
-);
-
-function goToShelf(shelf: "to-read" | "finished" | "shelves") {
-  router.push(shelf === "shelves" ? { name: "custom-shelves" } : { name: "shelf", params: { shelf } });
-}
-
 const { allShelvesEmpty, refreshShelves } = provideLibraryPage({ searchQuery });
 
 const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(refreshShelves);
@@ -35,11 +25,7 @@ const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(refr
 
 <template>
   <div class="books-view">
-    <NavigationBar @add-book="openSearch">
-      <template #nav>
-        <LibraryNav :model-value="navSurface" @update:model-value="goToShelf" />
-      </template>
-    </NavigationBar>
+    <NavigationBar @add-book="openSearch" />
 
     <div class="container">
       <BooksSearchHeader v-model:search-query="searchQuery" />
@@ -89,7 +75,7 @@ const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(refr
   margin-top: var(--spacing-lg);
 }
 
-/* Desktop: LibraryNav is inline tabs, not a fixed bar: drop the reserved space. */
+/* Desktop: library navigation uses inline tabs, not a fixed bar: drop the reserved space. */
 @media (min-width: 769px) {
   .books-view {
     padding-bottom: var(--spacing-xl);

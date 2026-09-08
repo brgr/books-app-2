@@ -7,7 +7,6 @@ import BookShelf from "../components/book/BookShelf.vue";
 import BookSearchModal from "../components/modals/BookSearchModal.vue";
 import CustomShelfEditModal from "../components/modals/CustomShelfEditModal.vue";
 import BooksSearchHeader from "../components/ui/BooksSearchHeader.vue";
-import LibraryNav from "../components/ui/LibraryNav.vue";
 import NavigationBar from "../components/ui/NavigationBar.vue";
 import { cacheKeys } from "../cache/keys";
 import { cacheDel } from "../cache/store";
@@ -31,10 +30,6 @@ const { showSearchModal, openSearch, closeSearch, selectBook } = useAddBook(refr
 const showEditShelf = ref(false);
 const saving = ref(false);
 const actionError = ref("");
-
-function goTo(surface: "to-read" | "finished" | "shelves") {
-  router.push(surface === "shelves" ? { name: "custom-shelves" } : { name: "shelf", params: { shelf: surface } });
-}
 
 function openEditShelf() {
   actionError.value = "";
@@ -91,9 +86,7 @@ async function confirmDeleteShelf() {
 
 <template>
   <div class="custom-shelf-page">
-    <NavigationBar @add-book="openSearch">
-      <template #nav><LibraryNav model-value="shelves" @update:model-value="goTo" /></template>
-    </NavigationBar>
+    <NavigationBar @add-book="openSearch" />
 
     <div class="container">
       <BooksSearchHeader v-model:search-query="searchQuery" />
