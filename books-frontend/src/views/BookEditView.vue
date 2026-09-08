@@ -1,11 +1,12 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { deleteBook, getBook, updateBook, uploadBookCover } from "../api/books";
-import { isPendingCover, takePendingCover } from "../components/book/pendingCoverUploads";
+import { deleteBook, getBook, updateBook } from "../api/books";
+import { uploadBookCover } from "../api/covers";
+import { isPendingCover, takePendingCover } from "../components/book/cover/pendingCoverUploads";
 import type { Book, BookUpdate } from "../api/types";
 import NavigationBar from "../components/ui/NavigationBar.vue";
-import CoverEditField from "../components/book/CoverEditField.vue";
+import CoverEditField from "../components/book/cover/CoverEditField.vue";
 import { useCachedQuery } from "../composables/useCachedQuery";
 import { cacheKeys } from "../cache/keys";
 import { invalidateCache } from "../cache/invalidate";

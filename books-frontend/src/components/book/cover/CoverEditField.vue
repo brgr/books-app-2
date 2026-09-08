@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, ref, watch } from "vue";
-import { getCoverPreviewUrl } from "../../api/books";
-import { getMediaUrl } from "../../api/client";
+import { getCoverPreviewUrl } from "../../../api/covers";
+import { getMediaUrl } from "../../../api/client";
 import { discardPendingCover, isPendingCover } from "./pendingCoverUploads";
-import CoverModal from "../modals/CoverModal.vue";
+import CoverModal from "./CoverModal.vue";
 
 const props = defineProps<{
   modelValue: string;

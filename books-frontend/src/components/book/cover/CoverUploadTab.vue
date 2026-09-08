@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref } from "vue";
-import { stagePendingCover } from "../book/pendingCoverUploads.ts";
+import { stagePendingCover } from "./pendingCoverUploads";
 
 const props = defineProps<{
   title?: string;
