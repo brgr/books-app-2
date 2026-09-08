@@ -16,6 +16,7 @@ const surface = computed(() => {
   if (route.name === "shelf") return route.params.shelf === "abandoned" ? "shelves" : route.params.shelf;
   return null;
 });
+const isLibraryPage = computed(() => Boolean(surface.value));
 const showMenu = ref(isAuthenticated());
 const isMenuOpen = ref(false);
 
@@ -44,7 +45,7 @@ function closeMenu() {
           BOOKS
         </router-link>
 
-        <nav v-if="surface" class="library-nav" aria-label="Library">
+        <nav class="library-nav" :class="{ 'hide-on-mobile': !isLibraryPage }" aria-label="Library">
           <LibraryNavLink
             label="To Read"
             :active="surface === 'to-read'"
@@ -117,9 +118,14 @@ function closeMenu() {
   z-index: 30;
 }
 
+.hide-on-mobile {
+  display: none;
+}
+
 /* Desktop: the same links become inline tabs in the header. */
 @media (min-width: 769px) {
   .library-nav {
+    display: flex;
     position: static;
     transform: none;
     width: auto;

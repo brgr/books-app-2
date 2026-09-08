@@ -56,7 +56,7 @@ describe("library navigation", () => {
     wrapper.unmount();
   });
 
-  it("tracks direct route changes and preserves library-only visibility", async () => {
+  it("tracks direct route changes and hides navigation on mobile outside the library", async () => {
     const { router, wrapper } = await mountNavigation("/shelves/custom/12");
 
     for (const path of ["/shelves/custom/12", "/shelves/abandoned", "/shelves"]) {
@@ -64,14 +64,21 @@ describe("library navigation", () => {
       await flushPromises();
 
       expect(wrapper.get('nav[aria-label="Library"] .active').text()).toBe("Shelves");
+      expect(wrapper.get('nav[aria-label="Library"]').classes()).not.toContain("hide-on-mobile");
     }
 
     for (const path of ["/settings", "/books/12", "/books/12/edit"]) {
       await router.push(path);
       await flushPromises();
 
-      expect(wrapper.find('nav[aria-label="Library"]').exists()).toBe(false);
+      expect(wrapper.get('nav[aria-label="Library"]').classes()).toContain("hide-on-mobile");
     }
+
+    await router.push("/shelves/to-read");
+    await flushPromises();
+
+    expect(wrapper.get('nav[aria-label="Library"]').classes()).not.toContain("hide-on-mobile");
+    expect(wrapper.get('nav[aria-label="Library"] .active').text()).toBe("To Read");
 
     wrapper.unmount();
   });
