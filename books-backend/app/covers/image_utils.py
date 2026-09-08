@@ -12,7 +12,7 @@ import httpx
 from PIL import Image, ImageOps
 
 from app.config import settings
-from app.cover_matching import covers_match
+from app.covers.cover_matching import covers_match
 
 # Map content types to file extensions
 CONTENT_TYPE_TO_EXT = {

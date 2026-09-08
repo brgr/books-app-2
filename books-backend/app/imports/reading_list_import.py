@@ -16,7 +16,7 @@ from app.book_events import (
     record_reading_event,
     record_started_reading,
 )
-from app.image_utils import store_cover_image
+from app.covers.image_utils import store_cover_image
 from app.models import (
     Book,
     BookEventCode,

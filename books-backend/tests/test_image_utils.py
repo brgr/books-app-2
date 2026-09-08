@@ -7,7 +7,7 @@ import httpx
 import pytest
 from PIL import Image, ImageDraw
 
-from app.image_utils import (
+from app.covers.image_utils import (
     GOOGLE_BOOKS_PLACEHOLDER_SIZE,
     _is_google_books_placeholder,
     _zoom_fallback_url,

@@ -6,8 +6,8 @@ import imagehash
 import pytest
 from PIL import Image
 
-from app import cover_upgrade
-from app.cover_upgrade import (
+from app.covers import cover_upgrade
+from app.covers.cover_upgrade import (
     CoverUpgradeJob,
     JOB_TTL_SECONDS,
     _gc_jobs,

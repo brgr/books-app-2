@@ -19,7 +19,7 @@ import imagehash
 from PIL import Image
 
 from app.config import settings
-from app.cover_matching import MatchQuality, cover_match_quality
+from app.covers.cover_matching import MatchQuality, cover_match_quality
 from app.google_books import GoogleBooksRateLimitError, search_cover_images
 
 # Require the upgrade to be meaningfully larger.

@@ -8,14 +8,18 @@ from sqlalchemy.orm import Session
 from app.auth.security import get_current_user
 from app.books.queries import get_book_by_id, get_user_book
 from app.books.service import BookService
-from app.cover_upgrade import get_job
+from app.covers.cover_upgrade import get_job
 from app.database import get_db
 from app.google_books import (
     GoogleBooksRateLimitError,
     search_cover_images,
     search_google_books,
 )
-from app.image_utils import CONTENT_TYPE_TO_EXT, fetch_cover_image, store_cover_image
+from app.covers.image_utils import (
+    CONTENT_TYPE_TO_EXT,
+    fetch_cover_image,
+    store_cover_image,
+)
 from app.models import Book, User
 from app.schemas import (
     BookCreate,

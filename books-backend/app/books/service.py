@@ -10,8 +10,8 @@ from app.book_events import (
     record_cover_changed,
 )
 from app.books.queries import get_user_book
-from app.cover_upgrade import CoverUpgradeJob, start_job
-from app.image_utils import download_cover_image
+from app.covers.cover_upgrade import CoverUpgradeJob, start_job
+from app.covers.image_utils import download_cover_image
 from app.models import Book, User, UserBook
 from app.schemas import BookCreate, BookUpdate
 
