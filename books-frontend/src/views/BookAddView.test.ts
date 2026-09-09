@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { flushPromises, mount } from "@vue/test-utils";
-import { createMemoryHistory, createRouter } from "vue-router";
+import { createMemoryHistory, createRouter, RouterView } from "vue-router";
 import BookAddView from "./BookAddView.vue";
 import { createBook, searchGoogleBooks } from "../api/books";
 import { invalidateCache } from "../cache/invalidate";
@@ -14,12 +14,13 @@ async function searchForBook() {
     routes: [
       { path: "/", name: "books", component: { template: "<div />" } },
       { path: "/books/add", name: "book-add", component: BookAddView },
+      { path: "/other", name: "other", component: { template: "<div>Other page</div>" } },
     ],
   });
 
   await router.push("/books/add");
 
-  const wrapper = mount(BookAddView, { global: { plugins: [router], stubs: { NavigationBar: true } } });
+  const wrapper = mount(RouterView, { global: { plugins: [router], stubs: { NavigationBar: true } } });
   await wrapper.get("input").setValue("Dune");
   await wrapper.get("form").trigger("submit");
   await flushPromises();
@@ -80,6 +81,47 @@ describe("adding a book", () => {
     );
     expect(invalidateCache.bookAdded).toHaveBeenCalledOnce();
     expect(router.currentRoute.value.name).toBe("books");
+
+    wrapper.unmount();
+  });
+
+  // Initially, if the user added a book and then would navigate away before the save or cache invalidation completed,
+  // the app would unexpectedly redirect to the library page, which was confusing.
+  // This test ensures that this does not happen.
+  it.each(["saving", "invalidating shelves"])("does not redirect after leaving while %s", async (pendingStep) => {
+    let finishPendingStep!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      finishPendingStep = resolve;
+    });
+
+    if (pendingStep === "saving") {
+      vi.mocked(createBook).mockImplementation(async () => {
+        await pending;
+
+        return {} as Awaited<ReturnType<typeof createBook>>;
+      });
+    } else {
+      vi.mocked(invalidateCache.bookAdded).mockReturnValue(pending);
+    }
+
+    const { wrapper, router } = await searchForBook();
+    await wrapper.get(".btn-select").trigger("click");
+    await flushPromises();
+
+    expect(createBook).toHaveBeenCalledOnce();
+    expect(router.currentRoute.value.name).toBe("book-add");
+
+    await wrapper.get(".page-header a").trigger("click");
+    await flushPromises();
+    expect(router.currentRoute.value.name).toBe("books");
+    expect(wrapper.findComponent(BookAddView).exists()).toBe(false);
+
+    await router.push({ name: "other" });
+    finishPendingStep();
+    await flushPromises();
+
+    expect(invalidateCache.bookAdded).toHaveBeenCalledOnce();
+    expect(router.currentRoute.value.name).toBe("other");
 
     wrapper.unmount();
   });

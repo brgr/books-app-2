@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { onBeforeUnmount, ref } from "vue";
 import { useRouter } from "vue-router";
 import NavigationBar from "../components/navigation/NavigationBar.vue";
 import { createBook, searchGoogleBooks } from "../api/books";
@@ -8,6 +8,11 @@ import type { GoogleBookResult } from "../api/types";
 
 const router = useRouter();
 const addingBook = ref(false);
+let isUnmounted = false;
+
+onBeforeUnmount(() => {
+  isUnmounted = true;
+});
 
 const searchQuery = ref("");
 const searchResults = ref<GoogleBookResult[]>([]);
@@ -56,7 +61,9 @@ async function handleSelectBook(book: GoogleBookResult) {
 
     await invalidateCache.bookAdded();
 
-    await router.push({ name: "books" });
+    if (!isUnmounted) {
+      await router.push({ name: "books" });
+    }
   } catch (err: any) {
     console.error("Failed to add book:", err);
     error.value = err.response?.data?.detail || "Failed to add book. Please try again.";
