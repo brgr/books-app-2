@@ -115,11 +115,21 @@ function save() {
   line-height: 1.5;
 }
 
-.notes-rendered :first-child {
+.notes-rendered :deep(blockquote) {
+  margin: var(--spacing-md) 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-inline-start: 3px solid var(--color-primary);
+  background: var(--color-bg-card);
+  overflow-wrap: anywhere;
+}
+
+.notes-rendered :deep(> :first-child),
+.notes-rendered :deep(blockquote > :first-child) {
   margin-top: 0;
 }
 
-.notes-rendered :last-child {
+.notes-rendered :deep(> :last-child),
+.notes-rendered :deep(blockquote > :last-child) {
   margin-bottom: 0;
 }
 
