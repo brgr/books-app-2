@@ -365,8 +365,8 @@ def test_custom_shelf_keeps_its_own_order(client, auth_headers, sample_book_data
         f"/api/shelves/{shelf_ref}/items/reorder",
         json={
             "moved_book_id": book_a,
-            "before_book_id": None,
-            "after_book_id": book_b,
+            "book_id_before": None,
+            "book_id_after": book_b,
         },
         headers=auth_headers,
     )
@@ -402,8 +402,8 @@ def test_reorder_between_two_books_on_a_custom_shelf(
         f"/api/shelves/{shelf_ref}/items/reorder",
         json={
             "moved_book_id": book_c,
-            "before_book_id": book_a,
-            "after_book_id": book_b,
+            "book_id_before": book_a,
+            "book_id_after": book_b,
         },
         headers=auth_headers,
     )
@@ -429,8 +429,8 @@ def test_reorder_against_a_book_not_on_the_shelf_is_rejected(
         f"/api/shelves/{shelf_ref}/items/reorder",
         json={
             "moved_book_id": book_on,
-            "before_book_id": book_off,
-            "after_book_id": None,
+            "book_id_before": book_off,
+            "book_id_after": None,
         },
         headers=auth_headers,
     )
@@ -447,8 +447,8 @@ def test_reorder_of_a_book_not_on_the_shelf_is_rejected(
         f"/api/shelves/{shelf_ref}/items/reorder",
         json={
             "moved_book_id": book_off,
-            "before_book_id": None,
-            "after_book_id": None,
+            "book_id_before": None,
+            "book_id_after": None,
         },
         headers=auth_headers,
     )

@@ -265,8 +265,8 @@ class ShelfService:
         if moved is None:
             raise ShelfReorderError("Moved book is not on this shelf")
 
-        before = self._neighbour(shelf, payload.before_book_id)
-        after = self._neighbour(shelf, payload.after_book_id)
+        before = self._neighbour(shelf, payload.book_id_before)
+        after = self._neighbour(shelf, payload.book_id_after)
         others = self.db.query(ShelfPlacement).filter(
             ShelfPlacement.shelf_id == shelf.id, ShelfPlacement.id != moved.id
         )

@@ -182,18 +182,18 @@ class UserBookResponse(UserBookBase):
 # Shelf schemas
 class ShelfReorderRequest(BaseModel):
     moved_book_id: int
-    before_book_id: Optional[int] = None
-    after_book_id: Optional[int] = None
+    book_id_before: Optional[int] = None
+    book_id_after: Optional[int] = None
     edge: Literal["top", "bottom"] | None = None
 
     @model_validator(mode="after")
     def validate_destination(self):
         if self.edge and (
-            self.before_book_id is not None or self.after_book_id is not None
+            self.book_id_before is not None or self.book_id_after is not None
         ):
             raise ValueError("Choose an edge or neighbours, not both")
 
-        if self.moved_book_id in (self.before_book_id, self.after_book_id):
+        if self.moved_book_id in (self.book_id_before, self.book_id_after):
             raise ValueError("A book cannot be its own neighbour")
 
         return self

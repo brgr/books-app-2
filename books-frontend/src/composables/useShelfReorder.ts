@@ -95,8 +95,8 @@ export function useShelfReorder(options: ShelfReorderOptions) {
 
     await persist({
       moved_book_id: movedBook.id,
-      before_book_id: beforeBook?.id ?? null,
-      after_book_id: afterBook?.id ?? null,
+      book_id_before: beforeBook?.id ?? null,
+      book_id_after: afterBook?.id ?? null,
     });
   }
 

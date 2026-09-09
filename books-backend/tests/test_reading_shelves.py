@@ -46,7 +46,7 @@ def test_drag_after_loaded_boundary_uses_unloaded_successor(
     # Initial order: D, C, B, A. Move A before D => A, D, C, B
     response = client.post(
         "/api/shelves/reading:want_to_read/items/reorder",
-        json={"moved_book_id": book_a, "after_book_id": book_d},
+        json={"moved_book_id": book_a, "book_id_after": book_d},
         headers=auth_headers,
     )
     assert response.status_code == 204
@@ -55,7 +55,7 @@ def test_drag_after_loaded_boundary_uses_unloaded_successor(
     # the backend must find unseen B and keep A before it, producing D, C, A, B
     response = client.post(
         "/api/shelves/reading:want_to_read/items/reorder",
-        json={"moved_book_id": book_a, "before_book_id": book_c},
+        json={"moved_book_id": book_a, "book_id_before": book_c},
         headers=auth_headers,
     )
     assert response.status_code == 204
@@ -127,7 +127,7 @@ def test_an_invalid_shelf_ref_has_a_helpful_error(client, auth_headers):
 
     reorder = client.post(
         "/api/shelves/custom:7/items/reorder",
-        json={"moved_book_id": 1, "before_book_id": None, "after_book_id": None},
+        json={"moved_book_id": 1, "book_id_before": None, "book_id_after": None},
         headers=auth_headers,
     )
 
@@ -156,8 +156,8 @@ def test_shelf_reorder_updates_order(client, auth_headers, sample_book_data):
         "/api/shelves/reading:want_to_read/items/reorder",
         json={
             "moved_book_id": book_one_id,
-            "before_book_id": None,
-            "after_book_id": book_two_id,
+            "book_id_before": None,
+            "book_id_after": book_two_id,
         },
         headers=auth_headers,
     )
@@ -189,8 +189,8 @@ def test_shelf_reorder_between_two_items(client, auth_headers, sample_book_data)
         "/api/shelves/reading:want_to_read/items/reorder",
         json={
             "moved_book_id": book_a_id,
-            "before_book_id": book_c_id,
-            "after_book_id": book_b_id,
+            "book_id_before": book_c_id,
+            "book_id_after": book_b_id,
         },
         headers=auth_headers,
     )
@@ -228,8 +228,8 @@ def test_shelf_reorder_with_inverted_neighbours_rebalances(
         "/api/shelves/reading:want_to_read/items/reorder",
         json={
             "moved_book_id": book_a_id,
-            "before_book_id": book_b_id,
-            "after_book_id": book_c_id,
+            "book_id_before": book_b_id,
+            "book_id_after": book_c_id,
         },
         headers=auth_headers,
     )

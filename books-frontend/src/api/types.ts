@@ -84,8 +84,8 @@ export interface UserBook {
 export interface ShelfReorderRequest {
   moved_book_id: number;
   edge?: "top" | "bottom";
-  before_book_id?: number | null;
-  after_book_id?: number | null;
+  book_id_before?: number | null;
+  book_id_after?: number | null;
 }
 
 export interface Book {
