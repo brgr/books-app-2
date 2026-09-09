@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { RouterLink } from "vue-router";
 import { addBookToShelf, getBookShelves, getShelves, removeBookFromShelf } from "../../api/books";
 import type { Shelf } from "../../api/types";
 import { cacheKeys } from "../../cache/keys";
@@ -61,7 +62,14 @@ async function toggleShelf(shelf: Shelf) {
     <p v-else-if="!bookShelves" class="empty">Loading shelves...</p>
     <p v-else-if="!selectedCustomShelves.length" class="empty">Not in any shelves.</p>
     <ul v-else class="shelf-list" aria-label="Custom shelves">
-      <li v-for="shelf in selectedCustomShelves" :key="shelf.ref">{{ shelf.display_name }}</li>
+      <li v-for="shelf in selectedCustomShelves" :key="shelf.ref">
+        <RouterLink
+          :to="{ name: 'custom-shelf', params: { id: shelf.ref.slice('custom:'.length) } }"
+          class="shelf-link"
+        >
+          {{ shelf.display_name }}
+        </RouterLink>
+      </li>
     </ul>
   </section>
 
@@ -132,10 +140,20 @@ h2 {
   margin: 0;
   list-style: none;
 }
-.shelf-list li {
+.shelf-link {
+  display: block;
   padding: var(--spacing-xs) var(--spacing-sm);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
+  color: var(--color-primary);
+  text-decoration: none;
+}
+.shelf-link:hover {
+  border-color: var(--color-primary);
+}
+.shelf-link:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 .shelf-options {
   display: flex;
