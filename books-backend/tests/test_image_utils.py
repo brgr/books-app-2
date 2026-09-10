@@ -155,6 +155,26 @@ async def test_download_cover_image_invalid_url():
     assert result is None
 
 
+@pytest.mark.parametrize("error", [OSError("disk full"), TypeError("bug")])
+async def test_download_storage_error_handling(monkeypatch, error):
+    from app.covers import image_utils
+
+    async def fake_fetch(url):
+        return _png_bytes((10, 15)), "png"
+
+    def failed_store(*args):
+        raise error
+
+    monkeypatch.setattr(image_utils, "fetch_cover_image", fake_fetch)
+    monkeypatch.setattr(image_utils, "store_cover_image", failed_store)
+
+    if isinstance(error, OSError):
+        assert await download_cover_image("https://example.com/cover.png") is None
+    else:
+        with pytest.raises(TypeError, match="bug"):
+            await download_cover_image("https://example.com/cover.png")
+
+
 async def test_download_cover_image_nonexistent_url():
     """Test that nonexistent URLs return None."""
     result = await download_cover_image("https://example.com/nonexistent-image.jpg")

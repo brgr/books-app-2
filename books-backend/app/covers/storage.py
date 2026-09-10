@@ -59,7 +59,7 @@ def _create_thumbnail(content: bytes, cover_id: uuid.UUID) -> str | None:
         )
 
         return f"{settings.uploads_url_prefix}/covers/thumbnails/{thumb_filename}"
-    except Exception as exc:
+    except (OSError, ValueError, Image.DecompressionBombError) as exc:
         print(f"Failed to generate cover thumbnail: {exc}")
         return None
 

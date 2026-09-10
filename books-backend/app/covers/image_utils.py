@@ -84,6 +84,41 @@ async def _fetch_image(client: httpx.AsyncClient, url: str) -> tuple[bytes, str]
     return response.content, extension
 
 
+async def _select_google_zoom_image(
+    client: httpx.AsyncClient,
+    full_image_url: str,
+    full_image_bytes: bytes,
+    full_image_extension: str,
+) -> tuple[bytes, str]:
+    """
+    A higher Google zoom can return a placeholder or a cropped image.
+    Therefore, we check the thumbnail and the full image before replacing the thumbnail with a higher-resolution image.
+    If they don't match, we use the thumbnail instead of the full image.
+    """
+    fallback_url = _zoom_fallback_url(full_image_url)
+
+    if not fallback_url:
+        return full_image_bytes, full_image_extension
+
+    try:
+        fallback_content, fallback_extension = await _fetch_image(client, fallback_url)
+
+        if not _is_google_books_placeholder(fallback_content):
+            with (
+                Image.open(BytesIO(full_image_bytes)) as full,
+                Image.open(BytesIO(fallback_content)) as thumbnail,
+            ):
+                if _is_google_books_placeholder(full_image_bytes) or not covers_match(
+                    full, thumbnail
+                ):
+                    return fallback_content, fallback_extension
+    except (httpx.HTTPError, OSError, ValueError):
+        # An unavailable thumbnail must not prevent a valid full image being saved
+        pass
+
+    return full_image_bytes, full_image_extension
+
+
 async def fetch_cover_image(url: str) -> tuple[bytes, str] | None:
     """Fetch a cover, validating Google zoom variants against their thumbnail."""
     if not url or not url.startswith("http"):
@@ -93,27 +128,9 @@ async def fetch_cover_image(url: str) -> tuple[bytes, str] | None:
         async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
             content, extension = await _fetch_image(client, url)
 
-            # A higher Google zoom can return a placeholder or a cropped image.
-            # Therefore, we reuse the upgrade search's perceptual match check before
-            # replacing the thumbnail with a higher-resolution image.
-            fallback_url = _zoom_fallback_url(url)
-            if fallback_url:
-                try:
-                    fb_content, fb_extension = await _fetch_image(client, fallback_url)
-
-                    if not _is_google_books_placeholder(fb_content):
-                        with (
-                            Image.open(BytesIO(content)) as full,
-                            Image.open(BytesIO(fb_content)) as thumbnail,
-                        ):
-                            matches = covers_match(full, thumbnail)
-
-                        if _is_google_books_placeholder(content) or not matches:
-                            content, extension = fb_content, fb_extension
-                except (httpx.HTTPError, OSError, ValueError):
-                    # An unavailable thumbnail must not prevent a valid full
-                    # image from being saved.
-                    pass
+            content, extension = await _select_google_zoom_image(
+                client, url, content, extension
+            )
 
             # A successful HTTP response can still be empty or contain an error page.
             # Decode before writing anything, so we can catch errors early.
@@ -125,8 +142,8 @@ async def fetch_cover_image(url: str) -> tuple[bytes, str] | None:
     except httpx.HTTPError as e:
         print(f"Failed to download cover image from {url}: {e}")
         return None
-    except Exception as e:
-        print(f"Unexpected error downloading cover image: {e}")
+    except (httpx.InvalidURL, OSError, ValueError, Image.DecompressionBombError) as e:
+        print(f"Invalid cover image or URL: {e}")
         return None
 
 
@@ -139,6 +156,6 @@ async def download_cover_image(url: str) -> tuple[str, str | None] | None:
 
     try:
         return store_cover_image(*result)
-    except Exception as e:
+    except OSError as e:
         print(f"Failed to store cover image: {e}")
         return None

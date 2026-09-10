@@ -1,6 +1,7 @@
 """Google Books API integration for book search."""
 
 import re
+from json import JSONDecodeError
 
 import httpx
 
@@ -76,9 +77,16 @@ async def search_cover_images(
     except httpx.HTTPError as e:
         print(f"Google Books cover search error: {e!r}")
         return []
+    except (JSONDecodeError, UnicodeDecodeError) as e:
+        print(f"Invalid Google Books cover search response: {e!r}")
+        return []
+
+    if not isinstance(data, dict) or not isinstance(data.get("items", []), list):
+        return []
 
     seen: set[str] = set()
     results: list[dict] = []
+
     for item in data.get("items", []):
         volume_info = item.get("volumeInfo", {}) or {}
         image_links = volume_info.get("imageLinks") or {}
@@ -89,13 +97,17 @@ async def search_cover_images(
             or image_links.get("thumbnail")
             or image_links.get("smallThumbnail")
         )
+
         if not raw:
             continue
+
         thumb = _upgrade_thumbnail(raw, zoom=1)
         full = _upgrade_thumbnail(raw, zoom=2)
         dedupe_key = re.sub(r"[?&]zoom=\d+", "", full)
+
         if dedupe_key in seen:
             continue
+
         seen.add(dedupe_key)
 
         result_isbn: str | None = None
@@ -159,7 +171,11 @@ async def search_google_books(query: str, max_results: int = 10) -> list[dict]:
             data = response.json()
 
         # Parse and normalize the results
+        if not isinstance(data, dict) or not isinstance(data.get("items", []), list):
+            return []
+
         books = []
+
         for item in data.get("items", []):
             book = _normalize_book_data(item)
             if book:
@@ -179,8 +195,8 @@ async def search_google_books(query: str, max_results: int = 10) -> list[dict]:
         # Network or protocol error.
         print(f"Google Books API error: {e!r}")
         return []
-    except Exception as e:
-        print(f"Unexpected error searching Google Books: {e!r}")
+    except (JSONDecodeError, UnicodeDecodeError) as e:
+        print(f"Invalid Google Books search response: {e!r}")
         return []
 
 
@@ -260,6 +276,7 @@ def _normalize_book_data(item: dict) -> dict | None:
             "google_books_id": google_books_id,
         }
 
-    except Exception as e:
+    except (AttributeError, TypeError) as e:
+        # External metadata may have nulls or incorrect field types.
         print(f"Error normalizing book data: {e}")
         return None

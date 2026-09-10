@@ -4,6 +4,7 @@ import zipfile
 from datetime import datetime
 from pathlib import Path
 
+import pytest
 from fastapi import status
 
 from app.book_events import current_reading_shelf, derive_reading_date_values
@@ -390,6 +391,47 @@ def test_import_preserves_multiline_markdown_notes(client, auth_headers, db_sess
 
 
 # --- Cover images ---
+
+
+@pytest.mark.parametrize("failure", ["archive", "storage", "bug"])
+def test_import_cover_failures(
+    client, auth_headers, db_session, monkeypatch, caplog, failure
+):
+    from app.imports import reading_list_import
+
+    # Alembic's logging configuration disables application loggers during setup
+    monkeypatch.setattr(reading_list_import.logger, "disabled", False)
+    zip_bytes = _make_zip(
+        [{"Reading List ID": "COVER-ID", "Title": "With Cover"}],
+        images={"COVER-ID.png": b"image"},
+    )
+    if failure == "archive":
+        original_read = zipfile.ZipFile.read
+
+        def read(self, name, *args, **kwargs):
+            if name.startswith("images/"):
+                raise zipfile.BadZipFile("Bad CRC")
+            return original_read(self, name, *args, **kwargs)
+
+        monkeypatch.setattr(zipfile.ZipFile, "read", read)
+    else:
+
+        def store(*args):
+            if failure == "storage":
+                raise OSError("disk full")
+            raise TypeError("storage bug")
+
+        monkeypatch.setattr(reading_list_import, "store_cover_image", store)
+
+    if failure == "bug":
+        with pytest.raises(TypeError, match="storage bug"):
+            _upload_zip(client, auth_headers, zip_bytes)
+    else:
+        response = _upload_zip(client, auth_headers, zip_bytes)
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["imported"] == 1
+        assert db_session.query(Book).one().cover_image_url is None
+        assert "COVER-ID.png" in caplog.text
 
 
 def test_import_cover_image(client, auth_headers, db_session):

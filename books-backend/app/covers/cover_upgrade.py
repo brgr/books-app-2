@@ -8,9 +8,11 @@ Job state is in-memory (single-process assumption).
 
 import asyncio
 import io
+import logging
 import time
 import uuid
 from dataclasses import dataclass, field
+from json import JSONDecodeError
 from pathlib import Path
 from typing import Literal
 
@@ -20,7 +22,9 @@ from PIL import Image
 
 from app.config import settings
 from app.covers.cover_matching import MatchQuality, cover_match_quality
-from app.google_books import GoogleBooksRateLimitError, search_cover_images
+from app.google_books import search_cover_images
+
+logger = logging.getLogger(__name__)
 
 # Require the upgrade to be meaningfully larger.
 MIN_SIZE_RATIO = 1.3
@@ -128,7 +132,9 @@ async def _run_job(
             )
             job.results = results
             job.status = "done"
-        except Exception as e:  # Surface to client
+        except Exception as e:
+            # This detached task must report all failures to polling clients
+            logger.exception("Cover upgrade job %s failed", job.id)
             job.status = "failed"
             job.error = f"{type(e).__name__}: {e}"
         finally:
@@ -138,6 +144,7 @@ async def _run_job(
 def _load_local_cover(url_path: str) -> Image.Image:
     rel = url_path.removeprefix(f"{settings.uploads_url_prefix}/")
     path = Path(settings.uploads_dir_path) / rel
+
     return Image.open(path).convert("RGB")
 
 
@@ -156,22 +163,18 @@ async def _gather_candidates(
             seen.add(url)
             out.append({**it, "source": source})
 
-    # Google Books: title+author and ISBN.
+    # Google Books: title+author and ISBN
     google_queries: list[dict] = []
+
     if title or author:
         google_queries.append({"title": title, "author": author})
     if isbn:
         google_queries.append({"isbn": isbn})
-    for q in google_queries:
-        try:
-            _extend(await search_cover_images(**q, max_results=40), "google_books")
-        except GoogleBooksRateLimitError:
-            raise
-        except Exception:
-            # search_cover_images already swallows most errors and returns []
-            pass
 
-    # OpenLibrary: direct ISBN cover + edition search.
+    for q in google_queries:
+        _extend(await search_cover_images(**q, max_results=40), "google_books")
+
+    # OpenLibrary: direct ISBN cover + edition search
     if isbn:
         _extend(
             [
@@ -206,14 +209,26 @@ async def _openlibrary_search(params: dict) -> list[dict]:
         async with httpx.AsyncClient(timeout=10.0) as client:
             r = await client.get("https://openlibrary.org/search.json", params=params)
             r.raise_for_status()
-            docs = r.json().get("docs", [])
-    except Exception:
+            data = r.json()
+    except (httpx.HTTPError, JSONDecodeError, UnicodeDecodeError):
         return []
+
+    if not isinstance(data, dict):
+        return []
+
+    docs = data.get("docs", [])
+
+    if not isinstance(docs, list):
+        return []
+
     items: list[dict] = []
+
     for doc in docs:
         cid = doc.get("cover_i")
+
         if not cid:
             continue
+
         items.append(
             {
                 "title": doc.get("title", ""),
@@ -222,6 +237,7 @@ async def _openlibrary_search(params: dict) -> list[dict]:
                 "image_url": f"https://covers.openlibrary.org/b/id/{cid}-L.jpg",
             }
         )
+
     return items
 
 
@@ -273,6 +289,13 @@ async def _fetch_image(client: httpx.AsyncClient, url: str) -> Image.Image | Non
     try:
         r = await client.get(url)
         r.raise_for_status()
+
         return Image.open(io.BytesIO(r.content)).convert("RGB")
-    except Exception:
+    except (
+        httpx.HTTPError,
+        httpx.InvalidURL,
+        OSError,
+        ValueError,
+        Image.DecompressionBombError,
+    ):
         return None

@@ -252,7 +252,10 @@ async def test_run_job_transitions_to_done(monkeypatch, tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_run_job_transitions_to_failed_on_exception(monkeypatch, tmp_path):
+async def test_run_job_transitions_to_failed_on_exception(
+    monkeypatch, tmp_path, caplog
+):
+    monkeypatch.setattr(cover_upgrade.logger, "disabled", False)
     monkeypatch.setattr(
         cover_upgrade.settings, "uploads_dir", str(tmp_path), raising=False
     )
@@ -270,6 +273,17 @@ async def test_run_job_transitions_to_failed_on_exception(monkeypatch, tmp_path)
     )
     assert job.status == "failed"
     assert "network is down" in (job.error or "")
+    assert job.finished_at is not None
+    assert any(record.exc_info for record in caplog.records)
+
+
+async def test_gather_candidates_does_not_hide_programming_errors(monkeypatch):
+    async def broken_search(**kwargs):
+        raise TypeError("broken search implementation")
+
+    monkeypatch.setattr(cover_upgrade, "search_cover_images", broken_search)
+    with pytest.raises(TypeError, match="broken search implementation"):
+        await cover_upgrade._gather_candidates(title="T", author=None, isbn=None)
 
 
 def test_gc_drops_old_finished_jobs():

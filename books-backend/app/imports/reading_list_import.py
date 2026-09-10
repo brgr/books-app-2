@@ -1,7 +1,9 @@
 import csv
 import io
+import logging
 import re
 import zipfile
+import zlib
 from datetime import datetime
 
 from sqlalchemy.orm import Session
@@ -29,6 +31,8 @@ from app.models import (
     UserBook,
 )
 from app.shelves.shelves import place_on_shelf
+
+logger = logging.getLogger(__name__)
 
 
 class ImportReadingListError(ValueError):
@@ -115,6 +119,30 @@ def _import_lists(db: Session, user_book: UserBook, raw: str) -> None:
         place_on_shelf(db, shelf, user_book)
 
 
+def _import_cover(zf: zipfile.ZipFile, img_name: str) -> tuple[str, str | None] | None:
+    """Store an archived cover and return its URLs, or None if unavailable."""
+    try:
+        img_data = zf.read(f"images/{img_name}")
+    except (
+        KeyError,
+        OSError,
+        zipfile.BadZipFile,
+        RuntimeError,
+        EOFError,
+        zlib.error,
+    ):
+        # ZIP members may be missing, corrupt, encrypted, or unsupported.
+        logger.warning("Failed to read imported cover %s", img_name, exc_info=True)
+        return None
+
+    extension = img_name.rsplit(".", 1)[-1] if "." in img_name else None
+    try:
+        return store_cover_image(img_data, extension)
+    except OSError:
+        logger.warning("Failed to store imported cover %s", img_name, exc_info=True)
+        return None
+
+
 def import_reading_list_from_bytes(
     db: Session, user_id: int, content: bytes, filename: str | None = None
 ) -> dict[str, int]:
@@ -183,14 +211,9 @@ def import_reading_list_from_bytes(
         if reading_list_id:
             for img_name in image_names:
                 if img_name.startswith(reading_list_id):
-                    try:
-                        img_data = zf.read(f"images/{img_name}")
-                        ext = img_name.rsplit(".", 1)[-1] if "." in img_name else None
-                        cover_url, thumbnail_url = store_cover_image(img_data, ext)
-                        book.cover_image_url = cover_url
-                        book.cover_thumbnail_url = thumbnail_url
-                    except Exception:
-                        pass
+                    cover = _import_cover(zf, img_name)
+                    if cover is not None:
+                        book.cover_image_url, book.cover_thumbnail_url = cover
                     break
 
         book_id = book.id
