@@ -4,7 +4,7 @@ const viewMode = defineModel<"list" | "grid">({ required: true });
 
 <template>
   <div class="view-toggle">
-    <button @click="viewMode = 'list'" :class="['view-btn', { active: viewMode === 'list' }]" title="List view">
+    <button :class="['view-btn', { active: viewMode === 'list' }]" title="List view" @click="viewMode = 'list'">
       <svg
         width="18"
         height="18"
@@ -24,7 +24,7 @@ const viewMode = defineModel<"list" | "grid">({ required: true });
       </svg>
     </button>
 
-    <button @click="viewMode = 'grid'" :class="['view-btn', { active: viewMode === 'grid' }]" title="Grid view">
+    <button :class="['view-btn', { active: viewMode === 'grid' }]" title="Grid view" @click="viewMode = 'grid'">
       <svg
         width="18"
         height="18"

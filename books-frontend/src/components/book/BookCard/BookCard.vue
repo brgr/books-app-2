@@ -35,7 +35,7 @@ const coverUrl = computed(() => props.book.cover_thumbnail_url || props.book.cov
           class="book-cover book-cover-clickable"
           loading="lazy"
         />
-        <div class="book-cover-placeholder book-cover-clickable" v-else>No Cover</div>
+        <div v-else class="book-cover-placeholder book-cover-clickable">No Cover</div>
       </router-link>
 
       <div class="book-details">

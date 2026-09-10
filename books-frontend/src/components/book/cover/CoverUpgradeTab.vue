@@ -34,8 +34,8 @@ const { status, results, errorMsg } = useCoverUpgradeSearch(props.bookId);
       :key="index"
       :thumbnail-url="getMediaUrl(c.thumbnail_url)"
       :alt="`Candidate ${index + 1}`"
-      @select="emit('select', c.image_url)"
       :title="`${c.width}×${c.height} · ${c.source}`"
+      @select="emit('select', c.image_url)"
     >
       <span class="cover-size">{{ c.width }}&times;{{ c.height }}</span>
       <span class="cover-meta">

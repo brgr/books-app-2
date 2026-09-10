@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { marked } from "marked";
+import DOMPurify from "dompurify";
 
 const props = defineProps<{
   notes: string;
@@ -22,13 +23,16 @@ watch(
   },
 );
 
-const rendered = computed(() => {
+const renderedNotes = computed(() => {
   const raw = props.notes.trim();
+
   if (!raw) {
     return "";
   }
 
-  return marked.parse(raw, { async: false, breaks: true, gfm: true }) as string;
+  return DOMPurify.sanitize(marked.parse(raw, { async: false, breaks: true, gfm: true }), {
+    USE_PROFILES: { html: true },
+  });
 });
 
 const dirty = computed(() => draft.value !== props.notes);
@@ -62,18 +66,21 @@ function save() {
         rows="6"
         placeholder="Add your notes about this book... (Markdown supported)"
       ></textarea>
+
       <div class="notes-actions">
-        <button type="button" class="btn-secondary" data-test="cancel" @click="cancel" :disabled="saving">
+        <button type="button" class="btn-secondary" data-test="cancel" :disabled="saving" @click="cancel">
           Cancel
         </button>
-        <button class="btn-primary" data-test="save" @click="save" :disabled="saving || !dirty">
+        <button class="btn-primary" data-test="save" :disabled="saving || !dirty" @click="save">
           {{ saving ? "Saving..." : "Save Notes" }}
         </button>
       </div>
     </template>
     <template v-else>
-      <div v-if="rendered" class="notes-rendered" v-html="rendered"></div>
+      <!-- eslint-disable-next-line vue/no-v-html -- renderedNotes is sanitized with DOMPurify -->
+      <div v-if="renderedNotes" class="notes-rendered" v-html="renderedNotes"></div>
       <p v-else class="notes-empty">No notes yet.</p>
+
       <div class="notes-actions">
         <button type="button" class="btn-secondary" data-test="edit" @click="startEditing">Update</button>
       </div>

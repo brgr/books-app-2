@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "axios": "^1.18.1",
+    "dompurify": "^3.4.15",
     "idb": "^8.0.3",
     "marked": "^18.0.2",
     "serve": "^14.2.5",

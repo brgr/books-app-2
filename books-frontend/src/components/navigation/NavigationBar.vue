@@ -87,9 +87,9 @@ function closeMenu() {
           <button
             class="menu-toggle"
             type="button"
-            @click="toggleMenu"
             :aria-expanded="isMenuOpen"
             aria-label="Open user menu"
+            @click="toggleMenu"
           >
             <span></span>
             <span></span>

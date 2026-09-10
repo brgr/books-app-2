@@ -125,7 +125,7 @@ async function handleSelectBook(book: GoogleBookResult) {
             <div v-for="(book, index) in searchResults" :key="book.google_books_id || index" class="result-item">
               <div class="result-content">
                 <img v-if="book.thumbnail" :src="book.thumbnail" :alt="book.title" class="book-thumbnail" />
-                <div class="book-thumbnail-placeholder" v-else>No Image</div>
+                <div v-else class="book-thumbnail-placeholder">No Image</div>
                 <div class="book-info">
                   <h5 class="book-title">{{ book.title }}</h5>
                   <p class="book-author">{{ book.author }}</p>
@@ -141,7 +141,7 @@ async function handleSelectBook(book: GoogleBookResult) {
                   </p>
                 </div>
               </div>
-              <button @click="handleSelectBook(book)" class="btn-select" :disabled="addingBook">
+              <button class="btn-select" :disabled="addingBook" @click="handleSelectBook(book)">
                 {{ addingBook ? "Adding..." : "Add book" }}
               </button>
             </div>

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { mount } from "@vue/test-utils";
 import { nextTick } from "vue";
 import BookNotes from "./BookNotes.vue";
@@ -12,6 +12,25 @@ describe("BookNotes", () => {
   it("shows empty state when notes are blank", () => {
     const wrapper = mount(BookNotes, { props: { notes: "", saving: false } });
     expect(wrapper.text()).toContain("No notes yet");
+  });
+
+  it("sanitizes HTML and unsafe links while preserving Markdown formatting", () => {
+    const wrapper = mount(BookNotes, {
+      props: {
+        notes:
+          '**safe** [link](https://example.com) [unsafe](javascript:alert%281%29)\n\n<script>alert(1)</script><img src="x" onerror="alert(1)">',
+        saving: false,
+      },
+    });
+
+    const rendered = wrapper.get(".notes-rendered");
+
+    expect(rendered.get("strong").text()).toBe("safe");
+    expect(rendered.get('a[href="https://example.com"]').text()).toBe("link");
+    expect(rendered.find("script").exists()).toBe(false);
+    expect(rendered.get("img").attributes("onerror")).toBeUndefined();
+    expect(rendered.find('a[href^="javascript:"]').exists()).toBe(false);
+    expect(rendered.text()).toContain("unsafe");
   });
 
   it("switches to edit mode when Update is clicked", async () => {

@@ -96,8 +96,8 @@ async function handleImport() {
             <p class="text-muted">Import books from a Reading List app export (.zip file).</p>
           </div>
           <div class="import-controls">
-            <input type="file" accept=".zip" @change="onFileSelected" :disabled="isImporting" />
-            <button class="btn-primary" @click="handleImport" :disabled="!importFile || isImporting">
+            <input type="file" accept=".zip" :disabled="isImporting" @change="onFileSelected" />
+            <button class="btn-primary" :disabled="!importFile || isImporting" @click="handleImport">
               {{ isImporting ? "Importing..." : "Import" }}
             </button>
           </div>
@@ -150,8 +150,8 @@ async function handleImport() {
             </p>
           </div>
           <div class="modal-footer">
-            <button @click="cancelDelete" :disabled="isDeleting">Cancel</button>
-            <button class="btn-danger" @click="confirmDelete" :disabled="isDeleting">
+            <button :disabled="isDeleting" @click="cancelDelete">Cancel</button>
+            <button class="btn-danger" :disabled="isDeleting" @click="confirmDelete">
               {{ isDeleting ? "Deleting..." : "Delete All" }}
             </button>
           </div>

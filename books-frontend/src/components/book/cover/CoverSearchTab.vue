@@ -69,7 +69,7 @@ watch(
       :disabled="loading"
       @keyup.enter="handleSearch"
     />
-    <button @click="handleSearch" class="btn-primary" :disabled="loading">
+    <button class="btn-primary" :disabled="loading" @click="handleSearch">
       {{ loading ? "Searching..." : "Search" }}
     </button>
   </div>
@@ -88,8 +88,8 @@ watch(
       :key="result.google_books_id || index"
       :thumbnail-url="result.thumbnail"
       :alt="result.title"
-      @select="emit('select', result.image_url)"
       :title="`${result.title}${result.author ? ' — ' + result.author : ''}`"
+      @select="emit('select', result.image_url)"
     >
       <span class="cover-title">{{ result.title }}</span>
       <span v-if="result.author" class="cover-author">{{ result.author }}</span>

@@ -291,7 +291,7 @@ function handleEdit() {
           <EventTimeline :events="events ?? []" />
 
           <div class="book-actions">
-            <button @click="handleEdit" class="btn-primary">Edit Book</button>
+            <button class="btn-primary" @click="handleEdit">Edit Book</button>
           </div>
         </div>
       </div>
