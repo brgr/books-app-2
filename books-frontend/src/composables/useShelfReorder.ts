@@ -7,6 +7,8 @@ export interface ShelfReorderOptions {
    * The very array being rendered: vuedraggable reorders it in place.
    */
   books: Ref<Book[]>;
+  /** Whether there are more books that are not yet loaded. */
+  hasMore: Ref<boolean>;
   /** Positions are persisted against this shelf. */
   shelf: ShelfRef;
   /** Whether reordering is allowed (no search filter or page load in progress). */
@@ -23,7 +25,7 @@ const clickGraceMs = 200;
  * click is really the tail of a drag rather than a tap on a book.
  */
 export function useShelfReorder(options: ShelfReorderOptions) {
-  const { books, shelf, enabled, refresh } = options;
+  const { books, hasMore, shelf, enabled, refresh } = options;
 
   const isDragging = ref(false);
   const lastDragTime = ref(0);
@@ -48,18 +50,27 @@ export function useShelfReorder(options: ShelfReorderOptions) {
     return isDragging.value || Date.now() - lastDragTime.value < clickGraceMs;
   }
 
-  async function persist(payload: ShelfReorderRequest) {
+  /**
+   * Persists changes to the shelf and updates the order of books based on the provided payload.
+   * On failure, it restores the previous order of books if provided.
+   */
+  async function persist(payload: ShelfReorderRequest, booksToRestoreOnFailure?: Book[]) {
     isSaving.value = true;
     message.value = "";
     error.value = "";
+
     try {
       await reorderShelfItem(shelf, payload);
     } catch (err) {
+      if (booksToRestoreOnFailure) books.value = booksToRestoreOnFailure;
+
       console.error("Failed to reorder books:", err);
       error.value = "Could not move the book. Please try again.";
     }
+
     try {
       await refresh();
+
       if (!error.value) message.value = payload.edge ? `Moved to ${payload.edge}.` : "Book order updated.";
     } catch (err) {
       console.error("Failed to refresh shelf:", err);
@@ -100,10 +111,25 @@ export function useShelfReorder(options: ShelfReorderOptions) {
     });
   }
 
-  /** Jumps a book to the top or bottom of the shelf, as the context menu offers. */
+  /** Moves a book to the top or bottom of the shelf. */
   async function moveBookToEdge(bookId: number, edge: "top" | "bottom") {
     if (!enabled.value || isSaving.value) return;
-    await persist({ moved_book_id: bookId, edge });
+
+    const previousBooks = [...books.value];
+    const bookToMove = previousBooks.find((book) => book.id === bookId);
+
+    if (!bookToMove) return;
+
+    const updatedBooks = previousBooks.filter((book) => book.id !== bookId);
+
+    if (edge === "top") updatedBooks.unshift(bookToMove);
+    // When hasMore is true, the bottom of the shelf is not actually the last book in the list.
+    // In that case, we don't actually move the book as it wouldn't be loaded yet
+    // (we just remove it from the list, as done above).
+    else if (!hasMore.value) updatedBooks.push(bookToMove);
+    books.value = updatedBooks;
+
+    await persist({ moved_book_id: bookId, edge }, previousBooks);
   }
 
   return {

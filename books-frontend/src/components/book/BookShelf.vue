@@ -71,6 +71,7 @@ const {
   moveBookToEdge,
 } = useShelfReorder({
   books,
+  hasMore,
   shelf: props.shelf,
   enabled: isReorderable,
   refresh: refreshLoaded,
