@@ -5,11 +5,11 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "alembic>=1.18.5",
-    "fastapi[standard]>=0.139.0",
-    "sqlalchemy>=2.0.51",
-    "pwdlib[argon2]>=0.3.0",
-    "pydantic-settings>=2.14.2",
+    "alembic>=1.19.2",
+    "fastapi[standard]>=0.141.1",
+    "sqlalchemy>=2.0.52",
+    "pwdlib[argon2]>=0.3.1",
+    "pydantic-settings>=2.15.0",
     "httpx>=0.28.1",
     "python-multipart>=0.0.32",
     "PyJWT>=2.13.0",
@@ -19,13 +19,17 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "ty>=0.0.56",
+    "ty>=0.0.80",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "httpx>=0.28.1", # Required by TestClient
-    "ruff>=0.15.20",
+    "ruff>=0.16.6",
     "pytest-xdist>=3.8.0",
 ]
+
+[tool.ruff.lint]
+# Preserve the project's rule set from before Ruff 0.16 expanded its defaults.
+select = ["E4", "E7", "E9", "F"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
