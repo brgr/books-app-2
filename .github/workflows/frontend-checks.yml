@@ -30,9 +30,8 @@ jobs:
       - name: Run typecheck
         run: npm run typecheck
 
-# TODO: Enable linting once we have fixed the issues
-#      - name: Run lint
-#        run: npm run lint
+      - name: Run lint
+        run: npm run lint
 
   test:
     runs-on: ubuntu-latest
