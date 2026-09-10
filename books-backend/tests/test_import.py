@@ -1,7 +1,7 @@
 import csv
 import io
 import zipfile
-from datetime import datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
@@ -258,7 +258,7 @@ def test_import_status_paused(client, auth_headers, db_session):
         )
         .one()
     )
-    assert pause_event.occurred_at.date() == datetime(2025, 4, 1).date()
+    assert pause_event.occurred_at.date() == date(2025, 4, 1)
 
 
 def test_import_preserves_month_precision_reading_date(
@@ -280,7 +280,8 @@ def test_import_preserves_month_precision_reading_date(
 
     user_book = db_session.query(UserBook).one()
     assert derive_reading_date_values(db_session, user_book.id)[0] == ReadingDate(
-        datetime(2025, 2, 1), ReadingDatePrecision.MONTH
+        datetime(2025, 2, 1, tzinfo=UTC).replace(tzinfo=None),
+        ReadingDatePrecision.MONTH,
     )
 
 
@@ -301,7 +302,7 @@ def test_import_preserves_year_precision_reading_date(client, auth_headers, db_s
 
     user_book = db_session.query(UserBook).one()
     assert derive_reading_date_values(db_session, user_book.id)[0] == ReadingDate(
-        datetime(2023, 1, 1), ReadingDatePrecision.YEAR
+        datetime(2023, 1, 1, tzinfo=UTC).replace(tzinfo=None), ReadingDatePrecision.YEAR
     )
 
 
@@ -823,7 +824,9 @@ def test_import_real_export_currently_reading(client, auth_headers, db_session):
     ekel = next(ub for book, ub in started if book.title == "Der Ekel")
     assert derive_reading_date_values(db_session, ekel.id)[
         0
-    ] == ReadingDate.from_datetime(datetime(2026, 4, 13))
+    ] == ReadingDate.from_datetime(
+        datetime(2026, 4, 13, tzinfo=UTC).replace(tzinfo=None)
+    )
 
     unix = next(
         ub
@@ -832,7 +835,9 @@ def test_import_real_export_currently_reading(client, auth_headers, db_session):
     )
     assert derive_reading_date_values(db_session, unix.id)[
         0
-    ] == ReadingDate.from_datetime(datetime(2026, 4, 18))
+    ] == ReadingDate.from_datetime(
+        datetime(2026, 4, 18, tzinfo=UTC).replace(tzinfo=None)
+    )
 
 
 def test_import_real_export_creates_custom_shelves(client, auth_headers, db_session):

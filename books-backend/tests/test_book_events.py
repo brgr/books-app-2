@@ -157,14 +157,14 @@ def test_timeline_ordering(db_session):
 
 def test_reading_date_normalizes_partial_calendar_values():
     assert ReadingDate(
-        datetime(2026, 4, 18, 14, 30), ReadingDatePrecision.DAY
-    ).value == datetime(2026, 4, 18)
+        datetime(2026, 4, 18, 14, 30, tzinfo=UTC), ReadingDatePrecision.DAY
+    ).value == datetime(2026, 4, 18, tzinfo=UTC)
     assert ReadingDate(
-        datetime(2026, 4, 18), ReadingDatePrecision.MONTH
-    ).value == datetime(2026, 4, 1)
+        datetime(2026, 4, 18, tzinfo=UTC), ReadingDatePrecision.MONTH
+    ).value == datetime(2026, 4, 1, tzinfo=UTC)
     assert ReadingDate(
-        datetime(2026, 4, 18), ReadingDatePrecision.YEAR
-    ).value == datetime(2026, 1, 1)
+        datetime(2026, 4, 18, tzinfo=UTC), ReadingDatePrecision.YEAR
+    ).value == datetime(2026, 1, 1, tzinfo=UTC)
     assert ReadingDate.unknown().value is None
 
 
@@ -176,14 +176,20 @@ def test_reading_events_persist_partial_and_unknown_dates(db_session):
     start_event = record_started_reading(
         db_session,
         user_book_id,
-        reading_date=ReadingDate(datetime(2026, 4, 18), ReadingDatePrecision.MONTH),
+        reading_date=ReadingDate(
+            datetime(2026, 4, 18, tzinfo=UTC), ReadingDatePrecision.MONTH
+        ),
     )
     finish_event = record_finished_reading(
         db_session, user_book_id, reading_date=ReadingDate.unknown()
     )
 
     started, finished = derive_reading_date_values(db_session, user_book_id)
-    assert started == ReadingDate(datetime(2026, 4, 1), ReadingDatePrecision.MONTH)
+    # Persisted calendar dates are returned without timezone information.
+    assert started == ReadingDate(
+        datetime(2026, 4, 1, tzinfo=UTC).replace(tzinfo=None),
+        ReadingDatePrecision.MONTH,
+    )
     assert finished == ReadingDate.unknown()
     assert start_event.occurred_at.date() == datetime.now(UTC).date()
     assert finish_event.occurred_at.date() == datetime.now(UTC).date()

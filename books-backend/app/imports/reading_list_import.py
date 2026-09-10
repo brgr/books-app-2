@@ -4,7 +4,7 @@ import logging
 import re
 import zipfile
 import zlib
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
@@ -63,7 +63,7 @@ def _parse_date(val: str) -> datetime | None:
     if not val:
         return None
     try:
-        return datetime.strptime(val, "%Y-%m-%d")
+        return datetime.strptime(val, "%Y-%m-%d").replace(tzinfo=UTC)
     except ValueError:
         return None
 
@@ -87,7 +87,7 @@ def _parse_reading_date(value: str) -> ReadingDate:
         ("%Y", ReadingDatePrecision.YEAR),
     ):
         try:
-            parsed = datetime.strptime(value, fmt)
+            parsed = datetime.strptime(value, fmt).replace(tzinfo=UTC)
         except ValueError:
             continue
 
