@@ -78,7 +78,7 @@ let authCheckComplete = false;
 let authCheckPromise: Promise<boolean> | null = null;
 
 // Navigation guard
-router.beforeEach(async (to, _from, next) => {
+router.beforeEach(async (to) => {
   // On first navigation, verify auth status via API (HttpOnly cookies)
   if (!authCheckComplete) {
     if (!authCheckPromise) {
@@ -92,12 +92,10 @@ router.beforeEach(async (to, _from, next) => {
 
   if (requiresAuth && !isAuthenticated()) {
     // Redirect to login if route requires auth and user is not authenticated
-    next({ name: "login" });
+    return { name: "login" };
   } else if (to.name === "login" && isAuthenticated()) {
     // Redirect to books if user is already authenticated and trying to access login
-    next({ name: "books" });
-  } else {
-    next();
+    return { name: "books" };
   }
 });
 

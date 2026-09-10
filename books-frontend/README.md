@@ -4,6 +4,10 @@ A Vue 3 frontend for managing your book collection.
 
 ## Setup
 
+Prerequisites:
+
+- NodeJS 24.15.0 or newer
+
 1. Install dependencies:
 
    ```bash
