@@ -5,14 +5,15 @@
   "type": "module",
   "description": "Full-stack end-to-end tests",
   "scripts": {
+    "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.1",
-    "@types/node": "^26.1.0",
-    "prettier": "3.9.4",
-    "typescript": "~6.0"
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.5.1",
+    "prettier": "3.9.6",
+    "typescript": "~6.0.3"
   }
 }
