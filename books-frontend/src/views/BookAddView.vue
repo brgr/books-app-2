@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isAxiosError } from "axios";
 import { onBeforeUnmount, ref } from "vue";
 import { useRouter } from "vue-router";
 import NavigationBar from "../components/navigation/NavigationBar.vue";
@@ -36,9 +37,10 @@ async function handleSearch() {
 
   try {
     searchResults.value = await searchGoogleBooks(searchQuery.value);
-  } catch (err: any) {
+  } catch (err) {
     console.error("Failed to search books:", err);
-    error.value = err.response?.data?.detail || "Failed to search books. Please try again.";
+    const detail = isAxiosError<{ detail?: unknown }>(err) ? err.response?.data?.detail : undefined;
+    error.value = typeof detail === "string" && detail ? detail : "Failed to search books. Please try again.";
   } finally {
     loading.value = false;
   }
@@ -68,9 +70,10 @@ async function handleSelectBook(book: GoogleBookResult) {
     if (!isUnmounted) {
       await router.push({ name: "books" });
     }
-  } catch (err: any) {
+  } catch (err) {
     console.error("Failed to add book:", err);
-    error.value = err.response?.data?.detail || "Failed to add book. Please try again.";
+    const detail = isAxiosError<{ detail?: unknown }>(err) ? err.response?.data?.detail : undefined;
+    error.value = typeof detail === "string" && detail ? detail : "Failed to add book. Please try again.";
   } finally {
     addingBook.value = false;
   }

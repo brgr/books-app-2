@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { isAxiosError } from "axios";
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { deleteBook, getBook, updateBook } from "../api/books";
@@ -99,9 +100,10 @@ async function handleSubmit() {
     await invalidateCache.bookUpdated(book.value.id);
 
     router.push({ name: "book-detail", params: { id: book.value.id } });
-  } catch (err: any) {
+  } catch (err) {
     console.error("Failed to save book:", err);
-    error.value = err.response?.data?.detail || "Failed to save book. Please try again.";
+    const detail = isAxiosError<{ detail?: unknown }>(err) ? err.response?.data?.detail : undefined;
+    error.value = typeof detail === "string" && detail ? detail : "Failed to save book. Please try again.";
   } finally {
     loading.value = false;
   }
@@ -133,7 +135,7 @@ async function handleDelete() {
     await invalidateCache.bookDeleted(book.value.id);
 
     router.push({ name: "books" });
-  } catch (err: any) {
+  } catch (err) {
     console.error("Failed to delete book:", err);
     error.value = "Failed to delete book. Please try again.";
     loading.value = false;

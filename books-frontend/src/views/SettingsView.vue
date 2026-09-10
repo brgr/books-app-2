@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isAxiosError } from "axios";
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import NavigationBar from "../components/navigation/NavigationBar.vue";
@@ -21,8 +22,9 @@ async function loadImports() {
   importsError.value = null;
   try {
     imports.value = await getImports();
-  } catch (e: any) {
-    importsError.value = e.response?.data?.detail ?? "Failed to load imports";
+  } catch (e) {
+    const detail = isAxiosError<{ detail?: unknown }>(e) ? e.response?.data?.detail : undefined;
+    importsError.value = typeof detail === "string" ? detail : "Failed to load imports";
   }
 }
 
@@ -71,8 +73,9 @@ async function handleImport() {
   try {
     importResult.value = await importReadingList(importFile.value);
     await loadImports();
-  } catch (e: any) {
-    importError.value = e.response?.data?.detail ?? "Import failed";
+  } catch (e) {
+    const detail = isAxiosError<{ detail?: unknown }>(e) ? e.response?.data?.detail : undefined;
+    importError.value = typeof detail === "string" ? detail : "Import failed";
   } finally {
     isImporting.value = false;
   }

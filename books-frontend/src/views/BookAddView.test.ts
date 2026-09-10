@@ -127,7 +127,10 @@ describe("adding a book", () => {
   });
 
   it("keeps results available for retry when saving fails", async () => {
-    vi.mocked(createBook).mockRejectedValueOnce({ response: { data: { detail: "Could not save book" } } });
+    vi.mocked(createBook).mockRejectedValueOnce({
+      isAxiosError: true,
+      response: { data: { detail: "Could not save book" } },
+    });
     const { wrapper, router } = await searchForBook();
     await wrapper.get(".btn-select").trigger("click");
     await flushPromises();

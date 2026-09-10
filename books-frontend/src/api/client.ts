@@ -1,4 +1,5 @@
 import axios from "axios";
+import type { Router } from "vue-router";
 import { cacheClear } from "../cache/store";
 
 // The backend origin. Empty means same-origin.
@@ -62,7 +63,7 @@ async function tryRefreshAccessToken(): Promise<boolean> {
 }
 
 // Setup response interceptor to handle authentication errors
-export function setupAuthInterceptor(router: any) {
+export function setupAuthInterceptor(router: Router) {
   apiClient.interceptors.response.use(
     (response) => response,
     async (error) => {
