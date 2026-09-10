@@ -11,9 +11,15 @@ import { isAuthenticated, logout } from "../../api/auth";
 const router = useRouter();
 const route = useRoute();
 const surface = computed(() => {
-  if (route.name === "books") return "to-read";
-  if (route.name === "custom-shelves" || route.name === "custom-shelf") return "shelves";
-  if (route.name === "shelf") return route.params.shelf === "abandoned" ? "shelves" : route.params.shelf;
+  if (route.name === "books") {
+    return "to-read";
+  }
+  if (route.name === "custom-shelves" || route.name === "custom-shelf") {
+    return "shelves";
+  }
+  if (route.name === "shelf") {
+    return route.params.shelf === "abandoned" ? "shelves" : route.params.shelf;
+  }
   return null;
 });
 const isLibraryPage = computed(() => Boolean(surface.value));

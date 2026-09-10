@@ -27,12 +27,16 @@ async function focusNameInput() {
 onMounted(focusNameInput);
 
 function close() {
-  if (!props.saving) emit("close");
+  if (!props.saving) {
+    emit("close");
+  }
 }
 
 function submitRename() {
   const trimmedName = name.value.trim();
-  if (trimmedName && !props.saving) emit("rename", trimmedName);
+  if (trimmedName && !props.saving) {
+    emit("rename", trimmedName);
+  }
 }
 
 function showDeleteConfirmation() {

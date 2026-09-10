@@ -34,19 +34,28 @@ function clearPressTimer() {
 
 function onContextMenu(e: MouseEvent) {
   e.preventDefault();
-  if (touchActive) return;
+  if (touchActive) {
+    return;
+  }
+
   // Real mouse right-click (no active touch) opens the menu immediately
   emit("menu", { bookId: props.book.id, x: e.clientX, y: e.clientY });
 }
 
 function onTouchStart(e: TouchEvent) {
   const touch = e.touches[0];
-  if (!touch) return;
+
+  if (!touch) {
+    return;
+  }
+
   touchActive = true;
   menuShown = false;
   startX = touch.clientX;
   startY = touch.clientY;
+
   clearPressTimer();
+
   // Show the menu on a long press. If the user then starts dragging, BooksView closes it on the drag's @start;
   // the book stays draggable underneath either way.
   pressTimer = setTimeout(() => {
@@ -57,7 +66,11 @@ function onTouchStart(e: TouchEvent) {
 
 function onTouchMove(e: TouchEvent) {
   const touch = e.touches[0];
-  if (!touch) return;
+
+  if (!touch) {
+    return;
+  }
+
   // Movement before the long press = a drag/scroll, so don't pop the menu.
   if (Math.abs(touch.clientX - startX) > MOVE_THRESHOLD || Math.abs(touch.clientY - startY) > MOVE_THRESHOLD) {
     clearPressTimer();
@@ -66,9 +79,13 @@ function onTouchMove(e: TouchEvent) {
 
 function onTouchEnd(e: TouchEvent) {
   clearPressTimer();
+
   // Keep the long-press menu open on release; block the compatibility click it would otherwise spawn
   // (which would close the menu or open the book)
-  if (menuShown && e.cancelable) e.preventDefault();
+  if (menuShown && e.cancelable) {
+    e.preventDefault();
+  }
+
   touchActive = false;
 }
 
@@ -85,7 +102,9 @@ function onClick(event: MouseEvent) {
   }
 
   // Ordinary clicks are handled by ourselves; for clicks with special keys, keep the browser's usual (link) behavior
-  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+    return;
+  }
 
   event.preventDefault();
   emit("click", props.book.id);
@@ -101,9 +120,14 @@ const hasPercent = computed(() => {
 });
 
 const showBadge = computed(() => {
-  if (!props.showProgress) return false;
+  if (!props.showProgress) {
+    return false;
+  }
+
   const userBook = props.book.user_book;
-  if (userBook?.shelf !== ReadingShelf.STARTED) return false;
+  if (userBook?.shelf !== ReadingShelf.STARTED) {
+    return false;
+  }
   // A percent-tracked book carries progress even without a page count.
   return (
     hasPercent.value ||
@@ -117,7 +141,11 @@ const progressPercent = computed(() => {
   }
   const pageCount = props.book.page_count ?? 0;
   const currentPage = props.book.user_book?.current_page ?? 0;
-  if (pageCount <= 0) return 0;
+
+  if (pageCount <= 0) {
+    return 0;
+  }
+
   const percent = Math.round((currentPage / pageCount) * 100);
   return Math.min(100, Math.max(0, percent));
 });

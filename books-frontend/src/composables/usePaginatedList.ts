@@ -104,7 +104,9 @@ export function usePaginatedList<T, R extends string | number = number>(
     const resourceId = toValue(options.resourceId);
     const gen = ++generation;
 
-    if (resourceId === null) return; // generation bumped above → supersedes any in-flight fetch
+    if (resourceId === null) {
+      return;
+    } // generation bumped above → supersedes any in-flight fetch
 
     const isFirstPage = targetPage === 1;
     error.value = null;
@@ -120,12 +122,18 @@ export function usePaginatedList<T, R extends string | number = number>(
       fetcher: () => options.fetchPage(resourceId, targetPage),
       isCurrent: () => gen === generation,
       onData: (data) => {
-        if (gen !== generation) return;
+        if (gen !== generation) {
+          return;
+        }
         ingest(data);
-        if (isFirstPage) loaded.value = true;
+        if (isFirstPage) {
+          loaded.value = true;
+        }
       },
       onError: (err) => {
-        if (gen === generation) error.value = err;
+        if (gen === generation) {
+          error.value = err;
+        }
       },
     });
 
@@ -143,14 +151,20 @@ export function usePaginatedList<T, R extends string | number = number>(
   async function replaceItems(next: T[]) {
     items.value = [...next];
     const resourceId = toValue(options.resourceId);
-    if (resourceId === null) return;
+
+    if (resourceId === null) {
+      return;
+    }
+
     await cacheInvalidateByPrefix(options.cacheKeyPrefix(resourceId));
   }
 
   async function refreshLoaded() {
     const resourceId = toValue(options.resourceId);
 
-    if (resourceId === null) return;
+    if (resourceId === null) {
+      return;
+    }
 
     const gen = ++generation;
     const lastPage = page.value;
@@ -166,11 +180,15 @@ export function usePaginatedList<T, R extends string | number = number>(
       do {
         result = await options.fetchPage(resourceId, target);
 
-        if (gen !== generation) return;
+        if (gen !== generation) {
+          return;
+        }
 
         next.push(...result.items);
 
-        if (target >= result.pages || target >= lastPage) break;
+        if (target >= result.pages || target >= lastPage) {
+          break;
+        }
 
         target += 1;
       } while (true);
@@ -180,7 +198,10 @@ export function usePaginatedList<T, R extends string | number = number>(
       totalPages.value = result.pages;
       loaded.value = true;
     } catch (err) {
-      if (gen === generation) error.value = err;
+      if (gen === generation) {
+        error.value = err;
+      }
+
       throw err;
     } finally {
       if (gen === generation) {
@@ -191,7 +212,10 @@ export function usePaginatedList<T, R extends string | number = number>(
   }
 
   function loadMore() {
-    if (isLoadingMore.value || !hasMore.value) return;
+    if (isLoadingMore.value || !hasMore.value) {
+      return;
+    }
+
     page.value += 1;
     void run(page.value);
   }

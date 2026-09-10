@@ -63,13 +63,19 @@ watch(
 );
 
 function selectUnit(unit: ProgressUnit) {
-  if (unit === progressUnit.value) return;
+  if (unit === progressUnit.value) {
+    return;
+  }
+
   progressUnit.value = unit;
   progressDraft.value = currentValueFor(unit);
 }
 
 function handleSaveProgress() {
-  if (props.progressSaving) return;
+  if (props.progressSaving) {
+    return;
+  }
+
   const trimmed = String(progressDraft.value ?? "").trim();
   if (!trimmed) {
     alert(progressUnit.value === "percent" ? "Please enter a percentage." : "Please enter a page number.");

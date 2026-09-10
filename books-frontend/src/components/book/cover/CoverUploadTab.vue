@@ -24,7 +24,9 @@ const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_BYTES = 10 * 1024 * 1024;
 
 function acceptFile(file: File | undefined) {
-  if (!file) return;
+  if (!file) {
+    return;
+  }
 
   if (!ALLOWED.includes(file.type)) {
     error.value = "Unsupported file type. Use a JPEG, PNG, WebP, or GIF image.";
@@ -54,11 +56,15 @@ function handleDrop(event: DragEvent) {
 
 function acceptUrl() {
   const url = imageUrl.value.trim();
-  if (!url) return;
+  if (!url) {
+    return;
+  }
+
   if (!/^https?:\/\//i.test(url)) {
     error.value = "Enter a full image URL starting with http:// or https://.";
     return;
   }
+
   error.value = "";
   // The URL is downloaded and stored server-side when the book is saved.
   emit("select", url);

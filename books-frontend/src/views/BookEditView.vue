@@ -40,8 +40,13 @@ const error = ref("");
 
 const loadError = computed(() => {
   const e = bookError.value;
-  if (!e) return "";
-  if (e instanceof Error) return e.message;
+  if (!e) {
+    return "";
+  }
+  if (e instanceof Error) {
+    return e.message;
+  }
+
   return "Failed to load book.";
 });
 
@@ -64,7 +69,10 @@ watch(
 );
 
 async function handleSubmit() {
-  if (!book.value) return;
+  if (!book.value) {
+    return;
+  }
+
   error.value = "";
   loading.value = true;
 
@@ -100,7 +108,10 @@ async function handleSubmit() {
 }
 
 function handleCancel() {
-  if (loading.value) return;
+  if (loading.value) {
+    return;
+  }
+
   if (book.value) {
     router.push({ name: "book-detail", params: { id: book.value.id } });
   } else {
@@ -109,8 +120,12 @@ function handleCancel() {
 }
 
 async function handleDelete() {
-  if (!book.value || loading.value) return;
-  if (!confirm(`Are you sure you want to delete "${book.value.title}"?`)) return;
+  if (!book.value || loading.value) {
+    return;
+  }
+  if (!confirm(`Are you sure you want to delete "${book.value.title}"?`)) {
+    return;
+  }
 
   loading.value = true;
   try {

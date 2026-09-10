@@ -36,14 +36,24 @@ export function useShelfBooks(options: ShelfBooksOptions) {
 
   const error = computed(() => {
     const e = loadError.value;
-    if (!e) return "";
-    if (e instanceof Error) return e.message;
+
+    if (!e) {
+      return "";
+    }
+
+    if (e instanceof Error) {
+      return e.message;
+    }
+
     return "Failed to load books. Please try again.";
   });
 
   const books = computed(() => {
     const query = searchQuery.value.toLowerCase().trim();
-    if (!query) return items.value;
+
+    if (!query) {
+      return items.value;
+    }
 
     return items.value.filter(
       (book) => book.title.toLowerCase().includes(query) || book.author.toLowerCase().includes(query),

@@ -28,11 +28,17 @@ export async function cachedQuery<T>(options: CachedQueryOptions<T>): Promise<vo
 
   try {
     const data = await fetcher();
-    if (!stillCurrent()) return;
+    if (!stillCurrent()) {
+      return;
+    }
+
     await cacheSet(key, data);
     onData(data, "network");
   } catch (err) {
-    if (!stillCurrent()) return;
+    if (!stillCurrent()) {
+      return;
+    }
+
     onError?.(err);
   }
 }

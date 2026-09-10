@@ -24,7 +24,9 @@ async function openCreateShelf() {
 }
 
 function closeCreateShelf() {
-  if (creating.value) return;
+  if (creating.value) {
+    return;
+  }
 
   showCreateShelf.value = false;
   newShelfName.value = "";
@@ -34,7 +36,9 @@ function closeCreateShelf() {
 async function createNewShelf() {
   const name = newShelfName.value.trim();
 
-  if (!name || creating.value) return;
+  if (!name || creating.value) {
+    return;
+  }
 
   creating.value = true;
   createError.value = "";

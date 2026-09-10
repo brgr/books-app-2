@@ -83,7 +83,9 @@ const sentinelEl = ref<HTMLElement | null>(null);
 const { reobserve } = useInfiniteScroll(
   sentinelEl,
   () => {
-    if (!isDragging.value && !isSaving.value && !error.value) loadMore();
+    if (!isDragging.value && !isSaving.value && !error.value) {
+      loadMore();
+    }
   },
   "1200px 0px",
 );
@@ -102,26 +104,38 @@ function startDrag() {
 }
 
 function handleCoverClick(bookId: number) {
-  if (ignoresClick()) return;
+  if (ignoresClick()) {
+    return;
+  }
+
   router.push({ name: "book-detail", params: { id: bookId } });
 }
 
 function handleContextView() {
   const bookId = contextMenu.value.bookId;
   closeContextMenu();
-  if (bookId !== null) router.push({ name: "book-detail", params: { id: bookId } });
+
+  if (bookId !== null) {
+    router.push({ name: "book-detail", params: { id: bookId } });
+  }
 }
 
 function handleContextMove(edge: "top" | "bottom") {
   const bookId = contextMenu.value.bookId;
   closeContextMenu();
-  if (bookId !== null) void moveBookToEdge(bookId, edge);
+
+  if (bookId !== null) {
+    void moveBookToEdge(bookId, edge);
+  }
 }
 
 async function handleContextRemove() {
   const bookId = contextMenu.value.bookId;
   closeContextMenu();
-  if (bookId === null || !props.canRemoveFromShelf) return;
+
+  if (bookId === null || !props.canRemoveFromShelf) {
+    return;
+  }
 
   try {
     await removeBookFromShelf(props.shelf, bookId);

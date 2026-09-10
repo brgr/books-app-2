@@ -7,7 +7,9 @@ const DATE_FORMATTER = new Intl.DateTimeFormat(undefined, {
 });
 
 export function formatShortDate(dateStr: string | null): string {
-  if (!dateStr) return "N/A";
+  if (!dateStr) {
+    return "N/A";
+  }
 
   const parsedDate = new Date(dateStr);
   if (Number.isNaN(parsedDate.getTime())) {
@@ -39,11 +41,18 @@ export function formatShortDate(dateStr: string | null): string {
  * // "Unknown"
  */
 export function formatReadingDate(readingDate: ReadingDateValue | null): string {
-  if (!readingDate || readingDate.precision === ReadingDatePrecision.UNKNOWN) return "Unknown";
-  if (!readingDate.value) return "Unknown";
+  if (!readingDate || readingDate.precision === ReadingDatePrecision.UNKNOWN) {
+    return "Unknown";
+  }
+
+  if (!readingDate.value) {
+    return "Unknown";
+  }
 
   const parsedDate = new Date(readingDate.value);
-  if (Number.isNaN(parsedDate.getTime())) return readingDate.value;
+  if (Number.isNaN(parsedDate.getTime())) {
+    return readingDate.value;
+  }
 
   if (readingDate.precision === ReadingDatePrecision.YEAR) {
     return new Intl.DateTimeFormat(undefined, { year: "numeric" }).format(parsedDate);

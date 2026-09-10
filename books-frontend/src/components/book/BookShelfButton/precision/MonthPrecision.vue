@@ -37,7 +37,10 @@ const isValid = computed(() => {
 });
 
 function confirm() {
-  if (!isValid.value) return;
+  if (!isValid.value) {
+    return;
+  }
+
   emit("confirm", {
     value: new Date(`${chosenYear.value}-${chosenMonth.value}-01T12:00:00Z`).toISOString(),
     precision: ReadingDatePrecision.MONTH,

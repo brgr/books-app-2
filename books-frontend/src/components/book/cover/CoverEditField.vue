@@ -49,7 +49,9 @@ watch(
 function loadFullPreview() {
   const fullUrl = getMediaUrl(props.modelValue);
 
-  if (!fullUrl || fullUrl === previewUrl.value || fullImage) return;
+  if (!fullUrl || fullUrl === previewUrl.value || fullImage) {
+    return;
+  }
 
   const image = new Image();
   fullImage = image;
@@ -73,7 +75,10 @@ const canUpgrade = computed(
 
 function replaceCover(imageUrl: string) {
   // Drop a previously staged upload we're about to replace, so its object URL isn't leaked.
-  if (props.modelValue !== imageUrl) discardPendingCover(props.modelValue);
+  if (props.modelValue !== imageUrl) {
+    discardPendingCover(props.modelValue);
+  }
+
   emit("update:modelValue", imageUrl);
 }
 

@@ -9,9 +9,15 @@ export const BACKEND_ORIGIN = import.meta.env.VITE_API_URL || "";
 export const API_BASE_URL = `${BACKEND_ORIGIN}/api`;
 
 export function getMediaUrl(path: string | null | undefined): string | undefined {
-  if (!path) return undefined;
+  if (!path) {
+    return undefined;
+  }
+
   // Absolute (remote) and local object URLs (a not-yet-uploaded cover) are already usable as-is.
-  if (path.startsWith("http") || path.startsWith("blob:")) return path;
+  if (path.startsWith("http") || path.startsWith("blob:")) {
+    return path;
+  }
+
   return `${BACKEND_ORIGIN}${path}`;
 }
 

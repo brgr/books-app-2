@@ -9,7 +9,10 @@ const today = new Date().toISOString().slice(0, 10);
 const chosenDate = ref(today);
 
 function confirm() {
-  if (!chosenDate.value) return;
+  if (!chosenDate.value) {
+    return;
+  }
+
   emit("confirm", {
     value: new Date(`${chosenDate.value}T12:00:00Z`).toISOString(),
     precision: ReadingDatePrecision.DAY,

@@ -60,10 +60,14 @@ function onFileSelected(event: Event) {
 }
 
 async function handleImport() {
-  if (!importFile.value) return;
+  if (!importFile.value) {
+    return;
+  }
+
   isImporting.value = true;
   importResult.value = null;
   importError.value = null;
+
   try {
     importResult.value = await importReadingList(importFile.value);
     await loadImports();

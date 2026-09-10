@@ -52,8 +52,13 @@ const { data: events, refresh: refreshEvents } = useCachedQuery<BookEvent[]>(
 
 const error = computed(() => {
   const e = bookError.value;
-  if (!e) return "";
-  if (e instanceof Error) return e.message;
+  if (!e) {
+    return "";
+  }
+  if (e instanceof Error) {
+    return e.message;
+  }
+
   return "Failed to load book. Please try again.";
 });
 const updatingShelf = ref(false);
@@ -65,7 +70,9 @@ const ratingError = ref("");
 async function handleRatingChange(rating: number | null) {
   const currentBook = book.value;
 
-  if (!currentBook?.user_book || ratingSaving.value || rating === (currentBook.user_book.rating ?? null)) return;
+  if (!currentBook?.user_book || ratingSaving.value || rating === (currentBook.user_book.rating ?? null)) {
+    return;
+  }
 
   ratingSaving.value = true;
   ratingError.value = "";
@@ -87,10 +94,14 @@ async function handleRatingChange(rating: number | null) {
 
     await invalidateCache.ratingSaved(currentBook.id);
 
-    if (bookId.value === currentBook.id) await refreshEvents();
+    if (bookId.value === currentBook.id) {
+      await refreshEvents();
+    }
   } catch (error) {
     console.error("Failed to save rating:", error);
-    if (bookId.value === currentBook.id) ratingError.value = "Failed to save rating. Please try again.";
+    if (bookId.value === currentBook.id) {
+      ratingError.value = "Failed to save rating. Please try again.";
+    }
   } finally {
     ratingSaving.value = false;
   }
@@ -116,7 +127,10 @@ function localDayValue(date: Date): string {
 }
 
 async function changeShelf(shelf: ReadingShelf, readingDate?: ReadingDateValue) {
-  if (!book.value) return;
+  if (!book.value) {
+    return;
+  }
+
   updatingShelf.value = true;
 
   try {
@@ -139,8 +153,12 @@ async function changeShelf(shelf: ReadingShelf, readingDate?: ReadingDateValue) 
 }
 
 async function handleSaveNotes(notes: string) {
-  if (!book.value) return;
+  if (!book.value) {
+    return;
+  }
+
   notesSaving.value = true;
+
   try {
     const shelf = book.value.user_book?.shelf ?? ReadingShelf.WANT_TO_READ;
     const userBook = await setShelf(book.value.id, { shelf, notes });
@@ -158,8 +176,12 @@ async function handleSaveNotes(notes: string) {
 }
 
 async function handleSaveProgress(progress: BookProgressUpdate) {
-  if (!book.value || !canUpdateProgress.value) return;
+  if (!book.value || !canUpdateProgress.value) {
+    return;
+  }
+
   progressSaving.value = true;
+
   try {
     const userBook = await addBookProgress(book.value.id, progress);
 
@@ -176,7 +198,10 @@ async function handleSaveProgress(progress: BookProgressUpdate) {
 }
 
 function handleEdit() {
-  if (!book.value) return;
+  if (!book.value) {
+    return;
+  }
+
   router.push({ name: "book-edit", params: { id: book.value.id } });
 }
 </script>

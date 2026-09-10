@@ -26,7 +26,9 @@ const upgradeActivated = ref(false);
 
 function selectMode(next: Mode) {
   mode.value = next;
-  if (next === "upgrade") upgradeActivated.value = true;
+  if (next === "upgrade") {
+    upgradeActivated.value = true;
+  }
 }
 </script>
 

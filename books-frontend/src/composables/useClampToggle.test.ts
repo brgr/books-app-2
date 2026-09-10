@@ -36,8 +36,14 @@ function mountHost(opts: { scrollHeight: number; lineHeight?: number; source?: R
     const styles = origGetComputed(el);
     return new Proxy(styles, {
       get(target, prop) {
-        if (prop === "lineHeight") return `${opts.lineHeight ?? 20}px`;
-        if (prop === "fontSize") return "16px";
+        if (prop === "lineHeight") {
+          return `${opts.lineHeight ?? 20}px`;
+        }
+
+        if (prop === "fontSize") {
+          return "16px";
+        }
+
         return Reflect.get(target, prop);
       },
     });

@@ -17,7 +17,10 @@ const router = useRouter();
 const searchQuery = ref("");
 const shelfRef = computed<ShelfRef>(() => {
   const id = route.params.id;
-  if (typeof id !== "string") throw new Error("Invalid custom shelf route");
+  if (typeof id !== "string") {
+    throw new Error("Invalid custom shelf route");
+  }
+
   return parseShelfRef(`custom:${id}`);
 });
 
@@ -43,7 +46,9 @@ function clearActionError() {
 }
 
 async function saveRename(name: string) {
-  if (saving.value) return;
+  if (saving.value) {
+    return;
+  }
 
   saving.value = true;
   actionError.value = "";
@@ -60,7 +65,9 @@ async function saveRename(name: string) {
 }
 
 async function confirmDeleteShelf() {
-  if (saving.value) return;
+  if (saving.value) {
+    return;
+  }
 
   saving.value = true;
   actionError.value = "";

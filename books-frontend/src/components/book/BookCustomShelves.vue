@@ -31,15 +31,24 @@ const selectedCustomShelves = computed(() =>
 );
 
 function closeShelfEditor() {
-  if (!updating.value) showShelfEditor.value = false;
+  if (!updating.value) {
+    showShelfEditor.value = false;
+  }
 }
 
 async function toggleShelf(shelf: Shelf) {
-  if (updating.value) return;
+  if (updating.value) {
+    return;
+  }
+
   updating.value = shelf.ref;
   try {
-    if (selected.value.has(shelf.ref)) await removeBookFromShelf(shelf.ref, props.bookId);
-    else await addBookToShelf(shelf.ref, props.bookId);
+    if (selected.value.has(shelf.ref)) {
+      await removeBookFromShelf(shelf.ref, props.bookId);
+    } else {
+      await addBookToShelf(shelf.ref, props.bookId);
+    }
+
     await invalidateCache.shelfChanged(props.bookId);
     await Promise.all([refreshShelves(), refreshBookShelves()]);
   } catch (error) {

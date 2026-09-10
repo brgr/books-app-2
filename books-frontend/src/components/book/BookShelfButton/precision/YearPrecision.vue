@@ -8,18 +8,27 @@ const emit = defineEmits<{ confirm: [readingDate: ReadingDateValue] }>();
 const thisYear = new Date().toISOString().slice(0, 4);
 const chosenYear = ref(thisYear);
 const validationMessage = computed(() => {
-  if (!chosenYear.value) return "Enter a year.";
+  if (!chosenYear.value) {
+    return "Enter a year.";
+  }
 
   const year = Number(chosenYear.value);
-  if (!Number.isInteger(year)) return "Enter a whole year.";
-  if (year < 1900 || year > Number(thisYear)) return `Enter a year from 1900 to ${thisYear}.`;
+  if (!Number.isInteger(year)) {
+    return "Enter a whole year.";
+  }
+
+  if (year < 1900 || year > Number(thisYear)) {
+    return `Enter a year from 1900 to ${thisYear}.`;
+  }
 
   return null;
 });
 const isValid = computed(() => validationMessage.value === null);
 
 function confirm() {
-  if (!isValid.value) return;
+  if (!isValid.value) {
+    return;
+  }
 
   const year = String(Number(chosenYear.value)).padStart(4, "0");
 

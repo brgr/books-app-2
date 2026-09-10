@@ -24,7 +24,10 @@ watch(
 
 const rendered = computed(() => {
   const raw = props.notes.trim();
-  if (!raw) return "";
+  if (!raw) {
+    return "";
+  }
+
   return marked.parse(raw, { async: false, breaks: true, gfm: true }) as string;
 });
 
@@ -41,7 +44,10 @@ function cancel() {
 }
 
 function save() {
-  if (!dirty.value || props.saving) return;
+  if (!dirty.value || props.saving) {
+    return;
+  }
+
   emit("save", draft.value);
 }
 </script>

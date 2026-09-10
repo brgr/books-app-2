@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 const props = defineProps<{
   x: number;
@@ -22,22 +22,29 @@ const pos = ref({ top: props.y, left: props.x });
 
 function clamp() {
   const el = menuEl.value;
-  if (!el) return;
+  if (!el) {
+    return;
+  }
+
   const rect = el.getBoundingClientRect();
   const margin = 8;
   let left = props.x;
   let top = props.y;
+
   if (left + rect.width + margin > window.innerWidth) {
     left = window.innerWidth - rect.width - margin;
   }
   if (top + rect.height + margin > window.innerHeight) {
     top = window.innerHeight - rect.height - margin;
   }
+
   pos.value = { top: Math.max(margin, top), left: Math.max(margin, left) };
 }
 
 function onKey(e: KeyboardEvent) {
-  if (e.key === "Escape") emit("close");
+  if (e.key === "Escape") {
+    emit("close");
+  }
 }
 
 watch(

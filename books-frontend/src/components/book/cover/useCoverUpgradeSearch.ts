@@ -15,12 +15,16 @@ export function useCoverUpgradeSearch(bookId: number) {
   const POLL_INTERVAL_MS = 1500;
 
   async function poll() {
-    if (cancelled || !jobId) return;
+    if (cancelled || !jobId) {
+      return;
+    }
 
     try {
       const job = await getCoverUpgradeSearch(bookId, jobId);
 
-      if (cancelled) return;
+      if (cancelled) {
+        return;
+      }
 
       if (job.status === "done") {
         results.value = job.results;
@@ -36,7 +40,9 @@ export function useCoverUpgradeSearch(bookId: number) {
 
       pollTimer = window.setTimeout(poll, POLL_INTERVAL_MS);
     } catch (err: any) {
-      if (cancelled) return;
+      if (cancelled) {
+        return;
+      }
 
       console.error("Cover upgrade poll failed:", err);
       status.value = "failed";
@@ -48,13 +54,17 @@ export function useCoverUpgradeSearch(bookId: number) {
     try {
       const job = await startCoverUpgradeSearch(bookId);
 
-      if (cancelled) return;
+      if (cancelled) {
+        return;
+      }
 
       jobId = job.job_id;
       status.value = "running";
       pollTimer = window.setTimeout(poll, POLL_INTERVAL_MS);
     } catch (err: any) {
-      if (cancelled) return;
+      if (cancelled) {
+        return;
+      }
 
       console.error("Failed to start cover upgrade:", err);
       status.value = "failed";

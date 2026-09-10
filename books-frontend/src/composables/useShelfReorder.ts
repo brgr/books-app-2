@@ -62,7 +62,9 @@ export function useShelfReorder(options: ShelfReorderOptions) {
     try {
       await reorderShelfItem(shelf, payload);
     } catch (err) {
-      if (booksToRestoreOnFailure) books.value = booksToRestoreOnFailure;
+      if (booksToRestoreOnFailure) {
+        books.value = booksToRestoreOnFailure;
+      }
 
       console.error("Failed to reorder books:", err);
       error.value = "Could not move the book. Please try again.";
@@ -71,7 +73,9 @@ export function useShelfReorder(options: ShelfReorderOptions) {
     try {
       await refresh();
 
-      if (!error.value) message.value = payload.edge ? `Moved to ${payload.edge}.` : "Book order updated.";
+      if (!error.value) {
+        message.value = payload.edge ? `Moved to ${payload.edge}.` : "Book order updated.";
+      }
     } catch (err) {
       console.error("Failed to refresh shelf:", err);
       error.value = "Could not refresh the shelf. Reload before moving more books.";
@@ -100,7 +104,9 @@ export function useShelfReorder(options: ShelfReorderOptions) {
 
     const list = books.value;
     const movedBook = list[event.newIndex];
-    if (!movedBook) return;
+    if (!movedBook) {
+      return;
+    }
     const beforeBook = event.newIndex > 0 ? list[event.newIndex - 1] : null;
     const afterBook = event.newIndex < list.length - 1 ? list[event.newIndex + 1] : null;
 
@@ -113,20 +119,29 @@ export function useShelfReorder(options: ShelfReorderOptions) {
 
   /** Moves a book to the top or bottom of the shelf. */
   async function moveBookToEdge(bookId: number, edge: "top" | "bottom") {
-    if (!enabled.value || isSaving.value) return;
+    if (!enabled.value || isSaving.value) {
+      return;
+    }
 
     const previousBooks = [...books.value];
     const bookToMove = previousBooks.find((book) => book.id === bookId);
 
-    if (!bookToMove) return;
+    if (!bookToMove) {
+      return;
+    }
 
     const updatedBooks = previousBooks.filter((book) => book.id !== bookId);
 
-    if (edge === "top") updatedBooks.unshift(bookToMove);
+    if (edge === "top") {
+      updatedBooks.unshift(bookToMove);
+    }
+
     // When hasMore is true, the bottom of the shelf is not actually the last book in the list.
     // In that case, we don't actually move the book as it wouldn't be loaded yet
     // (we just remove it from the list, as done above).
-    else if (!hasMore.value) updatedBooks.push(bookToMove);
+    else if (!hasMore.value) {
+      updatedBooks.push(bookToMove);
+    }
     books.value = updatedBooks;
 
     await persist({ moved_book_id: bookId, edge }, previousBooks);

@@ -55,6 +55,10 @@ export function provideLibraryPage(state: Pick<LibraryPageContext, "searchQuery"
 
 export function useLibraryPage(): LibraryPageContext {
   const context = inject(libraryPageKey);
-  if (!context) throw new Error("useLibraryPage() requires an ancestor that calls provideLibraryPage()");
+
+  if (!context) {
+    throw new Error("useLibraryPage() requires an ancestor that calls provideLibraryPage()");
+  }
+
   return context;
 }

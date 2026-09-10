@@ -11,8 +11,13 @@ const route = useRoute();
 const searchQuery = ref("");
 // The shelf lives in the URL: /shelves/:shelf. Bare "/" is the shelf "to-read".
 const shelfFilter = computed<"to-read" | "finished" | "abandoned">(() => {
-  if (route.params.shelf === "finished") return "finished";
-  if (route.params.shelf === "abandoned") return "abandoned";
+  if (route.params.shelf === "finished") {
+    return "finished";
+  }
+  if (route.params.shelf === "abandoned") {
+    return "abandoned";
+  }
+
   return "to-read";
 });
 

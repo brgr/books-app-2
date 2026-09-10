@@ -44,16 +44,22 @@ export function useClampToggle(elementRef: Ref<HTMLElement | null>, options: Use
 
   function toggle() {
     const el = elementRef.value;
-    if (!el) return;
+    if (!el) {
+      return;
+    }
+
     const clampHeight = getClampHeight(el);
+
     if (!expanded.value) {
       const expandedHeight = measureExpandedHeight(el);
       maxHeight.value = `${clampHeight}px`;
       void el.offsetHeight;
       maxHeight.value = `${expandedHeight}px`;
       expanded.value = true;
+
       return;
     }
+
     const currentHeight = measureExpandedHeight(el);
     maxHeight.value = `${currentHeight}px`;
     void el.offsetHeight;

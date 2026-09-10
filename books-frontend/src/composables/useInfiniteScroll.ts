@@ -15,15 +15,21 @@ export function useInfiniteScroll(
   let observer: IntersectionObserver | null = null;
 
   function setup() {
-    if (observer || !sentinelEl.value) return;
+    if (observer || !sentinelEl.value) {
+      return;
+    }
+
     observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (entry.isIntersecting) onIntersect();
+          if (entry.isIntersecting) {
+            onIntersect();
+          }
         }
       },
       { rootMargin },
     );
+
     observer.observe(sentinelEl.value);
   }
 

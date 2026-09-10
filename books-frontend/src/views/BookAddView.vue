@@ -21,7 +21,9 @@ const error = ref("");
 const hasSearched = ref(false);
 
 async function handleSearch() {
-  if (loading.value || addingBook.value) return;
+  if (loading.value || addingBook.value) {
+    return;
+  }
 
   if (!searchQuery.value.trim()) {
     error.value = "Please enter a search query";
@@ -43,7 +45,9 @@ async function handleSearch() {
 }
 
 async function handleSelectBook(book: GoogleBookResult) {
-  if (addingBook.value) return;
+  if (addingBook.value) {
+    return;
+  }
 
   addingBook.value = true;
   error.value = "";

@@ -35,11 +35,15 @@ const menuOpen = ref(false);
 const rootEl = ref<HTMLElement | null>(null);
 
 function activate() {
-  if (!props.updating) emit("change", action.value.target);
+  if (!props.updating) {
+    emit("change", action.value.target);
+  }
 }
 
 function toggleMenu() {
-  if (!props.updating) menuOpen.value = !menuOpen.value;
+  if (!props.updating) {
+    menuOpen.value = !menuOpen.value;
+  }
 }
 
 function closeMenu() {
@@ -47,31 +51,42 @@ function closeMenu() {
 }
 
 function confirmDate(readingDate: ReadingDateValue) {
-  if (props.updating) return;
+  if (props.updating) {
+    return;
+  }
+
   emit("change", action.value.target, readingDate);
   closeMenu();
 }
 
 function pauseReading() {
-  if (props.updating || props.shelf !== ReadingShelf.STARTED) return;
+  if (props.updating || props.shelf !== ReadingShelf.STARTED) {
+    return;
+  }
 
   emit("change", ReadingShelf.PAUSED);
   closeMenu();
 }
 
 function abandonReading() {
-  if (props.updating || (props.shelf !== ReadingShelf.STARTED && props.shelf !== ReadingShelf.PAUSED)) return;
+  if (props.updating || (props.shelf !== ReadingShelf.STARTED && props.shelf !== ReadingShelf.PAUSED)) {
+    return;
+  }
 
   emit("change", ReadingShelf.ABANDONED);
   closeMenu();
 }
 
 function onDocPointer(e: PointerEvent) {
-  if (rootEl.value && !rootEl.value.contains(e.target as Node)) closeMenu();
+  if (rootEl.value && !rootEl.value.contains(e.target as Node)) {
+    closeMenu();
+  }
 }
 
 function onKey(e: KeyboardEvent) {
-  if (e.key === "Escape") closeMenu();
+  if (e.key === "Escape") {
+    closeMenu();
+  }
 }
 
 onMounted(() => {

@@ -18,10 +18,14 @@ export function useCachedQuery<T>(
 
   function execute() {
     const currentKey = toValue(key);
-    if (!currentKey) return;
+    if (!currentKey) {
+      return;
+    }
 
     const enabled = options?.enabled !== undefined ? toValue(options.enabled) : true;
-    if (!enabled) return;
+    if (!enabled) {
+      return;
+    }
 
     const gen = ++generation;
     error.value = null;
@@ -31,12 +35,18 @@ export function useCachedQuery<T>(
       fetcher,
       isCurrent: () => gen === generation,
       onData: (d, source) => {
-        if (gen !== generation) return;
+        if (gen !== generation) {
+          return;
+        }
+
         data.value = d;
         isStale.value = source === "cache";
       },
       onError: (err) => {
-        if (gen !== generation) return;
+        if (gen !== generation) {
+          return;
+        }
+
         error.value = err;
       },
     });
@@ -64,7 +74,10 @@ export function useCachedQuery<T>(
   async function setData(next: T) {
     data.value = next;
     const currentKey = toValue(key);
-    if (!currentKey) return;
+    if (!currentKey) {
+      return;
+    }
+
     await cacheSet(currentKey, next);
   }
 
@@ -82,7 +95,9 @@ export function useCachedQuery<T>(
     watch(
       () => toValue(options.enabled!),
       (val) => {
-        if (val) execute();
+        if (val) {
+          execute();
+        }
       },
     );
   }
