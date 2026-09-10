@@ -51,10 +51,10 @@ def get_shelf_service(
 ShelfServiceDep = Annotated[ShelfService, Depends(get_shelf_service)]
 
 
-def get_shelf_ref(ref: str) -> ShelfRef:
+def get_shelf_ref(shelf_ref: str) -> ShelfRef:
     """Parse the route's shelf ref before it reaches the service layer."""
     try:
-        return parse_shelf_ref(ref)
+        return parse_shelf_ref(shelf_ref)
     except InvalidShelfRefError as error:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -84,7 +84,7 @@ def create_shelf(payload: CustomShelfNamePayload, service: ShelfServiceDep):
     return service.create_shelf(payload)
 
 
-@router.patch("/shelves/{ref}", response_model=ShelfResponse)
+@router.patch("/shelves/{shelf_ref}", response_model=ShelfResponse)
 def update_shelf(
     shelf_ref: ShelfRefDep,
     payload: CustomShelfNamePayload,
@@ -93,12 +93,12 @@ def update_shelf(
     return service.update_shelf(shelf_ref, payload)
 
 
-@router.delete("/shelves/{ref}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/shelves/{shelf_ref}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_shelf(shelf_ref: ShelfRefDep, service: ShelfServiceDep):
     service.delete_shelf(shelf_ref)
 
 
-@router.get("/shelves/{ref}/books", response_model=PaginatedBooks)
+@router.get("/shelves/{shelf_ref}/books", response_model=PaginatedBooks)
 def list_books_in_shelf(
     shelf_ref: ShelfRefDep,
     service: ShelfServiceDep,
@@ -107,7 +107,7 @@ def list_books_in_shelf(
 ):
     """Return one page of a shelf's books.
 
-    ``ref`` names a shelf as ``reading:<ReadingShelf value>`` or ``custom:<id>``.
+    ``shelf_ref`` names a shelf as ``reading:<ReadingShelf value>`` or ``custom:<id>``.
     """
     if page < 1:
         page = 1
@@ -127,7 +127,7 @@ def list_books_in_shelf(
     }
 
 
-@router.post("/shelves/{ref}/books", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/shelves/{shelf_ref}/books", status_code=status.HTTP_204_NO_CONTENT)
 def add_book_to_shelf(
     shelf_ref: ShelfRefDep,
     payload: CustomShelfBookAdd,
@@ -137,14 +137,18 @@ def add_book_to_shelf(
     service.add_book(shelf_ref, payload.book_id)
 
 
-@router.delete("/shelves/{ref}/books/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/shelves/{shelf_ref}/books/{book_id}", status_code=status.HTTP_204_NO_CONTENT
+)
 def remove_book_from_shelf(
     shelf_ref: ShelfRefDep, book_id: int, service: ShelfServiceDep
 ):
     service.remove_book(shelf_ref, book_id)
 
 
-@router.post("/shelves/{ref}/items/reorder", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/shelves/{shelf_ref}/items/reorder", status_code=status.HTTP_204_NO_CONTENT
+)
 def reorder_shelf_item(
     shelf_ref: ShelfRefDep,
     payload: ShelfReorderRequest,
