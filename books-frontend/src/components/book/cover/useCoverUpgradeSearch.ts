@@ -1,4 +1,5 @@
 import { onBeforeUnmount, onMounted, ref } from "vue";
+import { isAxiosError } from "axios";
 import { getCoverUpgradeSearch, startCoverUpgradeSearch } from "../../../api/covers";
 import type { CoverUpgradeCandidate } from "../../../api/types";
 
@@ -39,14 +40,15 @@ export function useCoverUpgradeSearch(bookId: number) {
       }
 
       pollTimer = window.setTimeout(poll, POLL_INTERVAL_MS);
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (cancelled) {
         return;
       }
 
       console.error("Cover upgrade poll failed:", err);
       status.value = "failed";
-      errorMsg.value = err.response?.data?.detail || "Failed to check upgrade job.";
+      const detail = isAxiosError<{ detail?: unknown }>(err) ? err.response?.data?.detail : undefined;
+      errorMsg.value = typeof detail === "string" && detail ? detail : "Failed to check upgrade job.";
     }
   }
 
@@ -61,14 +63,15 @@ export function useCoverUpgradeSearch(bookId: number) {
       jobId = job.job_id;
       status.value = "running";
       pollTimer = window.setTimeout(poll, POLL_INTERVAL_MS);
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (cancelled) {
         return;
       }
 
       console.error("Failed to start cover upgrade:", err);
       status.value = "failed";
-      errorMsg.value = err.response?.data?.detail || "Failed to start upgrade search.";
+      const detail = isAxiosError<{ detail?: unknown }>(err) ? err.response?.data?.detail : undefined;
+      errorMsg.value = typeof detail === "string" && detail ? detail : "Failed to start upgrade search.";
     }
   });
 

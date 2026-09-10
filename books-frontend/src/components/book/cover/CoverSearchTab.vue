@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
+import { isAxiosError } from "axios";
 import { searchBookCovers } from "../../../api/covers";
 import type { CoverSearchResult } from "../../../api/types";
 import CoverCandidateGrid from "./CoverCandidateGrid.vue";
@@ -37,9 +38,10 @@ async function handleSearch() {
       author: author.value.trim() || undefined,
       isbn: isbn.value.trim() || undefined,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Cover search failed:", err);
-    error.value = err.response?.data?.detail || "Failed to search covers.";
+    const detail = isAxiosError<{ detail?: unknown }>(err) ? err.response?.data?.detail : undefined;
+    error.value = typeof detail === "string" && detail ? detail : "Failed to search covers.";
   } finally {
     loading.value = false;
   }
