@@ -177,7 +177,7 @@ export function usePaginatedList<T, R extends string | number = number>(
       let result: PageResult<T>;
       let target = 1;
 
-      do {
+      for (;;) {
         result = await options.fetchPage(resourceId, target);
 
         if (gen !== generation) {
@@ -191,7 +191,7 @@ export function usePaginatedList<T, R extends string | number = number>(
         }
 
         target += 1;
-      } while (true);
+      }
 
       items.value = next;
       page.value = target;
