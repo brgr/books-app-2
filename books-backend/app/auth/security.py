@@ -1,10 +1,10 @@
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
 
 import jwt
-from jwt import ExpiredSignatureError, PyJWTError
-from fastapi import Depends, HTTPException, status, Request, Response
+from fastapi import Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordBearer
+from jwt import ExpiredSignatureError, PyJWTError
 from pwdlib import PasswordHash
 from sqlalchemy import func
 from sqlalchemy.orm import Session

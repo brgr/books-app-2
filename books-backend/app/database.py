@@ -1,7 +1,8 @@
-from sqlalchemy import create_engine, event
-from sqlalchemy.orm import sessionmaker, Session
-from typing import Generator
 import os
+from typing import Generator
+
+from sqlalchemy import create_engine, event
+from sqlalchemy.orm import Session, sessionmaker
 
 # Database URL from environment or default
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./books.db")

@@ -8,21 +8,21 @@ from app.auth.security import get_current_user
 from app.database import get_db
 from app.models import User
 from app.schemas import (
-    PaginatedBooks,
     CustomShelfBookAdd,
-    ShelfReorderRequest,
     CustomShelfNamePayload,
+    PaginatedBooks,
+    ShelfReorderRequest,
     ShelfResponse,
 )
+from app.shelves.refs import InvalidShelfRefError, ShelfRef, parse_shelf_ref
 from app.shelves.service import (
     BookNotInLibraryError,
-    ReadingShelfError,
     CustomShelfNameTakenError,
+    ReadingShelfError,
     ShelfNotFoundError,
     ShelfReorderError,
     ShelfService,
 )
-from app.shelves.refs import InvalidShelfRefError, ShelfRef, parse_shelf_ref
 
 router = APIRouter()
 

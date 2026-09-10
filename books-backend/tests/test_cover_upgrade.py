@@ -8,8 +8,8 @@ from PIL import Image
 
 from app.covers import cover_upgrade
 from app.covers.cover_upgrade import (
-    CoverUpgradeJob,
     JOB_TTL_SECONDS,
+    CoverUpgradeJob,
     _gc_jobs,
     _run_job,
     _score_candidates,

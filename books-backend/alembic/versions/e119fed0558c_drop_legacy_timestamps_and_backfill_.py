@@ -6,13 +6,13 @@ Create Date: 2025-12-08 16:41:34.436659
 
 """
 
-from datetime import UTC, datetime
 import uuid
+from datetime import UTC, datetime
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "e119fed0558c"

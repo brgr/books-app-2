@@ -5,11 +5,11 @@ from sqlalchemy.orm import Session
 
 from app.auth.security import get_current_user
 from app.database import get_db
-from app.models import Import, User
 from app.imports.reading_list_import import (
     ImportReadingListError,
     import_reading_list_from_bytes,
 )
+from app.models import Import, User
 from app.schemas import ImportResponse
 
 router = APIRouter()

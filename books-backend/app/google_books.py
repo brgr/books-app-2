@@ -1,8 +1,10 @@
 """Google Books API integration for book search."""
 
 import re
-import httpx
 from typing import Optional
+
+import httpx
+
 from app.config import settings
 
 

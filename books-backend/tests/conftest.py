@@ -1,11 +1,11 @@
 import pytest
-from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from alembic import command
 from app.auth.security import create_user
 from app.database import get_db
 from app.models import Base

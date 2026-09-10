@@ -18,6 +18,7 @@ from app.auth.security import (
 )
 from app.config import settings
 from app.database import get_db
+from app.imports.user_export import build_user_books_export
 from app.models import User
 from app.schemas import (
     AccessTokenResponse,
@@ -26,7 +27,6 @@ from app.schemas import (
     UserBooksExportResponse,
     UserResponse,
 )
-from app.imports.user_export import build_user_books_export
 
 router = APIRouter()
 
