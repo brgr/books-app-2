@@ -11,7 +11,7 @@ Create Date: 2026-07-25 15:00:00.000000
 
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
 
@@ -19,9 +19,9 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "c4e1a7d38b02"
-down_revision: Union[str, None] = "60da3ebef996"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "60da3ebef996"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 DEFAULT_LIST_NAMES = ("To Read", "Finished")

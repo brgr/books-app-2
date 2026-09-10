@@ -1,7 +1,6 @@
 """Google Books API integration for book search."""
 
 import re
-from typing import Optional
 
 import httpx
 
@@ -9,8 +8,8 @@ from app.config import settings
 
 
 def _build_cover_query(
-    title: Optional[str], author: Optional[str], isbn: Optional[str]
-) -> Optional[str]:
+    title: str | None, author: str | None, isbn: str | None
+) -> str | None:
     """Build a Google Books query that uses field qualifiers for better recall."""
     if isbn:
         digits = re.sub(r"[^0-9Xx]", "", isbn)
@@ -40,9 +39,9 @@ def _upgrade_thumbnail(url: str, zoom: int = 2) -> str:
 
 
 async def search_cover_images(
-    title: Optional[str] = None,
-    author: Optional[str] = None,
-    isbn: Optional[str] = None,
+    title: str | None = None,
+    author: str | None = None,
+    isbn: str | None = None,
     max_results: int = 40,
 ) -> list[dict]:
     """Search Google Books for candidate cover images.
@@ -99,7 +98,7 @@ async def search_cover_images(
             continue
         seen.add(dedupe_key)
 
-        result_isbn: Optional[str] = None
+        result_isbn: str | None = None
         for ident in volume_info.get("industryIdentifiers", []) or []:
             if ident.get("type") == "ISBN_13":
                 result_isbn = ident.get("identifier")
@@ -121,7 +120,7 @@ async def search_cover_images(
 
 
 class GoogleBooksRateLimitError(Exception):
-    def __init__(self, retry_after: Optional[str] = None):
+    def __init__(self, retry_after: str | None = None):
         self.retry_after = retry_after
         super().__init__("Google Books API rate limit exceeded")
 
@@ -185,7 +184,7 @@ async def search_google_books(query: str, max_results: int = 10) -> list[dict]:
         return []
 
 
-def _normalize_book_data(item: dict) -> Optional[dict]:
+def _normalize_book_data(item: dict) -> dict | None:
     """
     Normalize a single book item from Google Books API response.
 

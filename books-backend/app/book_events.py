@@ -1,7 +1,6 @@
 """Event helper functions for book event sourcing (initial three-event slice)."""
 
 from datetime import UTC, datetime
-from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -38,7 +37,7 @@ def _get_event_type(session: Session, code: BookEventCode) -> BookEventType:
 
 def _latest_event(
     session: Session, user_book_id: int, code: BookEventCode
-) -> Optional[BookEvent]:
+) -> BookEvent | None:
     # noinspection PyTypeChecker
     return (
         session.query(BookEvent)
@@ -51,7 +50,7 @@ def _latest_event(
     )
 
 
-def _is_after(candidate: BookEvent, other: Optional[BookEvent]) -> bool:
+def _is_after(candidate: BookEvent, other: BookEvent | None) -> bool:
     if other is None:
         return True
     if candidate.occurred_at > other.occurred_at:
@@ -65,8 +64,8 @@ def record_added_to_library(
     session: Session,
     user_id: int,
     book_id: int,
-    occurred_at: Optional[datetime] = None,
-    import_id: Optional[int] = None,
+    occurred_at: datetime | None = None,
+    import_id: int | None = None,
 ) -> BookEvent:
     """Create the user_book record if needed and append the first add event.
 
@@ -125,7 +124,7 @@ def ensure_added_event(
     session: Session,
     user_id: int,
     book_id: int,
-    import_id: Optional[int] = None,
+    import_id: int | None = None,
 ) -> UserBook:
     """Guarantee a user_book row and its initial add event exist."""
     # noinspection PyTypeChecker
@@ -278,7 +277,7 @@ def record_reading_event(
     session: Session,
     user_book_id: int,
     code: BookEventCode,
-    occurred_at: Optional[datetime] = None,
+    occurred_at: datetime | None = None,
 ) -> BookEvent:
     """Append one of the pause/resume/abandon state events."""
     if code not in {
@@ -306,8 +305,8 @@ def record_note_event(
     session: Session,
     user_book_id: int,
     code: BookEventCode,
-    note: Optional[str],
-    occurred_at: Optional[datetime] = None,
+    note: str | None,
+    occurred_at: datetime | None = None,
 ) -> BookEvent:
     """Append a note event for the user_book."""
     event_type = _get_event_type(session, code)
@@ -326,9 +325,9 @@ def record_note_event(
 def record_rating_event(
     session: Session,
     user_book_id: int,
-    rating: Optional[float],
-    occurred_at: Optional[datetime] = None,
-    import_id: Optional[int] = None,
+    rating: float | None,
+    occurred_at: datetime | None = None,
+    import_id: int | None = None,
 ) -> BookEvent:
     """Add a rating event; a null rating represents an explicit removal of the rating."""
     event = BookEvent(
@@ -352,9 +351,9 @@ def record_rating_event(
 def record_progress_event(
     session: Session,
     user_book_id: int,
-    page: Optional[int] = None,
-    percent: Optional[float] = None,
-    occurred_at: Optional[datetime] = None,
+    page: int | None = None,
+    percent: float | None = None,
+    occurred_at: datetime | None = None,
 ) -> BookEvent:
     """Append a progress event for the user_book.
 
@@ -380,9 +379,9 @@ def record_progress_event(
 def apply_progress_event(
     session: Session,
     user_book: UserBook,
-    page: Optional[int] = None,
-    percent: Optional[float] = None,
-    max_page: Optional[int] = None,
+    page: int | None = None,
+    percent: float | None = None,
+    max_page: int | None = None,
 ) -> UserBook:
     """Record a progress event and update the user_book's current position.
 
@@ -405,11 +404,11 @@ def apply_progress_event(
 def record_cover_changed(
     session: Session,
     user_book_id: int,
-    old_cover_image_url: Optional[str],
-    new_cover_image_url: Optional[str],
-    old_cover_thumbnail_url: Optional[str],
-    new_cover_thumbnail_url: Optional[str],
-    occurred_at: Optional[datetime] = None,
+    old_cover_image_url: str | None,
+    new_cover_image_url: str | None,
+    old_cover_thumbnail_url: str | None,
+    new_cover_thumbnail_url: str | None,
+    occurred_at: datetime | None = None,
 ) -> BookEvent:
     """Append a cover-changed event to the user's reading timeline.
 

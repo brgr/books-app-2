@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -22,7 +21,7 @@ class Settings(BaseSettings):
     ]
 
     # Google Books API (optional - search works without it but may have rate limits)
-    google_books_api_key: Optional[str] = None
+    google_books_api_key: str | None = None
 
     # File uploads: user-generated assets (e.g., downloaded/posted book covers). A separate
     # static assets directory can be added later if needed; this is only for uploads.

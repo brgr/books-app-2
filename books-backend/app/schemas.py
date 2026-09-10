@@ -57,11 +57,11 @@ class AccessTokenResponse(BaseModel):
 class BookBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     author: str = Field(..., min_length=1, max_length=100)
-    isbn: Optional[str] = Field(None, max_length=20)
-    description: Optional[str] = None
-    published_date: Optional[datetime] = None
-    page_count: Optional[int] = Field(None, ge=0)
-    cover_image_url: Optional[str] = Field(None, max_length=500)
+    isbn: str | None = Field(None, max_length=20)
+    description: str | None = None
+    published_date: datetime | None = None
+    page_count: int | None = Field(None, ge=0)
+    cover_image_url: str | None = Field(None, max_length=500)
 
 
 class BookCreate(BookBase):
@@ -69,18 +69,18 @@ class BookCreate(BookBase):
 
 
 class BookUpdate(BaseModel):
-    title: Optional[str] = Field(None, min_length=1, max_length=255)
-    author: Optional[str] = Field(None, min_length=1, max_length=100)
-    isbn: Optional[str] = Field(None, max_length=20)
-    description: Optional[str] = None
-    published_date: Optional[datetime] = None
-    page_count: Optional[int] = Field(None, ge=0)
-    cover_image_url: Optional[str] = Field(None, max_length=500)
+    title: str | None = Field(None, min_length=1, max_length=255)
+    author: str | None = Field(None, min_length=1, max_length=100)
+    isbn: str | None = Field(None, max_length=20)
+    description: str | None = None
+    published_date: datetime | None = None
+    page_count: int | None = Field(None, ge=0)
+    cover_image_url: str | None = Field(None, max_length=500)
 
 
 class BookResponse(BookBase):
     id: int
-    cover_thumbnail_url: Optional[str] = None
+    cover_thumbnail_url: str | None = None
     user_book: Optional["UserBookResponse"] = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -90,7 +90,7 @@ class BookResponse(BookBase):
 class ReadingDateValue(BaseModel):
     """A calendar date together with how precisely the user knows it."""
 
-    value: Optional[datetime] = None
+    value: datetime | None = None
     precision: ReadingDatePrecision
 
     @model_validator(mode="after")
@@ -111,7 +111,7 @@ class ReadingDateValue(BaseModel):
 
 class UserBookBase(BaseModel):
     shelf: ReadingShelf
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 class UserBookCreate(UserBookBase):
@@ -119,16 +119,16 @@ class UserBookCreate(UserBookBase):
 
 
 class UserBookUpdate(BaseModel):
-    shelf: Optional[ReadingShelf] = None
-    notes: Optional[str] = None
+    shelf: ReadingShelf | None = None
+    notes: str | None = None
 
 
 class UserBookShelfUpdate(BaseModel):
     """Schema for updating just the shelf via PUT endpoint."""
 
     shelf: ReadingShelf
-    notes: Optional[str] = None
-    reading_date: Optional[ReadingDateValue] = None
+    notes: str | None = None
+    reading_date: ReadingDateValue | None = None
 
 
 class UserBookRatingUpdate(BaseModel):
@@ -141,11 +141,11 @@ class UserBookResponse(UserBookBase):
     id: int
     user_id: int
     book_id: int
-    rating: Optional[float] = None
-    started_at: Optional[ReadingDateValue] = None
-    finished_at: Optional[ReadingDateValue] = None
-    current_page: Optional[int] = None
-    current_percent: Optional[float] = None
+    rating: float | None = None
+    started_at: ReadingDateValue | None = None
+    finished_at: ReadingDateValue | None = None
+    current_page: int | None = None
+    current_percent: float | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -154,8 +154,8 @@ class UserBookResponse(UserBookBase):
         cls,
         user_book: UserBook,
         shelf: ReadingShelf,
-        started_at: Optional[ReadingDate],
-        finished_at: Optional[ReadingDate],
+        started_at: ReadingDate | None,
+        finished_at: ReadingDate | None,
     ) -> "UserBookResponse":
         """Build the response from a user_book plus its event-derived dates.
 
@@ -182,8 +182,8 @@ class UserBookResponse(UserBookBase):
 # Shelf schemas
 class ShelfReorderRequest(BaseModel):
     moved_book_id: int
-    book_id_before: Optional[int] = None
-    book_id_after: Optional[int] = None
+    book_id_before: int | None = None
+    book_id_after: int | None = None
     edge: Literal["top", "bottom"] | None = None
 
     @model_validator(mode="after")
@@ -238,23 +238,23 @@ class GoogleBookResult(BaseModel):
 
     title: str
     author: str
-    isbn: Optional[str] = None
-    description: Optional[str] = None
-    published_date: Optional[str] = None
-    page_count: Optional[int] = None
-    thumbnail: Optional[str] = None
-    google_books_id: Optional[str] = None
+    isbn: str | None = None
+    description: str | None = None
+    published_date: str | None = None
+    page_count: int | None = None
+    thumbnail: str | None = None
+    google_books_id: str | None = None
 
 
 class CoverSearchResult(BaseModel):
     """A candidate cover image returned by the cover picker."""
 
     title: str
-    author: Optional[str] = None
-    isbn: Optional[str] = None
+    author: str | None = None
+    isbn: str | None = None
     thumbnail: str
     image_url: str
-    google_books_id: Optional[str] = None
+    google_books_id: str | None = None
 
 
 class CoverUpgradeCandidateResponse(BaseModel):
@@ -274,7 +274,7 @@ class CoverUpgradeJobResponse(BaseModel):
     job_id: str
     status: Literal["running", "done", "failed"]
     results: list[CoverUpgradeCandidateResponse] = []
-    error: Optional[str] = None
+    error: str | None = None
 
 
 # Export schemas
@@ -282,17 +282,17 @@ class ExportBookEntry(BaseModel):
     id: int
     title: str
     author: str
-    isbn: Optional[str] = None
-    description: Optional[str] = None
-    published_date: Optional[datetime] = None
-    page_count: Optional[int] = None
+    isbn: str | None = None
+    description: str | None = None
+    published_date: datetime | None = None
+    page_count: int | None = None
     shelf: ReadingShelf
-    notes: Optional[str] = None
-    rating: Optional[float] = None
-    started_at: Optional[ReadingDateValue] = None
-    finished_at: Optional[ReadingDateValue] = None
-    current_page: Optional[int] = None
-    current_percent: Optional[float] = None
+    notes: str | None = None
+    rating: float | None = None
+    started_at: ReadingDateValue | None = None
+    finished_at: ReadingDateValue | None = None
+    current_page: int | None = None
+    current_percent: float | None = None
 
     @classmethod
     def from_orm_pair(
@@ -300,8 +300,8 @@ class ExportBookEntry(BaseModel):
         book: Book,
         user_book: UserBook,
         shelf: ReadingShelf,
-        started_at: Optional[ReadingDate],
-        finished_at: Optional[ReadingDate],
+        started_at: ReadingDate | None,
+        finished_at: ReadingDate | None,
     ) -> "ExportBookEntry":
         # noinspection PyTypeChecker
         return cls(
@@ -340,16 +340,16 @@ class BookEventResponse(BaseModel):
     id: str
     event_type: BookEventCode
     occurred_at: datetime
-    reading_date: Optional[ReadingDateValue] = None
-    note: Optional[str] = None
-    rating: Optional[float] = None
-    page: Optional[int] = None
-    percent: Optional[float] = None
-    old_cover_image_url: Optional[str] = None
-    new_cover_image_url: Optional[str] = None
-    old_cover_thumbnail_url: Optional[str] = None
-    new_cover_thumbnail_url: Optional[str] = None
-    import_id: Optional[int] = None
+    reading_date: ReadingDateValue | None = None
+    note: str | None = None
+    rating: float | None = None
+    page: int | None = None
+    percent: float | None = None
+    old_cover_image_url: str | None = None
+    new_cover_image_url: str | None = None
+    old_cover_thumbnail_url: str | None = None
+    new_cover_thumbnail_url: str | None = None
+    import_id: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -393,8 +393,8 @@ class BookEventResponse(BaseModel):
 
 
 class BookProgressUpdate(BaseModel):
-    page: Optional[int] = Field(default=None, ge=0)
-    percent: Optional[float] = Field(default=None, ge=0, le=100)
+    page: int | None = Field(default=None, ge=0)
+    percent: float | None = Field(default=None, ge=0, le=100)
 
     @model_validator(mode="after")
     def _require_page_or_percent(self) -> "BookProgressUpdate":
@@ -405,7 +405,7 @@ class BookProgressUpdate(BaseModel):
 
 class ImportResponse(BaseModel):
     id: int
-    filename: Optional[str] = None
+    filename: str | None = None
     occurred_at: datetime
     imported_count: int
     skipped_count: int
