@@ -16,12 +16,13 @@ from app.models import (
 
 
 def _make_book(db_session, **overrides):
-    defaults = dict(
-        title="Test Book",
-        author="Test Author",
-        cover_image_url="/uploads/covers/old.jpg",
-        cover_thumbnail_url="/uploads/covers/thumbnails/old.jpg",
-    )
+    defaults = {
+        "title": "Test Book",
+        "author": "Test Author",
+        "cover_image_url": "/uploads/covers/old.jpg",
+        "cover_thumbnail_url": "/uploads/covers/thumbnails/old.jpg",
+    }
+
     defaults.update(overrides)
     book = Book(**defaults)
     db_session.add(book)

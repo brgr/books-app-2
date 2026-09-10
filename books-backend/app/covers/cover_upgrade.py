@@ -128,7 +128,7 @@ async def _run_job(
             )
             job.results = results
             job.status = "done"
-        except Exception as e:  # noqa: BLE001 - surface to client
+        except Exception as e:  # Surface to client
             job.status = "failed"
             job.error = f"{type(e).__name__}: {e}"
         finally:
@@ -238,7 +238,7 @@ async def _score_candidates(
         )
 
     results: list[CoverUpgradeCandidate] = []
-    for cand, img in zip(candidates, images):
+    for cand, img in zip(candidates, images, strict=True):
         if img is None:
             continue
 

@@ -123,4 +123,3 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Downgrade schema."""
     # Data migration only; no-op on downgrade.
-    pass

@@ -83,7 +83,7 @@ async def search_books(
                 "Try again later or set GOOGLE_BOOKS_API_KEY."
             ),
             headers=headers,
-        )
+        ) from e
     return results
 
 
@@ -110,7 +110,7 @@ async def search_covers(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Google Books rate limit exceeded.",
             headers=headers,
-        )
+        ) from e
 
 
 @router.get("/books/cover-preview")
@@ -302,7 +302,7 @@ async def upload_book_cover(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to save file: {str(e)}",
-        )
+            detail=f"Failed to save file: {e!s}",
+        ) from e
 
     return service.set_cover(book, cover_url, thumbnail_url)

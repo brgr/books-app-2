@@ -19,7 +19,7 @@ def test_user_books_export_sorted_by_id(
     shelf_updates = ["finished", "started", "want_to_read"]
     expected_shelf_by_id = {}
 
-    for book, new_shelf in zip(reversed(created_books), shelf_updates):
+    for book, new_shelf in zip(reversed(created_books), shelf_updates, strict=True):
         notes = f"Note for {book['title']}"
         if new_shelf == "finished":
             start_response = client.put(

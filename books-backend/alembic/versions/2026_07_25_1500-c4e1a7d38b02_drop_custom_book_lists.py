@@ -56,4 +56,3 @@ def downgrade() -> None:
 
     Custom lists are user data with no other source, so they cannot be reconstructed.
     """
-    pass

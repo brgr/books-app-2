@@ -59,7 +59,7 @@ def _make_zip(rows: list[dict], images: dict[str, bytes] | None = None) -> bytes
         writer = csv.DictWriter(csv_buf, fieldnames=fieldnames)
         writer.writeheader()
         for row in rows:
-            full_row = {f: "" for f in fieldnames}
+            full_row = dict.fromkeys(fieldnames, "")
             full_row.update(row)
             writer.writerow(full_row)
         zf.writestr("data.csv", csv_buf.getvalue())

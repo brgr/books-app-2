@@ -87,7 +87,9 @@ def upgrade() -> None:
                 list_id = result.lastrowid
             list_ids[name] = int(list_id)
 
-        def _insert_items(list_name: str, statuses: tuple[str, ...]) -> None:
+        def _insert_items(
+            user_id: int, list_id: int, statuses: tuple[str, ...]
+        ) -> None:
             rows = (
                 bind.execute(
                     sa.select(user_books.c.id)
@@ -103,14 +105,14 @@ def upgrade() -> None:
             for index, user_book_id in enumerate(rows, start=1):
                 bind.execute(
                     book_list_items.insert().values(
-                        list_id=list_ids[list_name],
+                        list_id=list_id,
                         user_book_id=user_book_id,
                         sort_order=Decimal("1000") * Decimal(index),
                     )
                 )
 
-        _insert_items("To Read", to_read_statuses)
-        _insert_items("Finished", finished_statuses)
+        _insert_items(user_id, list_ids["To Read"], to_read_statuses)
+        _insert_items(user_id, list_ids["Finished"], finished_statuses)
 
 
 def downgrade() -> None:
