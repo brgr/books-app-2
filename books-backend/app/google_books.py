@@ -213,7 +213,8 @@ def _normalize_book_data(item: dict) -> Optional[dict]:
             if identifier.get("type") == "ISBN_13":
                 isbn = identifier.get("identifier")
                 break
-            elif identifier.get("type") == "ISBN_10" and not isbn:
+
+            if identifier.get("type") == "ISBN_10" and not isbn:
                 isbn = identifier.get("identifier")
 
         # Get description

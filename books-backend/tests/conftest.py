@@ -54,7 +54,7 @@ def override_get_db():
         db.close()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def db_session():
     """Create a fresh database for each test."""
     run_migrations()
@@ -67,7 +67,7 @@ def db_session():
 
 
 # noinspection PyUnresolvedReferences
-@pytest.fixture(scope="function")
+@pytest.fixture
 def client(db_session):
     """Create a test client with database override."""
     app.dependency_overrides[get_db] = override_get_db

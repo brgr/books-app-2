@@ -220,8 +220,7 @@ async def test_score_candidates_drops_unrelated_images(monkeypatch):
         if url == "match":
             return _make_image((200, 300), color=(255, 0, 0))
         # Random noise → distinct phash
-        img = Image.effect_noise((200, 300), 100).convert("RGB")
-        return img
+        return Image.effect_noise((200, 300), 100).convert("RGB")
 
     monkeypatch.setattr(cover_upgrade, "_fetch_image", fake_fetch)
 

@@ -260,7 +260,6 @@ def delete_all_books(
 ):
     """Remove all books from the current user's library."""
     service.clear_library()
-    return None
 
 
 @router.delete("/books/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -270,7 +269,6 @@ def delete_book(
 ):
     """Remove a book from the current user's library."""
     service.remove_from_library(book)
-    return None
 
 
 @router.post("/books/{book_id}/cover", response_model=BookResponse)

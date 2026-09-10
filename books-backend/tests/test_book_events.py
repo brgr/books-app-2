@@ -44,7 +44,9 @@ def test_added_to_library_only_once(db_session):
     first_event = record_added_to_library(db_session, user.id, book.id)
     assert first_event.event_type.code == BookEventCode.ADDED_TO_LIBRARY.value
 
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError, match=r"^Book already added to library for this user$"
+    ):
         record_added_to_library(db_session, user.id, book.id)
 
     count = db_session.query(BookEvent).count()
@@ -57,7 +59,9 @@ def test_start_requires_add(db_session):
     db_session.add(user_book)
     db_session.flush()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError, match=r"^Cannot start reading before adding to library$"
+    ):
         record_started_reading(db_session, user_book.id, _today())  # type: ignore[arg-type]
 
 
@@ -67,7 +71,10 @@ def test_start_twice_without_finish_is_rejected(db_session):
     user_book_id = db_session.query(UserBook.id).scalar()  # type: ignore[assignment]
 
     record_started_reading(db_session, user_book_id, _today())
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match=r"^Cannot start reading while a reading cycle is already in progress$",
+    ):
         record_started_reading(db_session, user_book_id, _today())
 
 
@@ -76,13 +83,15 @@ def test_finish_requires_start(db_session):
     record_added_to_library(db_session, user.id, book.id)
     user_book_id = db_session.query(UserBook.id).scalar()  # type: ignore[assignment]
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r"^Cannot finish reading before starting$"):
         record_finished_reading(db_session, user_book_id, _today())
 
     record_started_reading(db_session, user_book_id, _today())
     record_finished_reading(db_session, user_book_id, _today())
 
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError, match=r"^Cannot finish reading twice without a new start$"
+    ):
         record_finished_reading(db_session, user_book_id, _today())
 
 

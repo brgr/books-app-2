@@ -96,7 +96,6 @@ def update_shelf(
 @router.delete("/shelves/{ref}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_shelf(shelf_ref: ShelfRefDep, service: ShelfServiceDep):
     service.delete_shelf(shelf_ref)
-    return None
 
 
 @router.get("/shelves/{ref}/books", response_model=PaginatedBooks)
@@ -136,7 +135,6 @@ def add_book_to_shelf(
 ):
     """Put a book on a custom shelf."""
     service.add_book(shelf_ref, payload.book_id)
-    return None
 
 
 @router.delete("/shelves/{ref}/books/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -144,7 +142,6 @@ def remove_book_from_shelf(
     shelf_ref: ShelfRefDep, book_id: int, service: ShelfServiceDep
 ):
     service.remove_book(shelf_ref, book_id)
-    return None
 
 
 @router.post("/shelves/{ref}/items/reorder", status_code=status.HTTP_204_NO_CONTENT)
@@ -154,4 +151,3 @@ def reorder_shelf_item(
     service: ShelfServiceDep,
 ):
     service.reorder(service.resolve(shelf_ref), payload)
-    return None

@@ -111,5 +111,5 @@ def test_single_user_limit(db_session, test_user_credentials):
         db_session, test_user_credentials["username"], test_user_credentials["password"]
     )
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r"^A user already exists\.$"):
         create_user(db_session, "anotheruser", "anotherpass123")
