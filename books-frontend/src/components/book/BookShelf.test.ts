@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mount } from "@vue/test-utils";
 import { defineComponent, h, nextTick, ref } from "vue";
 import BookShelf from "./BookShelf.vue";
@@ -189,8 +189,9 @@ describe("BookShelf", () => {
       const refreshedBooks = hasMore ? [books[1]!, makeBook({ id: 3 })] : [books[1]!, books[0]!];
       finishRefresh({ ...page(refreshedBooks), pages: hasMore ? 2 : 1 });
       await flush();
+
       expect(renderedIds()).toEqual(refreshedBooks.map((book) => book.id));
-      expect(wrapper.find('[role="status"]').text()).toBe(`Moved to ${edge}.`);
+
       wrapper.unmount();
     },
   );
@@ -212,7 +213,9 @@ describe("BookShelf", () => {
     failSave(new Error("Offline"));
     await flush();
     expect(wrapper.findAllComponents(BookCard).map((book) => book.props("book").id)).toEqual([1, 2]);
-    expect(wrapper.find('[role="alert"]').text()).toContain("Could not refresh the shelf");
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    expect(log).toHaveBeenCalledWith("Failed to reorder books:", expect.any(Error));
+    expect(log).toHaveBeenCalledWith("Failed to refresh shelf:", expect.any(Error));
     expect(wrapper.find('[role="status"]').exists()).toBe(false);
     log.mockRestore();
     wrapper.unmount();

@@ -59,23 +59,14 @@ watch(
 // Reordering is also disabled while more books are loading, or if the shelf has an error.
 const isReorderable = computed(() => !searchQuery.value.trim() && !isLoadingMore.value && !error.value);
 
-const {
-  isDragging,
-  isSaving,
-  message,
-  error: reorderError,
-  dragOptions,
-  ignoresClick,
-  handleDragStart,
-  handleDragEnd,
-  moveBookToEdge,
-} = useShelfReorder({
-  books,
-  hasMore,
-  shelf: props.shelf,
-  enabled: isReorderable,
-  refresh: refreshLoaded,
-});
+const { isDragging, isSaving, dragOptions, ignoresClick, handleDragStart, handleDragEnd, moveBookToEdge } =
+  useShelfReorder({
+    books,
+    hasMore,
+    shelf: props.shelf,
+    enabled: isReorderable,
+    refresh: refreshLoaded,
+  });
 
 const showSentinel = computed(() => props.paginated && (hasMore.value || isLoadingMore.value));
 
@@ -155,8 +146,6 @@ async function handleContextRemove() {
     <div v-if="error" class="error">
       {{ error }}
     </div>
-    <p v-if="reorderError" role="alert" class="error">{{ reorderError }}</p>
-    <p v-if="message" role="status">{{ message }}</p>
 
     <template v-if="books.length">
       <!-- Titleless shelves still get the shelf header row, so their toggle stays where a titled shelf's would be. -->

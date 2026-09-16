@@ -30,8 +30,6 @@ export function useShelfReorder(options: ShelfReorderOptions) {
   const isDragging = ref(false);
   const lastDragTime = ref(0);
   const isSaving = ref(false);
-  const message = ref("");
-  const error = ref("");
 
   const dragOptions = {
     animation: 150,
@@ -56,8 +54,6 @@ export function useShelfReorder(options: ShelfReorderOptions) {
    */
   async function persist(payload: ShelfReorderRequest, booksToRestoreOnFailure?: Book[]) {
     isSaving.value = true;
-    message.value = "";
-    error.value = "";
 
     try {
       await reorderShelfItem(shelf, payload);
@@ -67,18 +63,12 @@ export function useShelfReorder(options: ShelfReorderOptions) {
       }
 
       console.error("Failed to reorder books:", err);
-      error.value = "Could not move the book. Please try again.";
     }
 
     try {
       await refresh();
-
-      if (!error.value) {
-        message.value = payload.edge ? `Moved to ${payload.edge}.` : "Book order updated.";
-      }
     } catch (err) {
       console.error("Failed to refresh shelf:", err);
-      error.value = "Could not refresh the shelf. Reload before moving more books.";
     } finally {
       isSaving.value = false;
     }
@@ -150,8 +140,6 @@ export function useShelfReorder(options: ShelfReorderOptions) {
   return {
     isDragging,
     isSaving,
-    message,
-    error,
     dragOptions,
     ignoresClick,
     handleDragStart,
