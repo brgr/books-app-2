@@ -198,8 +198,8 @@ def test_clear_library_is_scoped_to_the_acting_user(db_session):
     from app.books.service import BookService
     from app.models import Book, User, UserBook
 
-    user_a = User(username="user_a", hashed_password="x")  # noqa: S106
-    user_b = User(username="user_b", hashed_password="x")  # noqa: S106
+    user_a = User(username="user_a", hashed_password="x")
+    user_b = User(username="user_b", hashed_password="x")
     db_session.add_all([user_a, user_b])
     db_session.flush()
 

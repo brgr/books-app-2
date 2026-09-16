@@ -27,14 +27,6 @@ dev = [
     "pytest-xdist>=3.8.0",
 ]
 
-[tool.ruff.lint]
-# Expand coverage gradually to keep each cleanup manageable
-select = [
-    "E4", "E7", "E9", "F", "I", "B", "SIM", "C4", "PIE", "RUF",
-    "PT", "RET", "A", "ASYNC", "PLE", "PLW", "PGH", "T10", "LOG", "G", "PERF",
-    "UP", "FAST", "BLE", "S101", "S106"
-]
-
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = [
     "S101", # Pytest uses assert statements for test expectations.

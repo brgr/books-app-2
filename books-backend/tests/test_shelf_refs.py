@@ -25,8 +25,10 @@ def test_parse_shelf_ref_returns_typed_canonical_refs():
         ("started", "Shelf ref must be 'reading:<shelf>' or 'custom:<positive id>'"),
         (
             "reading:later",
-            "Unknown reading shelf 'later'. Expected one of: "
-            "want_to_read, started, paused, finished, abandoned",
+            (
+                "Unknown reading shelf 'later'. Expected one of: "
+                "want_to_read, started, paused, finished, abandoned"
+            ),
         ),
         ("custom:0042", "Custom shelf id must be a positive decimal integer"),
     ],

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 """Reset local dev state, import fixture books, generate sample books, and run the backend."""
 
 import argparse

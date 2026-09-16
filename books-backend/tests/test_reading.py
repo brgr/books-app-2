@@ -305,9 +305,7 @@ def test_set_started_with_custom_occurred_at(client, auth_headers, created_book)
     data = response.json()
     assert data["shelf"] == "started"
     assert data["started_at"]["precision"] == "day"
-    returned = datetime.fromisoformat(
-        data["started_at"]["value"].replace("Z", "+00:00")
-    )
+    returned = datetime.fromisoformat(data["started_at"]["value"])
     if returned.tzinfo is None:
         returned = returned.replace(tzinfo=UTC)
     assert returned == backdated.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -365,9 +363,7 @@ def test_set_finished_with_custom_occurred_at(client, auth_headers, created_book
     data = response.json()
     assert data["shelf"] == "finished"
     assert data["finished_at"]["precision"] == "day"
-    returned = datetime.fromisoformat(
-        data["finished_at"]["value"].replace("Z", "+00:00")
-    )
+    returned = datetime.fromisoformat(data["finished_at"]["value"])
     if returned.tzinfo is None:
         returned = returned.replace(tzinfo=UTC)
     assert returned == finished_at.replace(hour=0, minute=0, second=0, microsecond=0)

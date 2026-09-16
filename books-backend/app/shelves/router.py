@@ -109,8 +109,7 @@ def list_books_in_shelf(
 
     ``shelf_ref`` names a shelf as ``reading:<ReadingShelf value>`` or ``custom:<id>``.
     """
-    if page < 1:
-        page = 1
+    page = max(page, 1)
     if page_size < 1 or page_size > 100:
         page_size = 20
 

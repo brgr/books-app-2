@@ -868,7 +868,7 @@ def test_import_lists_reuses_shelves_and_ignores_empty_names(
     from app.models import User
 
     user = db_session.query(User).filter_by(username="testuser").one()
-    other_user = User(username="other", hashed_password="unused")  # noqa: S106
+    other_user = User(username="other", hashed_password="unused")
     db_session.add(other_user)
     db_session.flush()
     existing = Shelf(user_id=user.id, kind=ShelfKind.CUSTOM, name="Science")

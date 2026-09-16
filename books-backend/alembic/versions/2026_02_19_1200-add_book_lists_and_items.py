@@ -107,7 +107,7 @@ def upgrade() -> None:
                     book_list_items.insert().values(
                         list_id=list_id,
                         user_book_id=user_book_id,
-                        sort_order=Decimal("1000") * Decimal(index),
+                        sort_order=Decimal(1000) * Decimal(index),
                     )
                 )
 

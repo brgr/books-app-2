@@ -218,8 +218,7 @@ def list_books(
     page_size: int = 20,
 ):
     """List all books with pagination. Includes the user's shelf entry for each book."""
-    if page < 1:
-        page = 1
+    page = max(page, 1)
     if page_size < 1 or page_size > 100:
         page_size = 20
 

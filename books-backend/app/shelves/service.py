@@ -323,7 +323,7 @@ class ShelfService:
             if before.sort_order >= after.sort_order:
                 self._rebalance(shelf)
                 self.db.flush()
-            moved.sort_order = (before.sort_order + after.sort_order) / Decimal("2")
+            moved.sort_order = (before.sort_order + after.sort_order) / Decimal(2)
         elif before:
             moved.sort_order = before.sort_order + SORT_ORDER_GAP
         elif after:

@@ -67,7 +67,7 @@ def upgrade() -> None:
                 book_list_items.c.list_id == list_id
             )
         ).scalar()
-        next_sort = Decimal(max_sort or 0) + Decimal("1000")
+        next_sort = Decimal(max_sort or 0) + Decimal(1000)
 
         missing_books = (
             bind.execute(
@@ -117,7 +117,7 @@ def upgrade() -> None:
                     sort_order=next_sort,
                 )
             )
-            next_sort += Decimal("1000")
+            next_sort += Decimal(1000)
 
 
 def downgrade() -> None:
