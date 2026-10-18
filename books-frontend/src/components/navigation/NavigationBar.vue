@@ -55,6 +55,7 @@ function closeMenu() {
           <LibraryNavLink
             label="To Read"
             :active="surface === 'to-read'"
+            :scroll-to-top-on-click="route.name === 'books'"
             :to="{ name: 'shelf', params: { shelf: 'to-read' } }"
           >
             <template #icon>

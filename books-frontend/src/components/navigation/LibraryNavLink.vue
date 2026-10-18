@@ -1,13 +1,44 @@
 <script setup lang="ts">
 import { type RouteLocationRaw, RouterLink } from "vue-router";
+import { scrollToTop } from "../../utils/scrollToTop";
 
-defineProps<{ label: string; active: boolean; to: RouteLocationRaw }>();
+defineProps<{ label: string; active: boolean; to: RouteLocationRaw; scrollToTopOnClick?: boolean }>();
+
+function handleClick(event: MouseEvent, reselected: boolean, navigate: (event: MouseEvent) => unknown) {
+  // We want a plain click on the current tab to scroll to the top.
+  // We call preventDefault() to stop navigation, but that also blocks browser
+  // actions like Ctrl/Cmd-click to open a new tab. We therefore intercept only
+  // primary-button clicks without modifiers, and we respect any earlier handler
+  // that canceled the click.
+  if (
+    reselected &&
+    !event.defaultPrevented &&
+    event.button === 0 &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.shiftKey &&
+    !event.altKey
+  ) {
+    event.preventDefault();
+    scrollToTop();
+    return;
+  }
+
+  void navigate(event);
+}
 </script>
 
 <template>
-  <RouterLink :to="to" :aria-current="active ? 'page' : undefined" :class="['nav-button', { active }]">
-    <slot name="icon" />
-    <span class="nav-button-label">{{ label }}</span>
+  <RouterLink v-slot="{ href, navigate, isExactActive }" :to="to" custom>
+    <a
+      :href="href"
+      :aria-current="active ? 'page' : undefined"
+      :class="['nav-button', { active }]"
+      @click="handleClick($event, isExactActive || scrollToTopOnClick, navigate)"
+    >
+      <slot name="icon" />
+      <span class="nav-button-label">{{ label }}</span>
+    </a>
   </RouterLink>
 </template>
 

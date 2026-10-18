@@ -4,6 +4,7 @@ import { useRoute } from "vue-router";
 import BookShelf from "../components/book/BookShelf.vue";
 import BooksSearchHeader from "../components/book/BooksSearchHeader.vue";
 import NavigationBar from "../components/navigation/NavigationBar.vue";
+import GoToTopButton from "../components/ui/GoToTopButton.vue";
 import { provideLibraryPage } from "../composables/useLibraryPage";
 
 const route = useRoute();
@@ -49,6 +50,7 @@ const { allShelvesEmpty } = provideLibraryPage({ searchQuery });
         <BookShelf v-else shelf="reading:abandoned" title="Abandoned Books" paginated />
       </div>
     </div>
+    <GoToTopButton />
   </div>
 </template>
 

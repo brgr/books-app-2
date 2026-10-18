@@ -7,6 +7,7 @@ import BookShelf from "../components/book/BookShelf.vue";
 import CustomShelfEditModal from "../components/modals/CustomShelfEditModal.vue";
 import BooksSearchHeader from "../components/book/BooksSearchHeader.vue";
 import NavigationBar from "../components/navigation/NavigationBar.vue";
+import GoToTopButton from "../components/ui/GoToTopButton.vue";
 import { cacheKeys } from "../cache/keys";
 import { cacheDel } from "../cache/store";
 import { provideLibraryPage } from "../composables/useLibraryPage";
@@ -111,6 +112,8 @@ async function confirmDeleteShelf() {
         <BookShelf :shelf="shelfRef" :title="null" paginated can-remove-from-shelf />
       </template>
     </div>
+
+    <GoToTopButton />
 
     <CustomShelfEditModal
       v-if="showEditShelf"
