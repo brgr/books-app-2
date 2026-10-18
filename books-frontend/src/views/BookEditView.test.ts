@@ -22,6 +22,7 @@ const book: Book = {
   title: "Dune",
   author: "Frank Herbert",
   isbn: null,
+  google_books_id: null,
   description: null,
   published_date: "1965-08-01T00:00:00",
   page_count: 0,

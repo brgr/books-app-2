@@ -58,6 +58,12 @@ class BookBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     author: str | None = Field(None, max_length=100)
     isbn: str | None = Field(None, max_length=20)
+    google_books_id: (
+        Annotated[
+            str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
+        ]
+        | None
+    ) = None
     description: str | None = None
     published_date: datetime | None = None
     page_count: int | None = Field(None, ge=0)
@@ -283,6 +289,7 @@ class ExportBookEntry(BaseModel):
     title: str
     author: str | None
     isbn: str | None = None
+    google_books_id: str | None = None
     description: str | None = None
     published_date: datetime | None = None
     page_count: int | None = None
@@ -309,6 +316,7 @@ class ExportBookEntry(BaseModel):
             title=book.title,
             author=book.author,
             isbn=book.isbn,
+            google_books_id=book.google_books_id,
             description=book.description,
             published_date=book.published_date,
             page_count=book.page_count,

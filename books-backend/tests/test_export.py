@@ -12,6 +12,7 @@ def test_user_books_export_sorted_by_id(
         payload = sample_book_data.copy()
         payload["title"] = title
         payload["isbn"] = f"ISBN-{idx}"
+        payload["google_books_id"] = f"volume-{idx}"
         response = client.post("/api/books", json=payload, headers=auth_headers)
         assert response.status_code == status.HTTP_201_CREATED
         created_books.append(response.json())
@@ -55,6 +56,9 @@ def test_user_books_export_sorted_by_id(
     exported_titles = [book["title"] for book in payload["books"]]
     expected_titles = [book["title"] for book in created_books]
     assert exported_titles == expected_titles
+    assert [book["google_books_id"] for book in payload["books"]] == [
+        book["google_books_id"] for book in created_books
+    ]
 
     for book in payload["books"]:
         expected = expected_shelf_by_id[book["id"]]

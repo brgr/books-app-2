@@ -116,6 +116,7 @@ describe("adding a book", () => {
         title: "Dune",
         author: "Frank Herbert",
         isbn: "123",
+        google_books_id: "dune",
         page_count: 412,
         description: undefined,
         published_date: undefined,

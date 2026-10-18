@@ -93,6 +93,7 @@ export interface Book {
   title: string;
   author: string | null;
   isbn: string | null;
+  google_books_id: string | null;
   description: string | null;
   published_date: string | null;
   page_count: number | null;
@@ -115,6 +116,7 @@ export interface BookCreate {
   title: string;
   author?: string | null;
   isbn?: string;
+  google_books_id?: string | null;
   description?: string;
   published_date?: string;
   page_count?: number;

@@ -123,6 +123,7 @@ class Book(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     author: Mapped[str | None] = mapped_column(String(100), nullable=True)
     isbn: Mapped[str | None] = mapped_column(String(20), unique=True)
+    google_books_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     published_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -143,6 +144,7 @@ class Book(Base):
             title=data.title,
             author=data.author,
             isbn=data.isbn,
+            google_books_id=data.google_books_id,
             description=data.description,
             published_date=data.published_date,
             page_count=data.page_count,

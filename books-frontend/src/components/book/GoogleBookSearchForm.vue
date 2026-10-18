@@ -58,6 +58,7 @@ async function handleSelectBook(book: GoogleBookResult) {
       title: book.title,
       author: book.author,
       isbn: book.isbn || undefined,
+      google_books_id: book.google_books_id || undefined,
       description: book.description || undefined,
       published_date: book.published_date || undefined,
       page_count: book.page_count ?? undefined,

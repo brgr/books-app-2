@@ -27,6 +27,7 @@ function makeBook(overrides: Partial<Book> = {}): Book {
     title: "Dune",
     author: "Frank Herbert",
     isbn: null,
+    google_books_id: null,
     description: null,
     published_date: null,
     page_count: null,

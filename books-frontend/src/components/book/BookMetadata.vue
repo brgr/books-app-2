@@ -1,10 +1,21 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import type { Book } from "../../api/types";
 import { formatShortDate } from "../../utils/date";
 
-defineProps<{
+const props = defineProps<{
   book: Book;
 }>();
+
+const googleBooksUrl = computed(() => {
+  if (props.book.google_books_id) {
+    return `https://books.google.com/books?${new URLSearchParams({ id: props.book.google_books_id })}`;
+  }
+
+  const isbn = props.book.isbn?.replace(/[\s-]/g, "");
+  const query = isbn ? `isbn:${isbn}` : [props.book.title, props.book.author].filter(Boolean).join(" ");
+  return `https://books.google.com/books?${new URLSearchParams({ q: query })}`;
+});
 </script>
 
 <template>
@@ -17,6 +28,11 @@ defineProps<{
         <strong>Published:</strong> {{ formatShortDate(book.published_date) }}
       </div>
       <div class="metadata-item"><strong>Added:</strong> {{ formatShortDate(book.created_at) }}</div>
+      <div class="metadata-item">
+        <a :href="googleBooksUrl" target="_blank" rel="noopener noreferrer">
+          {{ book.google_books_id ? "View on Google Books" : "Search on Google Books" }}
+        </a>
+      </div>
     </div>
   </div>
 </template>

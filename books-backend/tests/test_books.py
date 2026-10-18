@@ -10,7 +10,34 @@ def test_create_book(client, auth_headers, sample_book_data):
     assert data["title"] == sample_book_data["title"]
     assert data["author"] == sample_book_data["author"]
     assert data["isbn"] == sample_book_data["isbn"]
+    assert data["google_books_id"] is None
     assert "id" in data
+
+
+def test_google_books_id_is_saved_and_preserved_on_edit(
+    client, auth_headers, sample_book_data
+):
+    response = client.post(
+        "/api/books",
+        json={**sample_book_data, "google_books_id": "dune-volume"},
+        headers=auth_headers,
+    )
+    assert response.status_code == status.HTTP_201_CREATED
+    book_id = response.json()["id"]
+    assert response.json()["google_books_id"] == "dune-volume"
+
+    response = client.put(
+        f"/api/books/{book_id}", json={"title": "Dune"}, headers=auth_headers
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["google_books_id"] == "dune-volume"
+
+    response = client.get(f"/api/books/{book_id}", headers=auth_headers)
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["google_books_id"] == "dune-volume"
+
+    response = client.get("/api/books", headers=auth_headers)
+    assert response.json()["items"][0]["google_books_id"] == "dune-volume"
 
 
 def test_create_book_requires_auth(client, sample_book_data):
