@@ -65,6 +65,7 @@ function save() {
         class="notes-textarea"
         rows="6"
         placeholder="Add your notes about this book... (Markdown supported)"
+        @keydown.ctrl.enter.prevent="save"
       ></textarea>
 
       <div class="notes-actions">
