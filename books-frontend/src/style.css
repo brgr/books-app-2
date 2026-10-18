@@ -150,6 +150,20 @@ button:disabled,
   font-size: 12px;
 }
 
+button.text-link {
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+button.text-link:hover:not(:disabled) {
+  color: var(--color-primary-hover);
+}
+
 /* Forms */
 input,
 select,

@@ -3,11 +3,11 @@ import { isAxiosError } from "axios";
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { deleteBook, getBook, updateBook } from "../api/books";
-import { uploadBookCover } from "../api/covers";
-import { isPendingCover, takePendingCover } from "../components/book/cover/pendingCoverUploads";
-import type { Book, BookUpdate } from "../api/types";
+import type { Book } from "../api/types";
 import NavigationBar from "../components/navigation/NavigationBar.vue";
-import CoverEditField from "../components/book/cover/CoverEditField.vue";
+import BookFields from "../components/book/BookFields.vue";
+import { bookToForm, emptyBookForm, formToPayload } from "../components/book/bookForm";
+import { savePendingCover } from "../components/book/cover/savePendingCover";
 import { useCachedQuery } from "../composables/useCachedQuery";
 import { cacheKeys } from "../cache/keys";
 import { invalidateCache } from "../cache/invalidate";
@@ -26,15 +26,7 @@ const { data: book, error: bookError } = useCachedQuery<Book>(
   { enabled: computed(() => bookId.value > 0) },
 );
 
-const formData = ref({
-  title: "",
-  author: "",
-  isbn: "",
-  description: "",
-  published_date: "",
-  page_count: "",
-  cover_image_url: "",
-});
+const formData = ref(emptyBookForm());
 
 const loading = ref(false);
 const error = ref("");
@@ -55,22 +47,18 @@ watch(
   book,
   (b) => {
     if (b) {
-      formData.value = {
-        title: b.title,
-        author: b.author,
-        isbn: b.isbn || "",
-        description: b.description || "",
-        published_date: (b.published_date ? b.published_date.split("T")[0] : "") || "",
-        page_count: b.page_count ? b.page_count.toString() : "",
-        cover_image_url: b.cover_image_url || "",
-      };
+      formData.value = bookToForm(b);
     }
   },
   { immediate: true },
 );
 
 async function handleSubmit() {
-  if (!book.value) {
+  if (!book.value || loading.value) {
+    return;
+  }
+  if (!formData.value.title.trim() || !formData.value.author.trim()) {
+    error.value = "Please enter a title and author.";
     return;
   }
 
@@ -78,23 +66,8 @@ async function handleSubmit() {
   loading.value = true;
 
   try {
-    const cover = formData.value.cover_image_url;
-    const pendingCover = isPendingCover(cover) ? takePendingCover(cover) : undefined;
-
-    const bookData: BookUpdate = {
-      title: formData.value.title,
-      author: formData.value.author,
-      isbn: formData.value.isbn || undefined,
-      description: formData.value.description || undefined,
-      published_date: formData.value.published_date || undefined,
-      page_count: formData.value.page_count ? parseInt(formData.value.page_count) : undefined,
-      // A staged upload is committed via its own endpoint below, so leave the cover out of the update.
-      cover_image_url: isPendingCover(cover) ? undefined : cover || undefined,
-    };
-
-    if (pendingCover) {
-      await uploadBookCover(book.value.id, pendingCover);
-    }
+    const bookData = formToPayload(formData.value);
+    formData.value.cover_image_url = await savePendingCover(book.value.id, formData.value.cover_image_url);
 
     await updateBook(book.value.id, bookData);
     await invalidateCache.bookUpdated(book.value.id);
@@ -168,85 +141,23 @@ async function handleDelete() {
       <div v-else class="edit-content">
         <h1>Edit Book</h1>
 
-        <div v-if="error" class="error">
+        <div v-if="error" class="error" role="alert">
           {{ error }}
         </div>
 
         <form @submit.prevent="handleSubmit">
-          <CoverEditField
-            v-model="formData.cover_image_url"
-            :author="formData.author"
-            :book-id="book.id"
-            :disabled="loading"
-            :isbn="formData.isbn"
-            :title="formData.title"
-          />
-
-          <div class="form-group">
-            <label for="title">Title *</label>
-            <input
-              id="title"
-              v-model="formData.title"
-              :disabled="loading"
-              placeholder="Enter book title"
-              required
-              type="text"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="author">Author *</label>
-            <input
-              id="author"
-              v-model="formData.author"
-              :disabled="loading"
-              placeholder="Enter author name"
-              required
-              type="text"
-            />
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="isbn">ISBN</label>
-              <input id="isbn" v-model="formData.isbn" :disabled="loading" placeholder="Enter ISBN" type="text" />
-            </div>
-
-            <div class="form-group">
-              <label for="page_count">Page Count</label>
-              <input
-                id="page_count"
-                v-model="formData.page_count"
-                :disabled="loading"
-                min="0"
-                placeholder="Number of pages"
-                type="number"
-              />
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="published_date">Published Date</label>
-            <input id="published_date" v-model="formData.published_date" :disabled="loading" type="date" />
-          </div>
-
-          <div class="form-group">
-            <label for="description">Description</label>
-            <textarea
-              id="description"
-              v-model="formData.description"
-              :disabled="loading"
-              placeholder="Enter book description"
-              rows="4"
-            ></textarea>
-          </div>
+          <BookFields v-model="formData" :book-id="book.id" :disabled="loading" />
 
           <div class="form-actions">
             <button :disabled="loading" class="btn-danger delete-action" type="button" @click="handleDelete">
               Delete Book
             </button>
             <button :disabled="loading" type="button" @click="handleCancel">Cancel</button>
-            <button :disabled="loading" class="btn-primary" type="submit">
+            <button
+              :disabled="loading || !formData.title.trim() || !formData.author.trim()"
+              class="btn-primary"
+              type="submit"
+            >
               {{ loading ? "Saving..." : "Save Book" }}
             </button>
           </div>

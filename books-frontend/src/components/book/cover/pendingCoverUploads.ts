@@ -2,7 +2,7 @@
 //
 // The object URL doubles as the preview `src` and as the cover field's value, so the
 // rest of the cover flow keeps treating the cover as a plain URL string. The actual
-// bytes are only uploaded when the user clicks Save (see BookEditView.handleSubmit),
+// bytes are only uploaded when the user saves the book,
 // so browsing and cancelling never touches the server.
 
 const pending = new Map<string, File>();
@@ -18,17 +18,12 @@ export function stagePendingCover(file: File): string {
   return url;
 }
 
-/** Retrieve and clear the staged file for an object URL (call once, on save). */
-export function takePendingCover(url: string): File | undefined {
-  const file = pending.get(url);
-  if (file) {
-    pending.delete(url);
-    URL.revokeObjectURL(url);
-  }
-  return file;
+/** Read the staged file without discarding it, so failed saves can be retried. */
+export function getPendingCover(url: string): File | undefined {
+  return pending.get(url);
 }
 
-/** Drop a staged file that will never be uploaded (replaced, cleared, or unmounted). */
+/** Release a staged file after upload, replacement, clearing, or unmounting. */
 export function discardPendingCover(url: string | null | undefined): void {
   if (isPendingCover(url) && pending.has(url!)) {
     pending.delete(url!);

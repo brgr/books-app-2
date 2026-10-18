@@ -60,16 +60,22 @@ watch(
 
 <template>
   <div class="search-fields">
-    <input v-model="title" type="text" placeholder="Title" :disabled="loading" @keyup.enter="handleSearch" />
-    <input v-model="author" type="text" placeholder="Author" :disabled="loading" @keyup.enter="handleSearch" />
+    <input v-model="title" type="text" placeholder="Title" :disabled="loading" @keydown.enter.prevent="handleSearch" />
+    <input
+      v-model="author"
+      type="text"
+      placeholder="Author"
+      :disabled="loading"
+      @keydown.enter.prevent="handleSearch"
+    />
     <input
       v-model="isbn"
       type="text"
       placeholder="ISBN (overrides title/author)"
       :disabled="loading"
-      @keyup.enter="handleSearch"
+      @keydown.enter.prevent="handleSearch"
     />
-    <button class="btn-primary" :disabled="loading" @click="handleSearch">
+    <button type="button" class="btn-primary" :disabled="loading" @click="handleSearch">
       {{ loading ? "Searching..." : "Search" }}
     </button>
   </div>

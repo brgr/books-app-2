@@ -37,7 +37,7 @@ function selectMode(next: Mode) {
     <div class="modal">
       <div class="modal-header">
         <h3>Change Cover</h3>
-        <button class="btn-small" @click="emit('close')">Close</button>
+        <button type="button" class="btn-small" @click="emit('close')">Close</button>
       </div>
 
       <div class="tabs">

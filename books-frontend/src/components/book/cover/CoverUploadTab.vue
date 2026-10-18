@@ -110,7 +110,7 @@ function acceptUrl() {
         type="url"
         aria-label="Cover image URL"
         placeholder="https://example.com/cover.jpg"
-        @keyup.enter="acceptUrl"
+        @keydown.enter.prevent="acceptUrl"
       />
       <button type="button" class="btn-primary" :disabled="!imageUrl.trim()" @click="acceptUrl">Use URL</button>
     </div>
