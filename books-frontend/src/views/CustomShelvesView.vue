@@ -11,6 +11,10 @@ const router = useRouter();
 const { data: shelves, error, refresh } = useCachedQuery<Shelf[]>(cacheKeys.shelves, getShelves);
 const customShelves = computed(() => (shelves.value ?? []).filter((shelf) => shelf.ref.startsWith("custom:")));
 const abandonedShelf = computed(() => (shelves.value ?? []).find((shelf) => shelf.ref === "reading:abandoned"));
+const shelvesToDisplay = computed(() => [
+  ...(abandonedShelf.value && abandonedShelf.value.book_count > 0 ? [abandonedShelf.value] : []),
+  ...customShelves.value,
+]);
 const showCreateShelf = ref(false);
 const newShelfName = ref("");
 const creating = ref(false);
@@ -77,37 +81,29 @@ async function createNewShelf() {
             @click="openCreateShelf"
           >
             <span aria-hidden="true">+</span>
+            New shelf
           </button>
         </header>
 
-        <section
-          v-if="abandonedShelf && abandonedShelf.book_count > 0"
-          class="reading-shelves"
-          aria-label="Reading shelves"
-        >
-          <button
-            type="button"
-            class="shelf-row"
-            @click="router.push({ name: 'shelf', params: { shelf: 'abandoned' } })"
-          >
-            <span>{{ abandonedShelf.display_name }}</span>
-            <span>{{ abandonedShelf.book_count }} {{ abandonedShelf.book_count === 1 ? "book" : "books" }}</span>
-          </button>
-        </section>
-
-        <div v-if="!customShelves.length" class="empty-state">No custom shelves yet. Create one to get started.</div>
-        <div v-else class="shelf-list">
-          <button
-            v-for="shelf in customShelves"
+        <div v-if="shelvesToDisplay.length" class="shelf-list">
+          <RouterLink
+            v-for="shelf in shelvesToDisplay"
             :key="shelf.ref"
-            type="button"
             class="shelf-row"
-            @click="router.push({ name: 'custom-shelf', params: { id: shelf.ref.slice('custom:'.length) } })"
+            :to="
+              shelf.ref === 'reading:abandoned'
+                ? { name: 'shelf', params: { shelf: 'abandoned' } }
+                : { name: 'custom-shelf', params: { id: shelf.ref.slice('custom:'.length) } }
+            "
           >
-            <span>{{ shelf.display_name }}</span
-            ><span>{{ shelf.book_count }} {{ shelf.book_count === 1 ? "book" : "books" }}</span>
-          </button>
+            <span class="shelf-details">
+              <span class="shelf-name">{{ shelf.display_name }}</span>
+              <span class="shelf-count">{{ shelf.book_count }} {{ shelf.book_count === 1 ? "book" : "books" }}</span>
+            </span>
+            <span class="shelf-chevron" aria-hidden="true">›</span>
+          </RouterLink>
         </div>
+        <div v-if="!customShelves.length" class="empty-state">No custom shelves yet. Create one to get started.</div>
       </template>
     </main>
 
@@ -160,54 +156,25 @@ async function createNewShelf() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: var(--spacing-xl);
+  gap: var(--spacing-md);
+  margin: var(--spacing-sm) 0 var(--spacing-lg);
 }
 .shelves-header h1 {
   margin: 0;
   font-size: 1.5rem;
 }
-.reading-shelves {
-  margin-top: var(--spacing-lg);
-}
 .add-shelf-button {
-  display: grid;
-  box-sizing: border-box;
-  width: 2.5rem;
-  height: 2.5rem;
-  place-items: center;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: var(--color-primary);
-  color: var(--color-bg-card);
-  font: inherit;
-  line-height: 1;
-  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  white-space: nowrap;
 }
 .add-shelf-button span {
-  position: relative;
-  width: 1rem;
-  height: 1rem;
+  font-size: 1.125rem;
+  line-height: 1;
 }
-.add-shelf-button span::before,
-.add-shelf-button span::after {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 1rem;
-  height: 2px;
-  background: currentColor;
-  content: "";
-  transform: translate(-50%, -50%);
-}
-.add-shelf-button span::after {
-  transform: translate(-50%, -50%) rotate(90deg);
-}
-.add-shelf-button:hover {
-  border-color: transparent;
-  filter: brightness(1.08);
-}
-.add-shelf-button:focus-visible {
+.add-shelf-button:focus-visible,
+.shelf-row:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 3px;
 }
@@ -231,36 +198,70 @@ async function createNewShelf() {
   color: var(--color-danger, #c0392b);
 }
 .shelf-list {
-  margin-top: var(--spacing-lg);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
 }
 .shelf-row {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-md);
+  min-width: 0;
   width: 100%;
+  min-height: 56px;
   padding: var(--spacing-md);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius);
-  background: var(--color-bg-card);
   color: var(--color-text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
 }
-.shelf-row span:last-child,
+.shelf-row:hover {
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-bg-card));
+}
+.shelf-details {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: var(--spacing-md);
+}
+.shelf-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.shelf-count {
+  flex: none;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+.shelf-count,
+.shelf-chevron,
 .empty-state {
   color: var(--color-text-secondary);
+}
+.shelf-chevron {
+  flex: none;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+.shelf-row + .shelf-row {
+  border-top: 1px solid var(--color-border);
+}
+.shelf-row:first-child {
+  border-top-left-radius: 5px;
+  border-top-right-radius: 5px;
+}
+.shelf-row:last-child {
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
 }
 .empty-state,
 .loading,
 .error {
   padding: var(--spacing-xl);
   text-align: center;
-}
-.empty-state {
-  margin-top: var(--spacing-lg);
 }
 @media (min-width: 769px) {
   .shelves-page {
