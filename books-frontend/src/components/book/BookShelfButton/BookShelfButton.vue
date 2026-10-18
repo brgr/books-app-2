@@ -139,6 +139,13 @@ onBeforeUnmount(() => {
   position: relative;
   align-self: flex-start;
 }
+
+@media (max-width: 768px) {
+  .shelf-control {
+    margin-inline: auto;
+  }
+}
+
 .shelf-split {
   display: inline-flex;
 }
