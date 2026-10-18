@@ -28,13 +28,12 @@ const id = useId();
     </div>
 
     <div class="form-group">
-      <label :for="`${id}-author`">Author *</label>
+      <label :for="`${id}-author`">Author</label>
       <input
         :id="`${id}-author`"
         v-model="formData.author"
         name="author"
         type="text"
-        required
         maxlength="100"
         placeholder="Enter author name"
       />

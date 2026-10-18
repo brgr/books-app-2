@@ -56,7 +56,7 @@ class AccessTokenResponse(BaseModel):
 # Book schemas
 class BookBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
-    author: str = Field(..., min_length=1, max_length=100)
+    author: str | None = Field(None, max_length=100)
     isbn: str | None = Field(None, max_length=20)
     description: str | None = None
     published_date: datetime | None = None
@@ -70,7 +70,7 @@ class BookCreate(BookBase):
 
 class BookUpdate(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=255)
-    author: str | None = Field(None, min_length=1, max_length=100)
+    author: str | None = Field(None, max_length=100)
     isbn: str | None = Field(None, max_length=20)
     description: str | None = None
     published_date: datetime | None = None
@@ -281,7 +281,7 @@ class CoverUpgradeJobResponse(BaseModel):
 class ExportBookEntry(BaseModel):
     id: int
     title: str
-    author: str
+    author: str | None
     isbn: str | None = None
     description: str | None = None
     published_date: datetime | None = None

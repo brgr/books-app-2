@@ -183,6 +183,16 @@ describe("adding a book", () => {
     expect(router.currentRoute.value.params.id).toBe("42");
   });
 
+  it("requires a nonblank title when adding manually", async () => {
+    const { wrapper } = await mountAddView();
+    await wrapper.get("#book-add-manual-tab").trigger("click");
+    await wrapper.get('[name="title"]').setValue("   ");
+    await wrapper.get("#book-add-manual-panel form").trigger("submit");
+
+    expect(wrapper.get('[role="alert"]').text()).toBe("Please enter a title.");
+    expect(createBook).not.toHaveBeenCalled();
+  });
+
   it.each(["retry", "continue"])(
     "can %s after a cover upload fails without creating a duplicate book",
     async (action) => {

@@ -121,7 +121,7 @@ class Book(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    author: Mapped[str] = mapped_column(String(100), nullable=False)
+    author: Mapped[str | None] = mapped_column(String(100), nullable=True)
     isbn: Mapped[str | None] = mapped_column(String(20), unique=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     published_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -162,7 +162,7 @@ class Book(Base):
         fields = data.model_fields_set
         if "title" in fields and data.title is not None:
             self.title = data.title
-        if "author" in fields and data.author is not None:
+        if "author" in fields:
             self.author = data.author
         if "isbn" in fields:
             self.isbn = data.isbn

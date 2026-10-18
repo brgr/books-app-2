@@ -176,12 +176,12 @@ const progressPercent = computed(() => {
         v-if="coverUrl"
         :src="coverUrl"
         :alt="book.title"
-        :title="book.title + ' by ' + book.author"
+        :title="book.author ? book.title + ' by ' + book.author : book.title"
         class="grid-cover"
         loading="lazy"
         draggable="false"
       />
-      <div v-else class="grid-cover-placeholder" :title="book.title + ' by ' + book.author">
+      <div v-else class="grid-cover-placeholder" :title="book.author ? book.title + ' by ' + book.author : book.title">
         <div class="grid-no-cover-text">{{ book.title }}</div>
       </div>
     </a>

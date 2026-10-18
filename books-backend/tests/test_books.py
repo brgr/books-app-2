@@ -19,6 +19,17 @@ def test_create_book_requires_auth(client, sample_book_data):
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
+def test_clear_book_author(client, auth_headers, sample_book_data):
+    response = client.post("/api/books", json=sample_book_data, headers=auth_headers)
+    book_id = response.json()["id"]
+
+    response = client.put(
+        f"/api/books/{book_id}", json={"author": None}, headers=auth_headers
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["author"] is None
+
+
 def test_list_books(client, auth_headers, sample_book_data):
     """Test listing books."""
     # Create a few books

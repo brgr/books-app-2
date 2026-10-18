@@ -231,7 +231,7 @@ function handleEdit() {
 
           <div class="book-info">
             <h1>{{ book.title }}</h1>
-            <p class="book-author">by {{ book.author }}</p>
+            <p v-if="book.author" class="book-author">by {{ book.author }}</p>
 
             <div class="book-shelf-section">
               <BookShelfButton

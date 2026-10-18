@@ -57,8 +57,8 @@ async function handleSubmit() {
   if (!book.value || loading.value) {
     return;
   }
-  if (!formData.value.title.trim() || !formData.value.author.trim()) {
-    error.value = "Please enter a title and author.";
+  if (!formData.value.title.trim()) {
+    error.value = "Please enter a title.";
     return;
   }
 
@@ -153,11 +153,7 @@ async function handleDelete() {
               Delete Book
             </button>
             <button :disabled="loading" type="button" @click="handleCancel">Cancel</button>
-            <button
-              :disabled="loading || !formData.title.trim() || !formData.author.trim()"
-              class="btn-primary"
-              type="submit"
-            >
+            <button :disabled="loading || !formData.title.trim()" class="btn-primary" type="submit">
               {{ loading ? "Saving..." : "Save Book" }}
             </button>
           </div>

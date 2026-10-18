@@ -56,7 +56,7 @@ export function useShelfBooks(options: ShelfBooksOptions) {
     }
 
     return items.value.filter(
-      (book) => book.title.toLowerCase().includes(query) || book.author.toLowerCase().includes(query),
+      (book) => book.title.toLowerCase().includes(query) || (book.author ?? "").toLowerCase().includes(query),
     );
   });
 

@@ -91,7 +91,7 @@ export interface ShelfReorderRequest {
 export interface Book {
   id: number;
   title: string;
-  author: string;
+  author: string | null;
   isbn: string | null;
   description: string | null;
   published_date: string | null;
@@ -113,7 +113,7 @@ export interface PaginatedBooks {
 
 export interface BookCreate {
   title: string;
-  author: string;
+  author?: string | null;
   isbn?: string;
   description?: string;
   published_date?: string;
@@ -123,7 +123,7 @@ export interface BookCreate {
 
 export interface BookUpdate {
   title?: string;
-  author?: string;
+  author?: string | null;
   isbn?: string;
   description?: string;
   published_date?: string;

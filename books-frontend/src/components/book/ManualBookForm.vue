@@ -32,8 +32,8 @@ async function handleSubmit() {
   if (saving.value) {
     return;
   }
-  if (!formData.value.title.trim() || !formData.value.author.trim()) {
-    error.value = "Please enter a title and author.";
+  if (!formData.value.title.trim()) {
+    error.value = "Please enter a title.";
     return;
   }
 
@@ -94,7 +94,7 @@ async function continueWithoutCover() {
 
 <template>
   <div>
-    <p class="text-muted">Enter book details. Only title and author are required.</p>
+    <p class="text-muted">Enter book details. Only title is required.</p>
 
     <div v-if="error" class="error" role="alert">{{ error }}</div>
 
@@ -111,11 +111,7 @@ async function continueWithoutCover() {
         >
           Continue without cover
         </button>
-        <button
-          type="submit"
-          class="btn-primary"
-          :disabled="saving || !formData.title.trim() || !formData.author.trim()"
-        >
+        <button type="submit" class="btn-primary" :disabled="saving || !formData.title.trim()">
           {{ saving ? "Saving..." : createdBookId !== null ? "Retry save" : "Add book" }}
         </button>
       </div>

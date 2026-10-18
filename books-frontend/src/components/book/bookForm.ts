@@ -26,7 +26,7 @@ export function emptyBookForm(): BookFormData {
 export function bookToForm(book: Book): BookFormData {
   return {
     title: book.title,
-    author: book.author,
+    author: book.author ?? "",
     isbn: book.isbn ?? "",
     page_count: book.page_count ?? "",
     published_date: book.published_date?.split("T")[0] ?? "",
@@ -38,7 +38,7 @@ export function bookToForm(book: Book): BookFormData {
 export function formToPayload(form: BookFormData): BookCreate {
   return {
     title: form.title.trim(),
-    author: form.author.trim(),
+    author: form.author.trim() || null,
     isbn: form.isbn.trim() || undefined,
     page_count: form.page_count === "" ? undefined : Number(form.page_count),
     published_date: form.published_date || undefined,

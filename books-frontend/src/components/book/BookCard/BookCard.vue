@@ -45,7 +45,7 @@ const coverUrl = computed(() => props.book.cover_thumbnail_url || props.book.cov
           </router-link>
         </div>
 
-        <p class="book-author">by {{ book.author }}</p>
+        <p v-if="book.author" class="book-author">by {{ book.author }}</p>
 
         <div v-if="book.description" class="book-description">
           {{ book.description }}
