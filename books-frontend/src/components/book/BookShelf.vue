@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, type Ref, watch } from "vue";
+import { computed, nextTick, ref, type Ref, useId, watch } from "vue";
 import { useRouter } from "vue-router";
 import draggable from "vuedraggable";
 import BookCard from "./BookCard/BookCard.vue";
@@ -21,6 +21,8 @@ const props = withDefaults(
     shelf: ShelfRef;
     /** Heading above the shelf. Omitted when the page shows a single, self-evident shelf. */
     title?: string | null;
+    /** Start folded until the reader expands the shelf; remember their choice on this device. */
+    collapsible?: boolean;
     showProgress?: boolean;
     /** Whether to page in more books as the shelf's end scrolls into view. */
     paginated?: boolean;
@@ -38,6 +40,31 @@ const { searchQuery } = useLibraryPage();
 
 // Deliberately this shelf's own, not the page's: shelves on one page can be laid out differently.
 const viewMode = useShelfViewMode(props.shelf, props.defaultViewMode);
+
+const contentId = useId();
+const collapseStorageKey = `shelfCollapsed:${props.shelf}`;
+const isCollapsed = ref(readCollapsed());
+
+function readCollapsed(): boolean {
+  if (!props.collapsible) {
+    return false;
+  }
+  try {
+    return localStorage.getItem(collapseStorageKey) !== "false";
+  } catch {
+    return true;
+  }
+}
+
+function toggleCollapsed() {
+  isCollapsed.value = !isCollapsed.value;
+  closeContextMenu();
+  try {
+    localStorage.setItem(collapseStorageKey, String(isCollapsed.value));
+  } catch {
+    // The toggle still works when browser storage is unavailable.
+  }
+}
 
 const { books: filteredBooks, error, hasMore, isLoadingMore, loadMore, reload, refreshLoaded } = useShelfBooks(props);
 
@@ -74,13 +101,13 @@ const sentinelEl = ref<HTMLElement | null>(null);
 const { reobserve } = useInfiniteScroll(
   sentinelEl,
   () => {
-    if (!isDragging.value && !isSaving.value && !error.value) {
+    if (!isCollapsed.value && !isDragging.value && !isSaving.value && !error.value) {
       loadMore();
     }
   },
   "1200px 0px",
 );
-watch([isDragging, isSaving], () => void nextTick(reobserve));
+watch([isDragging, isSaving, isCollapsed], () => void nextTick(reobserve));
 
 // Re-observe once a fresh page has rendered, so the sentinel keeps triggering.
 watch(filteredBooks, () => void nextTick(reobserve));
@@ -147,15 +174,42 @@ async function handleContextRemove() {
       {{ error }}
     </div>
 
-    <template v-if="books.length">
-      <!-- Titleless shelves still get the shelf header row, so their toggle stays where a titled shelf's would be. -->
-      <header class="book-shelf-header">
-        <h2 v-if="title" class="book-shelf-title">{{ title }}</h2>
-        <ShelfViewModeToggle v-model="viewMode" />
-      </header>
+    <!-- Titleless shelves still get the shelf header row, so their toggle stays where a titled shelf's would be. -->
+    <header v-if="books.length" class="book-shelf-header">
+      <h2 v-if="title" class="book-shelf-title">
+        <button
+          v-if="collapsible"
+          type="button"
+          class="shelf-collapse-toggle"
+          :aria-expanded="!isCollapsed"
+          :aria-controls="contentId"
+          @click="toggleCollapsed"
+        >
+          {{ title }}
+          <svg
+            class="shelf-chevron"
+            :class="{ expanded: !isCollapsed }"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="m9 5 7 7-7 7" />
+          </svg>
+        </button>
+        <template v-else>{{ title }}</template>
+      </h2>
+      <ShelfViewModeToggle v-if="!isCollapsed" v-model="viewMode" class="shelf-view-toggle" />
+    </header>
 
+    <div v-show="!isCollapsed" :id="contentId">
       <draggable
-        v-if="viewMode === 'grid'"
+        v-if="books.length && viewMode === 'grid'"
         class="books-container books-grid"
         :list="books"
         item-key="id"
@@ -175,15 +229,15 @@ async function handleContextRemove() {
         </template>
       </draggable>
 
-      <div v-else class="books-container books-list">
+      <div v-else-if="books.length" class="books-container books-list">
         <div v-for="book in books" :key="book.id">
           <BookCard :book="book" @menu="openContextMenu" />
         </div>
       </div>
-    </template>
 
-    <div v-if="showSentinel" ref="sentinelEl" class="infinite-sentinel">
-      <span v-if="isLoadingMore" class="infinite-loading">Loading more…</span>
+      <div v-if="showSentinel" ref="sentinelEl" class="infinite-sentinel">
+        <span v-if="isLoadingMore" class="infinite-loading">Loading more…</span>
+      </div>
     </div>
 
     <BookContextMenu
@@ -209,7 +263,7 @@ async function handleContextRemove() {
   margin-bottom: var(--spacing-sm);
 }
 
-.book-shelf-header > :last-child {
+.shelf-view-toggle {
   margin-left: auto;
 }
 
@@ -220,6 +274,37 @@ async function handleContextRemove() {
   color: var(--color-text);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.shelf-collapse-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: left;
+}
+
+.shelf-collapse-toggle:hover {
+  background: transparent;
+  color: var(--color-primary);
+}
+
+.shelf-collapse-toggle:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+}
+
+.shelf-chevron {
+  flex-shrink: 0;
+}
+
+.shelf-chevron.expanded {
+  transform: rotate(90deg);
 }
 
 .books-container {

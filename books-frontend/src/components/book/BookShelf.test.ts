@@ -1,14 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { mount } from "@vue/test-utils";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { enableAutoUnmount, mount } from "@vue/test-utils";
 import { defineComponent, h, nextTick, ref } from "vue";
 import BookShelf from "./BookShelf.vue";
 import BookCard from "./BookCard/BookCard.vue";
 import BookCoverTile from "./BookCoverTile.vue";
 import BookContextMenu from "./BookContextMenu.vue";
 import { reorderShelfItem } from "../../api/books";
-import { type Book, type PaginatedBooks } from "../../api/types";
+import { type Book, type PaginatedBooks, type ShelfRef } from "../../api/types";
 import { cacheClear } from "../../cache/store";
 import { provideLibraryPage } from "../../composables/useLibraryPage";
+
+enableAutoUnmount(afterEach);
 
 const push = vi.fn();
 vi.mock("vue-router", () => ({
@@ -56,7 +58,15 @@ async function flush(times = 20) {
 /**
  * A shelf only works inside a library page, so tests mount it under a host providing that context.
  */
-function mountShelf(props: { title?: string | null; showProgress?: boolean; defaultViewMode?: "list" | "grid" } = {}) {
+function mountShelf(
+  props: {
+    shelf?: ShelfRef;
+    title?: string | null;
+    collapsible?: boolean;
+    showProgress?: boolean;
+    defaultViewMode?: "list" | "grid";
+  } = {},
+) {
   const Host = defineComponent({
     setup() {
       provideLibraryPage({ searchQuery: ref("") });
@@ -65,7 +75,7 @@ function mountShelf(props: { title?: string | null; showProgress?: boolean; defa
   });
 
   // BookCard links to the detail route, which needs a router the shelf itself never touches
-  return mount(Host, { global: { stubs: { RouterLink: true } } });
+  return mount(Host, { attachTo: document.body, global: { stubs: { RouterLink: true } } });
 }
 
 describe("BookShelf", () => {
@@ -121,6 +131,69 @@ describe("BookShelf", () => {
     await flush();
 
     expect(wrapper.findComponent(BookCoverTile).props("showProgress")).toBe(true);
+  });
+
+  it("starts the paused shelf collapsed and expands it from its heading", async () => {
+    const wrapper = mountShelf({ shelf: "reading:paused", title: "Paused Books", collapsible: true });
+    await flush();
+
+    const toggle = wrapper.get("h2 button");
+    const content = wrapper.get(`[id="${toggle.attributes("aria-controls")}"]`);
+    expect(toggle.text()).toBe("Paused Books");
+    expect(toggle.attributes("aria-expanded")).toBe("false");
+    expect(content.isVisible()).toBe(false);
+    expect(wrapper.find(".view-toggle").exists()).toBe(false);
+
+    await toggle.trigger("click");
+
+    expect(toggle.attributes("aria-expanded")).toBe("true");
+    expect(content.isVisible()).toBe(true);
+    expect(wrapper.findAllComponents(BookCard)).toHaveLength(2);
+    expect(wrapper.find(".view-toggle").exists()).toBe(true);
+    expect(localStorage.getItem("shelfCollapsed:reading:paused")).toBe("false");
+    wrapper.unmount();
+  });
+
+  it.each([true, false])("remembers the paused shelf's collapsed state (%s) after remounting", async (collapsed) => {
+    const props = { shelf: "reading:paused", title: "Paused Books", collapsible: true } as const;
+    const wrapper = mountShelf(props);
+    await flush();
+    await wrapper.get("h2 button").trigger("click");
+    if (collapsed) {
+      await wrapper.get("h2 button").trigger("click");
+    }
+    wrapper.unmount();
+
+    const restored = mountShelf(props);
+    await flush();
+
+    expect(restored.get("h2 button").attributes("aria-expanded")).toBe(String(!collapsed));
+    expect(restored.get(".books-list").isVisible()).toBe(!collapsed);
+    restored.unmount();
+  });
+
+  it("keeps ordinary shelves expanded regardless of a stored collapse preference", async () => {
+    localStorage.setItem("shelfCollapsed:reading:started", "true");
+    const wrapper = mountShelf({ title: "Reading now" });
+    await flush();
+
+    expect(wrapper.find("h2 button").exists()).toBe(false);
+    expect(wrapper.get(".books-list").isVisible()).toBe(true);
+    wrapper.unmount();
+  });
+
+  it("preserves the grid preference when collapsing and expanding", async () => {
+    const wrapper = mountShelf({ shelf: "reading:paused", title: "Paused Books", collapsible: true });
+    await flush();
+    await wrapper.get("h2 button").trigger("click");
+    await wrapper.get('.view-btn[title="Grid view"]').trigger("click");
+    await wrapper.get("h2 button").trigger("click");
+    expect(wrapper.get(".books-grid").isVisible()).toBe(false);
+    await wrapper.get("h2 button").trigger("click");
+
+    expect(wrapper.get(".books-grid").isVisible()).toBe(true);
+    expect(localStorage.getItem("shelfViewMode:reading:paused")).toBe("grid");
+    wrapper.unmount();
   });
 
   it("opens a book when its cover is tapped", async () => {
