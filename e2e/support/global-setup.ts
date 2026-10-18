@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { rmSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   BACKEND_CWD,
   DEV_PASSWORD,
@@ -28,7 +29,7 @@ function backend(args: string[]): void {
 // noinspection JSUnusedGlobalSymbols -- consumed by the Playwright runner
 export default function globalSetup(): void {
   for (const suffix of ["", "-wal", "-shm"]) {
-    rmSync(`${BACKEND_CWD}/${E2E_DB_FILE}${suffix}`, { force: true });
+    rmSync(resolve(BACKEND_CWD, `${E2E_DB_FILE}${suffix}`), { force: true });
   }
   backend(["alembic", "upgrade", "head"]);
   backend([

@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 import { BACKEND_PORT, E2E_DB_URL, FRONTEND_PORT } from "./support/config";
 
 // End-to-end tests run against dedicated servers on isolated ports, backed by a throwaway
-// database (books-e2e.db) that `global-setup` seeds from the sample fixture. This keeps the
+// database per run that `global-setup` seeds from the sample fixture. This keeps the
 // suite deterministic. The server is not reused, so each run binds the freshly seeded DB.
 
 // noinspection JSUnusedGlobalSymbols -- consumed by the Playwright runner
@@ -24,7 +24,7 @@ export default defineConfig({
       cwd: "../books-backend",
       env: {
         DATABASE_URL: E2E_DB_URL,
-        // The e2e frontend runs on 5174, so CORS must allow that origin for credentialed requests
+        // Allow the e2e frontend's origin for credentialed requests.
         ALLOWED_ORIGINS: `http://localhost:${FRONTEND_PORT},http://127.0.0.1:${FRONTEND_PORT}`,
       },
       url: `http://localhost:${BACKEND_PORT}/docs`,
@@ -32,7 +32,7 @@ export default defineConfig({
       timeout: 60_000,
     },
     {
-      command: `npm run dev -- --port ${FRONTEND_PORT}`,
+      command: `npm run dev -- --host 127.0.0.1 --port ${FRONTEND_PORT} --strictPort`,
       cwd: "../books-frontend",
       env: { VITE_API_URL: `http://localhost:${BACKEND_PORT}` },
       url: `http://localhost:${FRONTEND_PORT}`,

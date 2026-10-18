@@ -6,7 +6,7 @@
   "description": "Full-stack end-to-end tests",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test:e2e": "playwright test",
+    "test:e2e": "node run-tests.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
