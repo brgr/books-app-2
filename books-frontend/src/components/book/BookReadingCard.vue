@@ -330,7 +330,6 @@ function cancelEditingProgress() {
   background: var(--color-bg);
   color: var(--color-text);
   font-family: inherit;
-  font-size: 0.9rem;
   appearance: textfield;
   -moz-appearance: textfield;
 }

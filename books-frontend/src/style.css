@@ -165,6 +165,7 @@ button.text-link:hover:not(:disabled) {
 }
 
 /* Forms */
+/* Keep form controls at least 16px to prevent iOS Safari zooming on focus. */
 input,
 select,
 textarea {
@@ -173,7 +174,7 @@ textarea {
   min-width: 0;
   display: block;
   padding: var(--spacing-sm);
-  font-size: 14px;
+  font-size: 16px;
   font-family: inherit;
   line-height: 1.5;
   color: var(--color-text);
@@ -181,15 +182,6 @@ textarea {
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
   transition: border-color 0.15s ease;
-}
-
-/* Prevent iOS Safari zooming inputs with font-size under 16px. */
-@media (max-width: 768px) {
-  input,
-  select,
-  textarea {
-    font-size: 16px;
-  }
 }
 
 input[type="date"],

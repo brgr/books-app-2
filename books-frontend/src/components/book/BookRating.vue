@@ -51,7 +51,6 @@ select {
   border-radius: var(--border-radius);
   background: var(--color-bg-card);
   color: var(--color-text);
-  font: inherit;
 }
 
 [role="status"] {

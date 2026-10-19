@@ -41,8 +41,6 @@ function confirm() {
 .date-input {
   padding: 6px 8px;
   border-radius: var(--border-radius);
-  font: inherit;
-  font-size: 0.9rem;
 }
 .date-input {
   border: 1px solid var(--color-border);

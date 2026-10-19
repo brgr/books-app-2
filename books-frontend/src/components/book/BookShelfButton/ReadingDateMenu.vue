@@ -113,6 +113,5 @@ const precisionComponent = computed(() => {
   border-radius: var(--border-radius);
   background: var(--color-bg);
   color: var(--color-text);
-  font: 0.9rem inherit;
 }
 </style>

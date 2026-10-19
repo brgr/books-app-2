@@ -71,7 +71,6 @@ const searchQuery = defineModel<string>("searchQuery", { required: true });
   border: none;
   background: transparent;
   padding: 0;
-  font-size: 14px;
 }
 
 .search-input:focus {
@@ -82,11 +81,6 @@ const searchQuery = defineModel<string>("searchQuery", { required: true });
 @media (max-width: 768px) {
   .search-bar {
     max-width: 100%;
-  }
-
-  /* Prevent iOS Safari zooming inputs with font-size under 16px. */
-  .search-input {
-    font-size: 16px;
   }
 }
 </style>

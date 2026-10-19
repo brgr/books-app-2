@@ -97,8 +97,6 @@ function confirm() {
   border-radius: var(--border-radius);
   background: var(--color-bg);
   color: var(--color-text);
-  font: inherit;
-  font-size: 0.9rem;
 }
 .year-input {
   width: 5.5rem;

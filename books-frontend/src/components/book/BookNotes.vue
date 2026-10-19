@@ -109,7 +109,6 @@ function save() {
   background: var(--color-bg);
   color: var(--color-text);
   font-family: inherit;
-  font-size: 0.95rem;
   line-height: 1.5;
 }
 

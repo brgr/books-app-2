@@ -191,7 +191,6 @@ async function createNewShelf() {
   border-radius: var(--border-radius);
   background: var(--color-bg-card);
   color: var(--color-text);
-  font: inherit;
 }
 .create-error {
   margin: var(--spacing-sm) 0 0;

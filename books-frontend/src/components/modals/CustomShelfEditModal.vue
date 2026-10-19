@@ -118,7 +118,6 @@ function showDeleteConfirmation() {
   border-radius: var(--border-radius);
   background: var(--color-bg-card);
   color: var(--color-text);
-  font: inherit;
 }
 .action-error {
   margin: var(--spacing-sm) 0 0;
