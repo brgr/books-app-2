@@ -19,6 +19,29 @@ const book: Book = {
   user_book: null,
 };
 
+describe("Amazon.it link", () => {
+  it.each([
+    { name: "ISBN (with formatting)", overrides: { isbn: "978-0-441-17271-9" }, query: "9780441172719" },
+    {
+      name: "title and author with special characters",
+      overrides: { isbn: null, title: "L'été & Books?", author: "A. B. + C." },
+      query: "L'été & Books? A. B. + C.",
+    },
+    { name: "title only", overrides: { isbn: null, author: null }, query: "Dune" },
+  ])("searches by $name in a new tab", ({ overrides, query }) => {
+    const wrapper = mount(BookMetadata, { props: { book: { ...book, ...overrides } } });
+    const link = wrapper.get("a[href^='https://www.amazon.it/']");
+    const url = new URL(link.attributes("href")!);
+
+    expect(url.origin).toBe("https://www.amazon.it");
+    expect(url.pathname).toBe("/s");
+    expect(Object.fromEntries(url.searchParams)).toEqual({ k: query });
+    expect(link.text()).toBe("Search on Amazon.it");
+    expect(link.attributes("target")).toBe("_blank");
+    expect(link.attributes("rel")?.split(" ")).toEqual(expect.arrayContaining(["noopener", "noreferrer"]));
+  });
+});
+
 describe("Google Books link", () => {
   it.each([
     {

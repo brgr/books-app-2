@@ -7,6 +7,12 @@ const props = defineProps<{
   book: Book;
 }>();
 
+const amazonUrl = computed(() => {
+  const isbn = props.book.isbn?.replace(/[\s-]/g, "");
+  const query = isbn || [props.book.title, props.book.author].filter(Boolean).join(" ");
+  return `https://www.amazon.it/s?${new URLSearchParams({ k: query })}`;
+});
+
 const googleBooksUrl = computed(() => {
   if (props.book.google_books_id) {
     return `https://books.google.com/books?${new URLSearchParams({ id: props.book.google_books_id })}`;
@@ -32,6 +38,9 @@ const googleBooksUrl = computed(() => {
         <a :href="googleBooksUrl" target="_blank" rel="noopener noreferrer">
           {{ book.google_books_id ? "View on Google Books" : "Search on Google Books" }}
         </a>
+      </div>
+      <div class="metadata-item">
+        <a :href="amazonUrl" target="_blank" rel="noopener noreferrer">Search on Amazon.it</a>
       </div>
     </div>
   </div>
