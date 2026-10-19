@@ -7,6 +7,7 @@ from sqlalchemy.pool import StaticPool
 
 from alembic import command
 from app.auth.security import create_user
+from app.config import settings
 from app.database import get_db
 from app.models import Base
 from main import app
@@ -29,6 +30,14 @@ def _enable_sqlite_foreign_keys(dbapi_connection, _connection_record):
 
 
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+@pytest.fixture(autouse=True)
+def secure_test_jwt_secret(monkeypatch):
+    """Keep test tokens independent of local credentials and long enough for HS256."""
+    monkeypatch.setattr(
+        settings, "jwt_secret", "books-test-only-jwt-secret-at-least-32-bytes"
+    )
 
 
 def run_migrations():
