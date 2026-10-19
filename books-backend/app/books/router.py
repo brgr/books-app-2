@@ -17,6 +17,7 @@ from app.covers.storage import store_cover_image
 from app.database import get_db
 from app.google_books import (
     GoogleBooksRateLimitError,
+    GoogleBooksSearchError,
     search_cover_images,
     search_google_books,
 )
@@ -78,12 +79,23 @@ async def search_books(
             headers["Retry-After"] = e.retry_after
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=(
-                "Google Books rate limit exceeded. "
-                "Try again later or set GOOGLE_BOOKS_API_KEY."
-            ),
+            detail=("Google Books rate limit exceeded. Please try again later."),
             headers=headers,
         ) from e
+    except GoogleBooksSearchError as e:
+        raise HTTPException(
+            status_code=(
+                status.HTTP_503_SERVICE_UNAVAILABLE
+                if e.transient
+                else status.HTTP_502_BAD_GATEWAY
+            ),
+            detail=(
+                "Google Books is temporarily unavailable. Please try again."
+                if e.transient
+                else "Google Books search failed. Please try again later."
+            ),
+        ) from e
+
     return results
 
 

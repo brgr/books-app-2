@@ -1,3 +1,4 @@
+import { AxiosError } from "axios";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { enableAutoUnmount, flushPromises, mount } from "@vue/test-utils";
 import { createMemoryHistory, createRouter, RouterView } from "vue-router";
@@ -89,6 +90,21 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("adding a book", () => {
+  it("shows an upstream search failure without saying no books were found", async () => {
+    const unavailable = Object.assign(new AxiosError("upstream unavailable"), {
+      response: { data: { detail: "Google Books is temporarily unavailable. Please try again." } },
+    });
+    vi.mocked(searchGoogleBooks).mockResolvedValueOnce([]).mockRejectedValueOnce(unavailable);
+    const { wrapper } = await searchForBook();
+    expect(wrapper.text()).toContain("No books found.");
+
+    await wrapper.get(".search-input-group").trigger("submit");
+    await flushPromises();
+
+    expect(wrapper.get('[role="alert"]').text()).toBe("Google Books is temporarily unavailable. Please try again.");
+    expect(wrapper.text()).not.toContain("No books found.");
+  });
+
   it("searches, saves the selection, and invalidates shelves before returning to the library", async () => {
     let finishSave!: () => void;
     vi.mocked(createBook).mockImplementation(

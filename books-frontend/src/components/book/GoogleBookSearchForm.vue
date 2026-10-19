@@ -32,10 +32,12 @@ async function handleSearch() {
 
   error.value = "";
   loading.value = true;
-  hasSearched.value = true;
+  hasSearched.value = false;
+  searchResults.value = [];
 
   try {
     searchResults.value = await searchGoogleBooks(searchQuery.value);
+    hasSearched.value = true;
   } catch (err) {
     console.error("Failed to search books:", err);
     const detail = isAxiosError<{ detail?: unknown }>(err) ? err.response?.data?.detail : undefined;
