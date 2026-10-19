@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, nextTick, ref } from "vue";
 import { RouterLink } from "vue-router";
 import { addBookToShelf, getBookShelves, getShelves, removeBookFromShelf } from "../../api/books";
 import type { Shelf } from "../../api/types";
@@ -24,15 +24,25 @@ const {
 );
 const updating = ref<string | null>(null);
 const showShelfEditor = ref(false);
+const openButton = ref<HTMLButtonElement | null>(null);
+const closeButton = ref<HTMLButtonElement | null>(null);
 const customShelves = computed(() => (shelves.value ?? []).filter((shelf) => shelf.ref.startsWith("custom:")));
 const selected = computed(() => new Set((bookShelves.value ?? []).map((shelf) => shelf.ref)));
 const selectedCustomShelves = computed(() =>
   (bookShelves.value ?? []).filter((shelf) => shelf.ref.startsWith("custom:")),
 );
 
-function closeShelfEditor() {
+async function openShelfEditor() {
+  showShelfEditor.value = true;
+  await nextTick();
+  closeButton.value?.focus();
+}
+
+async function closeShelfEditor() {
   if (!updating.value) {
     showShelfEditor.value = false;
+    await nextTick();
+    openButton.value?.focus();
   }
 }
 
@@ -64,7 +74,7 @@ async function toggleShelf(shelf: Shelf) {
   <section class="custom-shelves">
     <div class="section-header">
       <h2>Shelves</h2>
-      <button type="button" class="btn-small" @click="showShelfEditor = true">Update shelves</button>
+      <button ref="openButton" type="button" class="btn-small" @click="openShelfEditor">Update shelves</button>
     </div>
 
     <p v-if="bookShelvesError" class="error">Failed to load shelf memberships. Please try again.</p>
@@ -93,14 +103,14 @@ async function toggleShelf(shelf: Shelf) {
       >
         <div class="modal-header">
           <h3 id="update-shelves-title">Update shelves</h3>
-          <button type="button" class="btn-small" :disabled="updating !== null" @click="closeShelfEditor">Close</button>
+          <button ref="closeButton" type="button" :disabled="updating !== null" @click="closeShelfEditor">Close</button>
         </div>
         <div class="modal-body">
           <p v-if="shelvesError" class="error">Failed to load shelves. Please try again.</p>
           <p v-else-if="bookShelvesError" class="error">Failed to load shelf memberships. Please try again.</p>
           <p v-else-if="!shelves || !bookShelves" class="empty">Loading shelves...</p>
           <p v-else-if="!customShelves.length" class="empty">No shelves yet.</p>
-          <div v-else class="shelf-options">
+          <div v-else class="shelf-options" role="group" aria-label="Custom shelves">
             <label v-for="shelf in customShelves" :key="shelf.ref" class="shelf-option">
               <input
                 type="checkbox"
@@ -164,18 +174,57 @@ h2 {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
-.shelf-options {
+.modal {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-sm) var(--spacing-lg);
+  flex-direction: column;
+  max-height: calc(100dvh - 2 * var(--spacing-sm));
+  overflow: hidden;
+}
+.modal-header {
+  flex-shrink: 0;
+  gap: var(--spacing-sm);
+}
+.modal-body {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+}
+.shelf-options {
+  display: grid;
+  gap: var(--spacing-sm);
 }
 .shelf-option {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  min-height: 48px;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
   cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.shelf-option:hover {
+  border-color: var(--color-primary);
+}
+.shelf-option:focus-within {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 .shelf-option input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
   accent-color: var(--color-primary);
+}
+@media (max-width: 600px) {
+  .modal-overlay {
+    align-items: center;
+  }
+  .modal-body {
+    padding: var(--spacing-md);
+  }
 }
 </style>
