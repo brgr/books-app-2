@@ -1,4 +1,4 @@
-import { watch, nextTick, onMounted, onBeforeUnmount, type Ref } from "vue";
+import { watch, nextTick, onMounted, onBeforeUnmount, onActivated, onDeactivated, type Ref } from "vue";
 
 /**
  * Wires an IntersectionObserver to `sentinelEl` so `onIntersect` fires as that
@@ -13,16 +13,17 @@ export function useInfiniteScroll(
   rootMargin = "400px 0px",
 ) {
   let observer: IntersectionObserver | null = null;
+  let isViewCurrentlyShown = true;
 
   function setup() {
-    if (observer || !sentinelEl.value) {
+    if (!isViewCurrentlyShown || observer || !sentinelEl.value) {
       return;
     }
 
     observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (entry.isIntersecting) {
+          if (isViewCurrentlyShown && entry.isIntersecting) {
             onIntersect();
           }
         }
@@ -47,10 +48,19 @@ export function useInfiniteScroll(
   });
 
   onMounted(() => void nextTick(setup));
-  onBeforeUnmount(() => {
+  onActivated(() => {
+    isViewCurrentlyShown = true;
+    void nextTick(setup);
+  });
+
+  function stop() {
+    isViewCurrentlyShown = false;
     observer?.disconnect();
     observer = null;
-  });
+  }
+
+  onDeactivated(stop);
+  onBeforeUnmount(stop);
 
   return { reobserve };
 }

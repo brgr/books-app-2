@@ -9,9 +9,13 @@ import BookEditView from "../views/BookEditView.vue";
 import SettingsView from "../views/SettingsView.vue";
 import CustomShelvesView from "../views/CustomShelvesView.vue";
 import CustomShelfView from "../views/CustomShelfView.vue";
+import { createLibraryNavigation } from "./libraryNavigation";
+
+const libraryNavigation = createLibraryNavigation();
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+  scrollBehavior: libraryNavigation.scrollBehavior,
   routes: [
     {
       path: "/login",
@@ -29,6 +33,7 @@ const router = createRouter({
       path: "/shelves/:shelf(to-read|finished|abandoned)",
       name: "shelf",
       component: BooksView,
+      props: true,
       meta: { requiresAuth: true },
     },
     {
@@ -41,6 +46,7 @@ const router = createRouter({
       path: "/shelves/custom/:id(\\d+)",
       name: "custom-shelf",
       component: CustomShelfView,
+      props: true,
       meta: { requiresAuth: true },
     },
     {
@@ -69,6 +75,8 @@ const router = createRouter({
     },
   ],
 });
+
+libraryNavigation.install(router);
 
 // Setup API client to handle authentication errors
 setupAuthInterceptor(router);

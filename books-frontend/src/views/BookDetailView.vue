@@ -24,9 +24,29 @@ import { formatReadingDate } from "../utils/date";
 import { useCachedQuery } from "../composables/useCachedQuery";
 import { cacheKeys } from "../cache/keys";
 import { invalidateCache } from "../cache/invalidate";
+import { libraryOrigin } from "../router/libraryNavigation";
 
 const router = useRouter();
 const route = useRoute();
+const backToShelf = computed(() => libraryOrigin(router, route.query?.from));
+
+function returnToShelf(event: MouseEvent, navigate: (event: MouseEvent) => unknown) {
+  // Use browser history when the shelf is immediately behind us, so Forward reopens the book.
+  if (
+    !event.defaultPrevented &&
+    event.button === 0 &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.shiftKey &&
+    !event.altKey &&
+    router.options.history.state.back === backToShelf.value
+  ) {
+    event.preventDefault();
+    router.back();
+    return;
+  }
+  void navigate(event);
+}
 
 const bookId = computed(() => {
   const id = parseInt(route.params.id as string);
@@ -211,6 +231,11 @@ function handleEdit() {
     <NavigationBar />
 
     <div class="container">
+      <RouterLink v-slot="{ href, navigate }" :to="backToShelf" custom>
+        <a :href="href" class="back-to-shelf" @click="returnToShelf($event, navigate)">
+          <span aria-hidden="true">←</span> Back to shelf
+        </a>
+      </RouterLink>
       <div v-if="!book && !error" class="loading">Loading book...</div>
 
       <div v-else-if="error && !book" class="error">
@@ -300,6 +325,20 @@ function handleEdit() {
 </template>
 
 <style scoped>
+.back-to-shelf {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-height: 44px;
+  margin-bottom: var(--spacing-md);
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.back-to-shelf:hover {
+  text-decoration: underline;
+}
+
 .book-detail-page {
   min-height: 100vh;
   background-color: var(--color-bg);

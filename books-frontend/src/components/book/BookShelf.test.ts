@@ -14,6 +14,7 @@ enableAutoUnmount(afterEach);
 
 const push = vi.fn();
 vi.mock("vue-router", () => ({
+  useRoute: () => ({ fullPath: "/" }),
   useRouter: () => ({ push, resolve: ({ params }: { params: { id: number } }) => ({ href: `/books/${params.id}` }) }),
 }));
 
@@ -202,7 +203,7 @@ describe("BookShelf", () => {
 
     wrapper.findComponent(BookCoverTile).vm.$emit("click", 2);
 
-    expect(push).toHaveBeenCalledWith({ name: "book-detail", params: { id: 2 } });
+    expect(push).toHaveBeenCalledWith({ name: "book-detail", params: { id: 2 }, query: { from: "/" } });
   });
 
   it("renders nothing at all for an empty shelf, so the page keeps no space for it", async () => {

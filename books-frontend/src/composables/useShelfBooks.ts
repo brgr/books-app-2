@@ -1,4 +1,4 @@
-import { computed, watch } from "vue";
+import { computed, onActivated, watch } from "vue";
 import { getShelfBooks } from "../api/books";
 import type { Book, ShelfRef } from "../api/types";
 import { cacheKeys } from "../cache/keys";
@@ -29,6 +29,17 @@ export function useShelfBooks(options: ShelfBooksOptions) {
     cacheKeyPrefix: (shelf) => cacheKeys.shelfBooksPrefix(shelf),
     fetchPage: (shelf, page) => getShelfBooks(shelf, page, options.pageSize),
     itemKey: (book) => book.id,
+  });
+
+  let hasActivated = false;
+  onActivated(() => {
+    if (hasActivated) {
+      // We keep the books visible while refreshing all pages the user has already loaded.
+      // If the refresh fails, we keep showing those books and report the error through loadError.
+      void refreshLoaded().catch(() => {});
+    }
+
+    hasActivated = true;
   });
 
   // The page reloads its shelves after mutating the library (e.g. adding a book)

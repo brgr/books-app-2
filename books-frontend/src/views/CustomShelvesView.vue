@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from "vue";
+import { computed, nextTick, onDeactivated, ref } from "vue";
 import { useRouter } from "vue-router";
 import { createShelf, getShelves } from "../api/books";
 import type { Shelf } from "../api/types";
@@ -36,6 +36,10 @@ function closeCreateShelf() {
   newShelfName.value = "";
   createError.value = "";
 }
+
+onDeactivated(() => {
+  showCreateShelf.value = false;
+});
 
 async function createNewShelf() {
   const name = newShelfName.value.trim();

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { computed, onDeactivated, ref } from "vue";
+import { useRouter } from "vue-router";
 import { deleteShelf, getShelves, renameShelf } from "../api/books";
 import { parseShelfRef, type Shelf, type ShelfRef } from "../api/types";
 import BookShelf from "../components/book/BookShelf.vue";
@@ -13,11 +13,11 @@ import { cacheDel } from "../cache/store";
 import { provideLibraryPage } from "../composables/useLibraryPage";
 import { useCachedQuery } from "../composables/useCachedQuery";
 
-const route = useRoute();
+const props = defineProps<{ id: string }>();
 const router = useRouter();
 const searchQuery = ref("");
 const shelfRef = computed<ShelfRef>(() => {
-  const id = route.params.id;
+  const id = props.id;
   if (typeof id !== "string") {
     throw new Error("Invalid custom shelf route");
   }
@@ -41,6 +41,8 @@ function closeEditShelf() {
   showEditShelf.value = false;
   actionError.value = "";
 }
+
+onDeactivated(closeEditShelf);
 
 function clearActionError() {
   actionError.value = "";

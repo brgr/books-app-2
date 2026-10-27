@@ -1,4 +1,4 @@
-import { ref, watch, toValue, isRef, type Ref } from "vue";
+import { ref, watch, toValue, isRef, onActivated, type Ref } from "vue";
 import { cachedQuery } from "../cache/query";
 import { cacheDel, cacheSet } from "../cache/store";
 
@@ -101,6 +101,20 @@ export function useCachedQuery<T>(
       },
     );
   }
+
+  // We use KeepAlive in App.vue to preserve library views, so returning to one doesn't rerun setup or refresh its query.
+  // We refresh the query here when the user returns.
+  //
+  // At the very beginning, this is called twice (once during setup and once when the component is activated).
+  // To only refresh once, we simply skip the very first activation.
+  let hasActivated = false;
+  onActivated(() => {
+    if (hasActivated) {
+      execute();
+    }
+
+    hasActivated = true;
+  });
 
   return { data: data as Readonly<Ref<T | null>>, isStale, error, setData, refresh, invalidate };
 }

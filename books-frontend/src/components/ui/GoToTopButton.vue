@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from "vue";
+import { onActivated, onBeforeUnmount, onDeactivated, onMounted, ref } from "vue";
 import { scrollToTop } from "../../utils/scrollToTop";
 
 const visible = ref(false);
@@ -8,16 +8,21 @@ function updateVisibility() {
   visible.value = window.scrollY > window.innerHeight;
 }
 
-onMounted(() => {
+function listen() {
   updateVisibility();
   window.addEventListener("scroll", updateVisibility, { passive: true });
   window.addEventListener("resize", updateVisibility);
-});
+}
 
-onBeforeUnmount(() => {
+function stop() {
   window.removeEventListener("scroll", updateVisibility);
   window.removeEventListener("resize", updateVisibility);
-});
+}
+
+onMounted(listen);
+onActivated(listen);
+onDeactivated(stop);
+onBeforeUnmount(stop);
 </script>
 
 <template>

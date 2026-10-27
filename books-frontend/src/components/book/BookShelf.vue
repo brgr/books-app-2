@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, type Ref, useId, watch } from "vue";
-import { useRouter } from "vue-router";
+import { computed, nextTick, onDeactivated, ref, type Ref, useId, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import draggable from "vuedraggable";
 import BookCard from "./BookCard/BookCard.vue";
 import BookContextMenu from "./BookContextMenu.vue";
@@ -36,6 +36,11 @@ const props = withDefaults(
 );
 
 const router = useRouter();
+const route = useRoute();
+
+function detailRoute(bookId: number) {
+  return { name: "book-detail", params: { id: bookId }, query: { from: route.fullPath } };
+}
 const { searchQuery } = useLibraryPage();
 
 // Deliberately this shelf's own, not the page's: shelves on one page can be laid out differently.
@@ -113,6 +118,7 @@ watch([isDragging, isSaving, isCollapsed], () => void nextTick(reobserve));
 watch(filteredBooks, () => void nextTick(reobserve));
 
 const { contextMenu, openContextMenu, closeContextMenu } = useContextMenu();
+onDeactivated(closeContextMenu);
 
 function startDrag() {
   // Starting a drag dismisses any open long-press menu, revealing the book being
@@ -126,7 +132,7 @@ function handleCoverClick(bookId: number) {
     return;
   }
 
-  router.push({ name: "book-detail", params: { id: bookId } });
+  router.push(detailRoute(bookId));
 }
 
 function handleContextView() {
@@ -134,7 +140,7 @@ function handleContextView() {
   closeContextMenu();
 
   if (bookId !== null) {
-    router.push({ name: "book-detail", params: { id: bookId } });
+    router.push(detailRoute(bookId));
   }
 }
 
@@ -221,7 +227,7 @@ async function handleContextRemove() {
         <template #item="{ element: book }">
           <BookCoverTile
             :book="book"
-            :href="router.resolve({ name: 'book-detail', params: { id: book.id } }).href"
+            :href="router.resolve(detailRoute(book.id)).href"
             :show-progress="showProgress"
             @click="handleCoverClick"
             @menu="openContextMenu"

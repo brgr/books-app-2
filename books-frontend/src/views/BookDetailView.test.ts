@@ -54,6 +54,7 @@ async function renderBook() {
   const wrapper = mount(BookDetailView, {
     global: {
       stubs: {
+        RouterLink: true,
         NavigationBar: true,
         BookShelfButton: true,
         BookReadingCard: true,
@@ -151,6 +152,7 @@ describe("book ratings", () => {
     const wrapper = mount(BookDetailView, {
       global: {
         stubs: {
+          RouterLink: true,
           NavigationBar: true,
           BookShelfButton: true,
           BookNotes: true,

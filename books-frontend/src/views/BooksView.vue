@@ -1,21 +1,20 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { useRoute } from "vue-router";
 import BookShelf from "../components/book/BookShelf.vue";
 import BooksSearchHeader from "../components/book/BooksSearchHeader.vue";
 import NavigationBar from "../components/navigation/NavigationBar.vue";
 import GoToTopButton from "../components/ui/GoToTopButton.vue";
 import { provideLibraryPage } from "../composables/useLibraryPage";
 
-const route = useRoute();
+const props = defineProps<{ shelf?: string }>();
 
 const searchQuery = ref("");
 // The shelf lives in the URL: /shelves/:shelf. Bare "/" is the shelf "to-read".
 const shelfFilter = computed<"to-read" | "finished" | "abandoned">(() => {
-  if (route.params.shelf === "finished") {
+  if (props.shelf === "finished") {
     return "finished";
   }
-  if (route.params.shelf === "abandoned") {
+  if (props.shelf === "abandoned") {
     return "abandoned";
   }
 

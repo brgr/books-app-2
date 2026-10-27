@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { useRoute } from "vue-router";
 import { type Book } from "../../../api/types";
 import { getMediaUrl } from "../../../api/client";
 import KebabButton from "../../ui/KebabButton.vue";
@@ -19,7 +20,12 @@ function openMenu(e: MouseEvent) {
   emit("menu", { bookId: props.book.id, x: rect.left, y: rect.bottom + 4 });
 }
 
-const detailRoute = computed(() => ({ name: "book-detail", params: { id: props.book.id } }));
+const route = useRoute();
+const detailRoute = computed(() => ({
+  name: "book-detail",
+  params: { id: props.book.id },
+  query: { from: route.fullPath },
+}));
 const coverUrl = computed(() => props.book.cover_thumbnail_url || props.book.cover_image_url);
 </script>
 
