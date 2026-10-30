@@ -15,6 +15,7 @@ import { useShelfReorder } from "../../composables/useShelfReorder";
 import { useShelfViewMode, type ViewMode } from "../../composables/useShelfViewMode";
 import { removeBookFromShelf } from "../../api/books";
 import { invalidateCache } from "../../cache/invalidate";
+import { navigateWithBookPreview } from "../../router/bookPreview";
 
 const props = withDefaults(
   defineProps<{
@@ -132,7 +133,14 @@ function handleCoverClick(bookId: number) {
     return;
   }
 
-  router.push(detailRoute(bookId));
+  openBook(bookId);
+}
+
+function openBook(bookId: number) {
+  const book = books.value.find((book) => book.id === bookId);
+  if (book) {
+    void navigateWithBookPreview(book, () => router.push(detailRoute(bookId)));
+  }
 }
 
 function handleContextView() {
@@ -140,7 +148,7 @@ function handleContextView() {
   closeContextMenu();
 
   if (bookId !== null) {
-    router.push(detailRoute(bookId));
+    openBook(bookId);
   }
 }
 

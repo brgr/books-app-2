@@ -2,14 +2,14 @@ import { expect, type Page, test } from "@playwright/test";
 import { authenticate } from "../support/auth";
 
 // A deterministic, multi-page library exercises navigation without importing hundreds of books.
-async function mockLibrary(page: Page) {
+async function mockLibrary(page: Page, covers = false) {
   const books = Array.from({ length: 205 }, (_, index) => ({
     id: index + 1,
     title: `Navigation book ${String(index + 1).padStart(3, "0")}`,
     author: "Navigation author",
     description: null,
-    cover_image_url: null,
-    cover_thumbnail_url: null,
+    cover_image_url: covers ? "/preview-cover.svg" : null,
+    cover_thumbnail_url: covers ? "/preview-thumbnail.svg" : null,
     user_book: null,
   }));
 
@@ -71,6 +71,127 @@ async function mockLibrary(page: Page) {
   await page.route("**/api/books/*/custom-shelves", (route) =>
     route.fulfill({ json: [] }),
   );
+}
+
+for (const mode of ["list", "grid"] as const) {
+  test(`${mode}: show shelf details and thumbnail while book, timeline and larger cover are pending`, async ({
+    context,
+    page,
+  }) => {
+    await authenticate(context);
+    await mockLibrary(page, true);
+    
+    const image =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="449"><rect width="300" height="449" fill="teal"/></svg>';
+    // Real thumbnails have rounded dimensions; the full image's ratio can differ slightly.
+    const fullImage =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1498"><rect width="1000" height="1498" fill="teal"/></svg>';
+    await page.route("**/preview-thumbnail.svg", (route) =>
+      route.fulfill({ contentType: "image/svg+xml", body: image }),
+    );
+    
+    let finishBook!: () => void;
+    let finishCover!: () => void;
+    let finishEvents!: () => void;
+    const bookReady = new Promise<void>((resolve) => (finishBook = resolve));
+    const coverReady = new Promise<void>((resolve) => (finishCover = resolve));
+    const eventsReady = new Promise<void>(
+      (resolve) => (finishEvents = resolve),
+    );
+    
+    await page.route("**/api/books/1", async (route) => {
+      await bookReady;
+      await route.fulfill({
+        json: {
+          id: 1,
+          title: "Refreshed book",
+          author: "Fresh author",
+          cover_thumbnail_url: "/preview-thumbnail.svg",
+          cover_image_url: "/preview-cover.svg",
+          user_book: null,
+        },
+      });
+    });
+    await page.route("**/api/books/1/events", async (route) => {
+      await eventsReady;
+      await route.fulfill({ json: [] });
+    });
+    await page.route("**/preview-cover.svg", async (route) => {
+      await coverReady;
+      await route.fulfill({ contentType: "image/svg+xml", body: fullImage });
+    });
+
+    try {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto(mode === "list" ? "/" : "/shelves/custom/999");
+      
+      if (mode === "grid") {
+        await page.getByRole("button", { name: "Grid view" }).click();
+      } else {
+        // The retained To Read page was mounted at /, but its navigation link uses the alias.
+        await expect(page.locator(".book-card")).toHaveCount(100);
+        await page.getByRole("link", { name: "Finished", exact: true }).click();
+        await page.getByRole("link", { name: "To Read", exact: true }).click();
+        await expect(page).toHaveURL(/\/shelves\/to-read$/);
+      }
+      await page
+        .locator(mode === "list" ? ".book-title-link" : ".grid-cover-link")
+        .first()
+        .click();
+
+      await expect(
+        page.getByRole("heading", { name: "Navigation book 001" }),
+      ).toBeVisible();
+      await expect(page.locator(".book-author")).toHaveText(
+        "by Navigation author",
+      );
+      await expect(page.getByText("Loading book...")).toHaveCount(0);
+      const thumbnail = page.locator(
+        '.book-detail img[src$="/preview-thumbnail.svg"]',
+      );
+      const cover = page.locator('.book-detail img[src$="/preview-cover.svg"]');
+      await expect(thumbnail).toBeVisible();
+      await expect
+        .poll(() =>
+          thumbnail.evaluate(
+            (element) => (element as HTMLImageElement).naturalWidth,
+          ),
+        )
+        .toBe(300);
+      await expect(cover).toBeHidden();
+
+      // Exercise both request orderings: metadata before the cover, and the cover before metadata.
+      if (mode === "list") {
+        finishBook();
+        await expect(
+          page.getByRole("heading", { name: "Refreshed book" }),
+        ).toBeVisible();
+        await expect(thumbnail).toBeVisible();
+      }
+      const previewBounds = await page
+        .locator(".book-cover-section")
+        .boundingBox();
+      finishCover();
+      await expect(cover).toBeVisible();
+      expect(await page.locator(".book-cover-section").boundingBox()).toEqual(
+        previewBounds,
+      );
+      await expect(thumbnail).toBeHidden();
+      finishBook();
+      await expect(
+        page.getByRole("heading", { name: "Refreshed book" }),
+      ).toBeVisible();
+      await expect(cover).toBeVisible();
+      await expect(thumbnail).toBeHidden();
+      expect(await page.locator(".book-cover-section").boundingBox()).toEqual(
+        previewBounds,
+      );
+    } finally {
+      finishBook();
+      finishCover();
+      finishEvents();
+    }
+  });
 }
 
 for (const mode of ["list", "grid"] as const) {

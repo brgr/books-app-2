@@ -139,6 +139,48 @@ describe("useCachedQuery", () => {
     expect(data.value).toBe("data-for-books:2");
   });
 
+  it("does not overwrite a saved mutation with an older background response", async () => {
+    // We "store" the promise's resolve function in the "finish" variable. Like this, we can later
+    // finish (resolve) the promise and like that finish the mocked server response.
+    let finish!: (value: string) => void;
+    const fetcher = vi.fn(() => new Promise<string>((resolve) => (finish = resolve)));
+    
+    const { data, setData } = useCachedQuery("key", fetcher, { initialData: () => "shelf preview" });
+    await flushPromises();
+    
+    await setData("saved value");
+    finish("older server value");
+    await flushPromises();
+    
+    expect(data.value).toBe("saved value");
+    expect((await cacheGet<string>("key"))?.data).toBe("saved value");
+  });
+
+  it("clears the previous resource immediately and ignores its delayed response after a key change", async () => {
+    const key = ref("books:1");
+    let finishFirst!: (value: string) => void;
+    const fetcher = vi
+      .fn()
+      .mockImplementationOnce(() => new Promise<string>((resolve) => (finishFirst = resolve)))
+      .mockImplementation(() => new Promise<string>(() => {}));
+    const { data, isStale } = useCachedQuery(key, fetcher, {
+      initialData: () => (key.value === "books:1" ? "shelf preview" : null),
+    });
+    
+    expect(data.value).toBe("shelf preview");
+    expect(isStale.value).toBe(true);
+    await flushPromises();
+
+    key.value = "books:2";
+    await nextTick();
+    expect(data.value).toBeNull();
+    finishFirst("wrong book");
+    await flushPromises();
+    
+    expect(data.value).toBeNull();
+    expect(await cacheGet("books:1")).toBeUndefined();
+  });
+
   it("does not fetch when enabled is false", async () => {
     const fetcher = vi.fn().mockResolvedValue("data");
     const enabled = ref(false);

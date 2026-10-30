@@ -6,6 +6,7 @@ import { getMediaUrl } from "../../../api/client";
 import KebabButton from "../../ui/KebabButton.vue";
 import BookCardMeta from "./BookCardMeta.vue";
 import BookCardShelf from "./BookCardShelf.vue";
+import { navigateWithBookPreview } from "../../../router/bookPreview";
 
 const props = defineProps<{
   book: Book;
@@ -27,27 +28,46 @@ const detailRoute = computed(() => ({
   query: { from: route.fullPath },
 }));
 const coverUrl = computed(() => props.book.cover_thumbnail_url || props.book.cover_image_url);
+
+function openBook(event: MouseEvent, navigate: (event: MouseEvent) => Promise<unknown>) {
+  if (
+    event.defaultPrevented ||
+    event.button !== 0 ||
+    event.metaKey ||
+    event.ctrlKey ||
+    event.shiftKey ||
+    event.altKey
+  ) {
+    return;
+  }
+  
+  void navigateWithBookPreview(props.book, () => navigate(event));
+}
 </script>
 
 <template>
   <div class="book-card">
     <KebabButton class="card-menu-button" aria-label="Book actions" @click="openMenu" />
     <div class="book-content">
-      <router-link :to="detailRoute" class="book-cover-link">
-        <img
-          v-if="coverUrl"
-          :src="getMediaUrl(coverUrl)"
-          :alt="book.title"
-          class="book-cover book-cover-clickable"
-          loading="lazy"
-        />
-        <div v-else class="book-cover-placeholder book-cover-clickable">No Cover</div>
+      <router-link v-slot="{ href, navigate }" :to="detailRoute" custom>
+        <a :href="href" class="book-cover-link" @click="openBook($event, navigate)">
+          <img
+            v-if="coverUrl"
+            :src="getMediaUrl(coverUrl)"
+            :alt="book.title"
+            class="book-cover book-cover-clickable"
+            loading="lazy"
+          />
+          <div v-else class="book-cover-placeholder book-cover-clickable">No Cover</div>
+        </a>
       </router-link>
 
       <div class="book-details">
         <div class="book-header">
-          <router-link :to="detailRoute" class="book-title-link">
-            <h3 class="book-title-clickable">{{ book.title }}</h3>
+          <router-link v-slot="{ href, navigate }" :to="detailRoute" custom>
+            <a :href="href" class="book-title-link" @click="openBook($event, navigate)">
+              <h3 class="book-title-clickable">{{ book.title }}</h3>
+            </a>
           </router-link>
         </div>
 

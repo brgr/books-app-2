@@ -9,6 +9,7 @@ import { reorderShelfItem } from "../../api/books";
 import { type Book, type PaginatedBooks, type ShelfRef } from "../../api/types";
 import { cacheClear } from "../../cache/store";
 import { provideLibraryPage } from "../../composables/useLibraryPage";
+import { takeBookPreview } from "../../router/bookPreview";
 
 enableAutoUnmount(afterEach);
 
@@ -83,7 +84,8 @@ describe("BookShelf", () => {
   beforeEach(async () => {
     await cacheClear();
     localStorage.clear();
-    push.mockClear();
+    push.mockReset();
+    push.mockResolvedValue(undefined);
     getShelfBooks.mockReset();
     getShelfBooks.mockResolvedValue(page(books));
     vi.mocked(reorderShelfItem).mockReset();
@@ -197,13 +199,33 @@ describe("BookShelf", () => {
     wrapper.unmount();
   });
 
-  it("opens a book when its cover is tapped", async () => {
+  it("hands off the selected book when its cover is tapped", async () => {
     const wrapper = mountShelf({ defaultViewMode: "grid" });
     await flush();
+    expect(takeBookPreview(2)).toBeNull();
+    push.mockImplementationOnce(async () => {
+      expect(takeBookPreview(2)).toEqual(books[1]);
+    });
 
     wrapper.findComponent(BookCoverTile).vm.$emit("click", 2);
 
     expect(push).toHaveBeenCalledWith({ name: "book-detail", params: { id: 2 }, query: { from: "/" } });
+  });
+
+  it("hands off the selected book when opened from the context menu", async () => {
+    const wrapper = mountShelf();
+    await flush();
+    push.mockImplementationOnce(async () => {
+      expect(takeBookPreview(2)).toEqual(books[1]);
+    });
+
+    wrapper.findComponent(BookCard).vm.$emit("menu", { bookId: 2, x: 10, y: 20 });
+    await nextTick();
+    wrapper.findComponent(BookContextMenu).vm.$emit("view");
+
+    expect(push).toHaveBeenCalledWith({ name: "book-detail", params: { id: 2 }, query: { from: "/" } });
+    await nextTick();
+    expect(wrapper.findComponent(BookContextMenu).exists()).toBe(false);
   });
 
   it("renders nothing at all for an empty shelf, so the page keeps no space for it", async () => {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, toRaw } from "vue";
+import { computed, ref, toRaw, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { addBookProgress, clearRating, getBook, getBookEvents, setRating, setShelf } from "../api/books";
 import { getMediaUrl } from "../api/client";
@@ -25,6 +25,7 @@ import { useCachedQuery } from "../composables/useCachedQuery";
 import { cacheKeys } from "../cache/keys";
 import { invalidateCache } from "../cache/invalidate";
 import { libraryOrigin } from "../router/libraryNavigation";
+import { takeBookPreview } from "../router/bookPreview";
 
 const router = useRouter();
 const route = useRoute();
@@ -61,8 +62,37 @@ const {
 } = useCachedQuery<Book>(
   computed(() => (bookId.value ? cacheKeys.book(bookId.value) : "")),
   () => getBook(bookId.value),
-  { enabled: computed(() => bookId.value > 0) },
+  {
+    enabled: computed(() => bookId.value > 0),
+    initialData: () => takeBookPreview(bookId.value),
+  },
 );
+
+const loadedCover = ref<string>();
+const largeCoverUrl = computed(() => getMediaUrl(book.value?.cover_image_url));
+const thumbnailUrl = computed(() => getMediaUrl(book.value?.cover_thumbnail_url));
+const hasThumbnail = computed(() =>
+  Boolean(thumbnailUrl.value && largeCoverUrl.value && thumbnailUrl.value !== largeCoverUrl.value),
+);
+const showThumbnail = computed(() => hasThumbnail.value && loadedCover.value !== largeCoverUrl.value);
+watch([bookId, largeCoverUrl], () => {
+  loadedCover.value = undefined;
+});
+
+async function revealCover(event: Event) {
+  const image = event.currentTarget as HTMLImageElement;
+  const url = image.getAttribute("src");
+  const id = bookId.value;
+  try {
+    // Loading finishes before the browser necessarily has pixels ready to paint.
+    await image.decode?.();
+  } catch {
+    return; // Keep the thumbnail if decoding fails.
+  }
+  if (id === bookId.value && url === largeCoverUrl.value) {
+    loadedCover.value = url;
+  }
+}
 
 const { data: events, refresh: refreshEvents } = useCachedQuery<BookEvent[]>(
   computed(() => (bookId.value ? cacheKeys.bookEvents(bookId.value) : "")),
@@ -245,12 +275,26 @@ function handleEdit() {
       <div v-else-if="book" class="book-detail">
         <div class="book-header">
           <div class="book-cover-section">
-            <img
-              v-if="book.cover_image_url || book.cover_thumbnail_url"
-              :src="getMediaUrl(book.cover_image_url || book.cover_thumbnail_url)"
-              :alt="book.title"
-              class="book-cover-large"
-            />
+            <div v-if="largeCoverUrl || thumbnailUrl" class="book-cover-stack">
+              <!-- Retain the thumbnail's layout box: rounded thumbnail dimensions can differ from the full cover. -->
+              <img
+                v-if="hasThumbnail"
+                :src="thumbnailUrl"
+                :alt="showThumbnail ? book.title : ''"
+                :aria-hidden="!showThumbnail ? true : undefined"
+                class="book-cover-large"
+                :class="{ 'book-cover-loading': !showThumbnail }"
+              />
+              <img
+                :key="largeCoverUrl || thumbnailUrl"
+                :src="largeCoverUrl || thumbnailUrl"
+                :alt="showThumbnail ? '' : book.title"
+                :aria-hidden="showThumbnail ? true : undefined"
+                class="book-cover-large"
+                :class="{ 'book-cover-overlay': hasThumbnail, 'book-cover-loading': showThumbnail }"
+                @load="revealCover"
+              />
+            </div>
             <div v-else class="book-cover-large book-cover-placeholder">No Cover</div>
           </div>
 
@@ -368,6 +412,15 @@ function handleEdit() {
   max-width: 100%;
 }
 
+.book-cover-stack {
+  position: relative;
+  width: min(240px, 100%);
+}
+
+.book-cover-loading {
+  visibility: hidden;
+}
+
 .book-cover-large {
   width: min(240px, 100%);
   max-width: 100%;
@@ -379,6 +432,14 @@ function handleEdit() {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   touch-action: manipulation;
+}
+
+.book-cover-large.book-cover-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .book-cover-placeholder {
@@ -503,7 +564,8 @@ function handleEdit() {
     margin-bottom: var(--spacing-lg);
   }
 
-  .book-cover-large {
+  .book-cover-large,
+  .book-cover-stack {
     width: min(200px, 100%);
     height: auto;
   }

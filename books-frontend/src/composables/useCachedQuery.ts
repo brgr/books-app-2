@@ -7,17 +7,31 @@ type MaybeRefOrGetter<T> = T | Ref<T> | (() => T);
 export function useCachedQuery<T>(
   key: MaybeRefOrGetter<string>,
   fetcher: () => Promise<T>,
-  options?: { enabled?: MaybeRefOrGetter<boolean> },
+  options?: {
+    enabled?: MaybeRefOrGetter<boolean>;
+    /** Synchronous data already on screen elsewhere. Used once per key, then refreshed from the network. */
+    initialData?: () => T | null;
+  },
 ) {
   const data = ref<T | null>(null) as Ref<T | null>;
   const isStale = ref(false);
   const error = ref<unknown>(null);
 
   let generation = 0;
+  let dataKey: string | undefined;
   let currentPromise: Promise<void> = Promise.resolve();
 
   function execute() {
     const currentKey = toValue(key);
+    const gen = ++generation;
+    error.value = null;
+
+    if (currentKey !== dataKey) {
+      dataKey = currentKey;
+      data.value = currentKey ? (options?.initialData?.() ?? null) : null;
+      isStale.value = data.value !== null;
+    }
+
     if (!currentKey) {
       return;
     }
@@ -27,15 +41,17 @@ export function useCachedQuery<T>(
       return;
     }
 
-    const gen = ++generation;
-    error.value = null;
-
     currentPromise = cachedQuery<T>({
       key: currentKey,
       fetcher,
       isCurrent: () => gen === generation,
       onData: (d, source) => {
         if (gen !== generation) {
+          return;
+        }
+
+        // A live preview (or a previously refreshed value) is newer than the persisted cache.
+        if (source === "cache" && data.value !== null) {
           return;
         }
 
@@ -72,7 +88,10 @@ export function useCachedQuery<T>(
    * remount serves the new value rather than the stale one.
    */
   async function setData(next: T) {
+    // A saved mutation supersedes any background read that started before it.
+    generation += 1;
     data.value = next;
+    isStale.value = false;
     const currentKey = toValue(key);
     if (!currentKey) {
       return;

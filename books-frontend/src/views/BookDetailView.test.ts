@@ -1,14 +1,17 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { flushPromises, mount } from "@vue/test-utils";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { enableAutoUnmount, flushPromises, mount } from "@vue/test-utils";
 import BookDetailView from "./BookDetailView.vue";
 import { clearRating, getBook, getBookEvents, setRating } from "../api/books";
 import { type Book, BookEventType, ReadingShelf, type UserBook } from "../api/types";
 import { cacheClear, cacheGet, cacheSet } from "../cache/store";
 import { cacheKeys } from "../cache/keys";
+import { navigateWithBookPreview } from "../router/bookPreview";
+
+enableAutoUnmount(afterEach);
 
 vi.mock("vue-router", () => ({
-  useRoute: () => ({ params: { id: "1" } }),
-  useRouter: () => ({ push: vi.fn() }),
+  useRoute: () => ({ name: "books", path: "/", params: { id: "1" }, fullPath: "/" }),
+  useRouter: () => ({ push: vi.fn(), resolve: () => ({ name: "books", path: "/", params: {} }) }),
 }));
 vi.mock("../api/books", () => ({
   getBook: vi.fn(),
@@ -50,8 +53,8 @@ const book: Book = {
   user_book: userBook,
 };
 
-async function renderBook() {
-  const wrapper = mount(BookDetailView, {
+function mountBook() {
+  return mount(BookDetailView, {
     global: {
       stubs: {
         RouterLink: true,
@@ -64,11 +67,15 @@ async function renderBook() {
       },
     },
   });
+}
+
+async function renderBook() {
+  const wrapper = mountBook();
   await vi.waitFor(() => expect(wrapper.find("select").exists()).toBe(true));
   return wrapper;
 }
 
-describe("book ratings", () => {
+describe("book detail", () => {
   beforeEach(async () => {
     vi.resetAllMocks();
     await cacheClear();
@@ -76,11 +83,104 @@ describe("book ratings", () => {
     vi.mocked(getBookEvents).mockResolvedValue([]);
   });
 
+  function mountBookWithPreview(preview: Book) {
+    let wrapper!: ReturnType<typeof mountBook>;
+    void navigateWithBookPreview(preview, async () => {
+      wrapper = mountBook();
+    });
+    
+    return wrapper;
+  }
+
+  it("renders the selected book immediately, then refreshes it", async () => {
+    const shelfBook = {
+      ...book,
+      description: "A desert planet",
+      cover_thumbnail_url: "/thumb.jpg",
+      cover_image_url: "/cover.jpg",
+    };
+    await cacheSet(cacheKeys.book(1), { ...book, title: "Older cached title" });
+    let finishBook!: (value: Book) => void;
+    let finishEvents!: (value: []) => void;
+    vi.mocked(getBook).mockReturnValue(new Promise((resolve) => (finishBook = resolve)));
+    vi.mocked(getBookEvents).mockReturnValue(new Promise((resolve) => (finishEvents = resolve)));
+
+    const wrapper = mountBookWithPreview(shelfBook);
+    expect(wrapper.get("h1").text()).toBe("Dune");
+    expect(wrapper.text()).toContain("Frank Herbert");
+    expect(wrapper.text()).toContain("A desert planet");
+    expect(wrapper.get("select").element.value).toBe("3.5");
+    expect(wrapper.find(".loading").exists()).toBe(false);
+    expect(wrapper.get('img[src="/thumb.jpg"]').isVisible()).toBe(true);
+    expect(wrapper.get('img[src="/cover.jpg"]').classes()).toContain("book-cover-loading");
+
+    await vi.waitFor(() => expect(getBookEvents).toHaveBeenCalledWith(1));
+    expect(wrapper.get("h1").text()).toBe("Dune");
+    finishBook({ ...shelfBook, title: "Fresh Dune", user_book: { ...userBook, rating: 5 } });
+    await vi.waitFor(() => expect(wrapper.get("h1").text()).toBe("Fresh Dune"));
+    expect(wrapper.get("select").element.value).toBe("5");
+    expect((await cacheGet<Book>(cacheKeys.book(1)))?.data.title).toBe("Fresh Dune");
+
+    await wrapper.get('img[src="/cover.jpg"]').trigger("load");
+    expect(wrapper.get('img[src="/thumb.jpg"]').attributes("aria-hidden")).toBe("true");
+    expect(wrapper.get('img[src="/cover.jpg"]').isVisible()).toBe(true);
+    finishEvents([]);
+  });
+
+  it("keeps the selected book and thumbnail visible when background requests and the full cover fail", async () => {
+    vi.mocked(getBook).mockRejectedValue(new Error("Offline"));
+    vi.mocked(getBookEvents).mockRejectedValue(new Error("Offline"));
+    const wrapper = mountBookWithPreview({ ...book, cover_thumbnail_url: "/thumb.jpg", cover_image_url: "/cover.jpg" });
+
+    await vi.waitFor(() => expect(getBook).toHaveBeenCalled());
+    await flushPromises();
+    
+    await wrapper.get('img[src="/cover.jpg"]').trigger("error");
+    expect(wrapper.get("h1").text()).toBe("Dune");
+    expect(wrapper.get('img[src="/thumb.jpg"]').isVisible()).toBe(true);
+    expect(wrapper.find(".error").exists()).toBe(false);
+  });
+
+  it("keeps the thumbnail visible until the larger cover has decoded, including across a book refresh", async () => {
+    const shelfBook = { ...book, cover_thumbnail_url: "/thumb.jpg", cover_image_url: "/cover.jpg" };
+    vi.mocked(getBook).mockResolvedValue({ ...shelfBook, title: "Refreshed Dune" });
+    const wrapper = mountBookWithPreview(shelfBook);
+    const cover = wrapper.get('img[src="/cover.jpg"]');
+    let finishDecode!: () => void;
+    const decode = vi.fn(() => new Promise<void>((resolve) => (finishDecode = resolve)));
+    Object.defineProperty(cover.element, "decode", { value: decode });
+
+    await cover.trigger("load");
+    expect(decode).toHaveBeenCalledOnce();
+    expect(wrapper.get('img[src="/thumb.jpg"]').isVisible()).toBe(true);
+    
+    await vi.waitFor(() => expect(wrapper.get("h1").text()).toBe("Refreshed Dune"));
+    expect(wrapper.get('img[src="/thumb.jpg"]').isVisible()).toBe(true);
+    finishDecode();
+    await flushPromises();
+    
+    expect(wrapper.get('img[src="/thumb.jpg"]').attributes("aria-hidden")).toBe("true");
+    expect(cover.classes()).not.toContain("book-cover-loading");
+  });
+
+  it("uses the usual loading and error states when opened directly without a preview or detail cache", async () => {
+    let fail!: (error: Error) => void;
+    vi.mocked(getBook).mockReturnValue(new Promise((_, reject) => (fail = reject)));
+    const wrapper = mountBook();
+    
+    expect(wrapper.get(".loading").text()).toBe("Loading book...");
+    await vi.waitFor(() => expect(getBook).toHaveBeenCalled());
+    fail(new Error("Book unavailable"));
+    await vi.waitFor(() => expect(wrapper.get(".error").text()).toBe("Book unavailable"));
+  });
+
   it("saves a half-star rating and refreshes cached shelves and activity", async () => {
     const shelfKey = cacheKeys.shelfBooks("reading:finished", 1, 20);
     await cacheSet(shelfKey, { items: [book] });
     const wrapper = await renderBook();
+    
     expect(wrapper.get("select").element.value).toBe("3.5");
+    
     vi.mocked(setRating).mockResolvedValue({ ...userBook, rating: 4.5 });
     vi.mocked(getBookEvents).mockResolvedValue([
       {
