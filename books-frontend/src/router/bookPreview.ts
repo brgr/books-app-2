@@ -6,7 +6,7 @@ let pendingPreview: { book: Book } | null = null;
 export async function navigateWithBookPreview(book: Book, navigate: () => Promise<unknown>) {
   const preview = { book };
   pendingPreview = preview;
-  
+
   try {
     await navigate();
   } finally {
@@ -20,6 +20,6 @@ export async function navigateWithBookPreview(book: Book, navigate: () => Promis
 export function takeBookPreview(bookId: number): Book | null {
   const preview = pendingPreview;
   pendingPreview = null;
-  
+
   return preview?.book.id === bookId ? preview.book : null;
 }

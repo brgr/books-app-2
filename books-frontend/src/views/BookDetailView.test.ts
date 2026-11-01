@@ -88,7 +88,7 @@ describe("book detail", () => {
     void navigateWithBookPreview(preview, async () => {
       wrapper = mountBook();
     });
-    
+
     return wrapper;
   }
 
@@ -134,7 +134,7 @@ describe("book detail", () => {
 
     await vi.waitFor(() => expect(getBook).toHaveBeenCalled());
     await flushPromises();
-    
+
     await wrapper.get('img[src="/cover.jpg"]').trigger("error");
     expect(wrapper.get("h1").text()).toBe("Dune");
     expect(wrapper.get('img[src="/thumb.jpg"]').isVisible()).toBe(true);
@@ -153,12 +153,12 @@ describe("book detail", () => {
     await cover.trigger("load");
     expect(decode).toHaveBeenCalledOnce();
     expect(wrapper.get('img[src="/thumb.jpg"]').isVisible()).toBe(true);
-    
+
     await vi.waitFor(() => expect(wrapper.get("h1").text()).toBe("Refreshed Dune"));
     expect(wrapper.get('img[src="/thumb.jpg"]').isVisible()).toBe(true);
     finishDecode();
     await flushPromises();
-    
+
     expect(wrapper.get('img[src="/thumb.jpg"]').attributes("aria-hidden")).toBe("true");
     expect(cover.classes()).not.toContain("book-cover-loading");
   });
@@ -167,7 +167,7 @@ describe("book detail", () => {
     let fail!: (error: Error) => void;
     vi.mocked(getBook).mockReturnValue(new Promise((_, reject) => (fail = reject)));
     const wrapper = mountBook();
-    
+
     expect(wrapper.get(".loading").text()).toBe("Loading book...");
     await vi.waitFor(() => expect(getBook).toHaveBeenCalled());
     fail(new Error("Book unavailable"));
@@ -178,9 +178,9 @@ describe("book detail", () => {
     const shelfKey = cacheKeys.shelfBooks("reading:finished", 1, 20);
     await cacheSet(shelfKey, { items: [book] });
     const wrapper = await renderBook();
-    
+
     expect(wrapper.get("select").element.value).toBe("3.5");
-    
+
     vi.mocked(setRating).mockResolvedValue({ ...userBook, rating: 4.5 });
     vi.mocked(getBookEvents).mockResolvedValue([
       {

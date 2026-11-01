@@ -40,7 +40,7 @@ function openBook(event: MouseEvent, navigate: (event: MouseEvent) => Promise<un
   ) {
     return;
   }
-  
+
   void navigateWithBookPreview(props.book, () => navigate(event));
 }
 </script>

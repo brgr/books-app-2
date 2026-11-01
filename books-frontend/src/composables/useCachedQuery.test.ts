@@ -144,14 +144,14 @@ describe("useCachedQuery", () => {
     // finish (resolve) the promise and like that finish the mocked server response.
     let finish!: (value: string) => void;
     const fetcher = vi.fn(() => new Promise<string>((resolve) => (finish = resolve)));
-    
+
     const { data, setData } = useCachedQuery("key", fetcher, { initialData: () => "shelf preview" });
     await flushPromises();
-    
+
     await setData("saved value");
     finish("older server value");
     await flushPromises();
-    
+
     expect(data.value).toBe("saved value");
     expect((await cacheGet<string>("key"))?.data).toBe("saved value");
   });
@@ -166,7 +166,7 @@ describe("useCachedQuery", () => {
     const { data, isStale } = useCachedQuery(key, fetcher, {
       initialData: () => (key.value === "books:1" ? "shelf preview" : null),
     });
-    
+
     expect(data.value).toBe("shelf preview");
     expect(isStale.value).toBe(true);
     await flushPromises();
@@ -176,7 +176,7 @@ describe("useCachedQuery", () => {
     expect(data.value).toBeNull();
     finishFirst("wrong book");
     await flushPromises();
-    
+
     expect(data.value).toBeNull();
     expect(await cacheGet("books:1")).toBeUndefined();
   });
