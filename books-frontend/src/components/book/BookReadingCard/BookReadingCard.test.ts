@@ -82,43 +82,25 @@ describe("BookReadingCard", () => {
     expect(wrapper.emitted("update-progress")?.[0]?.[0]).toEqual({ page: 10 });
   });
 
-  it("keeps both recorded values in the summary and defaults the editor to percent", async () => {
-    const wrapper = mount(BookReadingCard, {
-      props: makeProps({ currentPage: 10, currentPercent: 3.5 }),
-    });
-
-    expect(wrapper.text()).toContain("Page 10 of 200");
-    expect(wrapper.text()).toContain("4%");
-    await wrapper.get('[data-test="edit-progress"]').trigger("click");
-    expect(wrapper.get('[data-test="unit-percent"]').classes()).toContain("active");
-    await wrapper.get('[data-test="save-progress"]').trigger("click");
-    expect(wrapper.emitted("update-progress")?.[0]?.[0]).toEqual({ percent: 3.5 });
-  });
-
   it.each([
-    { currentPage: 10, currentPercent: 3.5 },
-    { currentPage: 0, currentPercent: 0 },
-  ])("restores both recorded values when switching units: $currentPage pages, $currentPercent%", async (progress) => {
-    const wrapper = mount(BookReadingCard, { props: makeProps(progress) });
+    { currentPage: 10, currentPercent: null, unit: "page", value: "10", expected: { page: 10 } },
+    { currentPage: null, currentPercent: 3.5, unit: "percent", value: "3.5", expected: { percent: 3.5 } },
+    { currentPage: 0, currentPercent: null, unit: "page", value: "0", expected: { page: 0 } },
+    { currentPage: null, currentPercent: 0, unit: "percent", value: "0", expected: { percent: 0 } },
+  ])("edits the recorded $unit value $value", async ({ currentPage, currentPercent, unit, value, expected }) => {
+    const wrapper = mount(BookReadingCard, { props: makeProps({ currentPage, currentPercent }) });
+    const otherUnit = unit === "page" ? "percent" : "page";
 
     await wrapper.get('[data-test="edit-progress"]').trigger("click");
-    expect(wrapper.get('[data-test="unit-percent"]').classes()).toContain("active");
-    await wrapper.get('[data-test="unit-page"]').trigger("click");
-    expect(wrapper.get<HTMLInputElement>('[data-test="progress-input"]').element.value).toBe(
-      String(progress.currentPage),
-    );
+    expect(wrapper.get(`[data-test="unit-${unit}"]`).classes()).toContain("active");
+    expect(wrapper.get<HTMLInputElement>('[data-test="progress-input"]').element.value).toBe(value);
+    await wrapper.get(`[data-test="unit-${otherUnit}"]`).trigger("click");
+    expect(wrapper.get<HTMLInputElement>('[data-test="progress-input"]').element.value).toBe("");
+    await wrapper.get(`[data-test="unit-${unit}"]`).trigger("click");
+    expect(wrapper.get<HTMLInputElement>('[data-test="progress-input"]').element.value).toBe(value);
     await wrapper.get('[data-test="save-progress"]').trigger("click");
 
-    await wrapper.get('[data-test="unit-percent"]').trigger("click");
-    expect(wrapper.get<HTMLInputElement>('[data-test="progress-input"]').element.value).toBe(
-      String(progress.currentPercent),
-    );
-    await wrapper.get('[data-test="save-progress"]').trigger("click");
-
-    expect(wrapper.emitted("update-progress")).toEqual([
-      [{ page: progress.currentPage }],
-      [{ percent: progress.currentPercent }],
-    ]);
+    expect(wrapper.emitted("update-progress")).toEqual([[expected]]);
   });
 
   it("forwards the saving state and closes the editor when saved progress changes", async () => {

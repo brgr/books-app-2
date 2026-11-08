@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import { enableAutoUnmount, mount } from "@vue/test-utils";
 import BookProgressEditor from "./BookProgressEditor.vue";
 import type { ReadingProgress } from "./types";
@@ -7,6 +7,13 @@ enableAutoUnmount(afterEach);
 afterEach(() => vi.restoreAllMocks());
 
 describe("BookProgressEditor", () => {
+  it("requires exactly one progress value in its type", () => {
+    expectTypeOf<{ page: number }>().toExtend<ReadingProgress>();
+    expectTypeOf<{ percent: number }>().toExtend<ReadingProgress>();
+    expectTypeOf<{ page: number; percent: number }>().not.toExtend<ReadingProgress>();
+    expectTypeOf<Record<string, never>>().not.toExtend<ReadingProgress>();
+  });
+
   it.each<{ progress: ReadingProgress | null; unit: string; value: string }>([
     { progress: { page: 10 }, unit: "page", value: "10" },
     { progress: { percent: 30 }, unit: "percent", value: "30" },

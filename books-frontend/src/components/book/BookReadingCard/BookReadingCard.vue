@@ -38,10 +38,9 @@ const displayPercent = computed<number | null>(() => {
   return null;
 });
 
-// Keep both recorded values available when switching the editor's unit.
 const editorProgress = computed<ReadingProgress | null>(() => {
   if (props.currentPage !== null && props.currentPage !== undefined) {
-    return { page: props.currentPage, percent: props.currentPercent ?? undefined };
+    return { page: props.currentPage };
   }
   if (props.currentPercent !== null && props.currentPercent !== undefined) {
     return { percent: props.currentPercent };

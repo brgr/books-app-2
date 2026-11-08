@@ -1,1 +1,1 @@
-export type ReadingProgress = { page: number; percent?: number } | { percent: number; page?: number };
+export type { BookProgressUpdate as ReadingProgress } from "../../../api/types";
