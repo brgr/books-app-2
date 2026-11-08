@@ -547,5 +547,14 @@ def build_user_book_response(session: Session, user_book: UserBook) -> UserBookR
     """
     started_at, finished_at = derive_reading_date_values(session, user_book.id)
     shelf = current_reading_shelf(session, user_book.id)
+    if (
+        shelf == ReadingShelf.STARTED
+        and user_book.current_page is None
+        and user_book.current_percent is None
+    ):
+        # Previously, progress could be None to mean no progress yet.
+        # That now means page 0 or 0%.
+        # For older books that still have None, we just project the reading progress here from the book events.
+        project_user_book_state(session, user_book)
 
     return UserBookResponse.from_user_book(user_book, shelf, started_at, finished_at)

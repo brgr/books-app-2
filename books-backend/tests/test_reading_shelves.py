@@ -1,6 +1,56 @@
 import pytest
 from fastapi import status
 
+from app.models import UserBook
+
+
+@pytest.mark.parametrize(
+    "page_count, progress, expected_page, expected_percent",
+    [
+        (300, None, 0, None),
+        (None, None, None, 0),
+        (300, {"unit": "percent", "value": 42.5}, None, 42.5),
+        (None, {"unit": "page", "value": 10}, 10, None),
+    ],
+)
+def test_shelf_books_project_progress_from_events(
+    client,
+    auth_headers,
+    sample_book_data,
+    db_session,
+    page_count,
+    progress,
+    expected_page,
+    expected_percent,
+):
+    book_id = client.post(
+        "/api/books",
+        json={**sample_book_data, "page_count": page_count},
+        headers=auth_headers,
+    ).json()["id"]
+    response = client.put(
+        f"/api/books/{book_id}/shelf", json={"shelf": "started"}, headers=auth_headers
+    )
+    assert response.status_code == status.HTTP_200_OK
+    if progress is not None:
+        response = client.post(
+            f"/api/books/{book_id}/progress", json=progress, headers=auth_headers
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+    # Simulate an older snapshot; the recorded events remain authoritative.
+    user_book = db_session.query(UserBook).filter_by(book_id=book_id).one()
+    user_book.current_page = None
+    user_book.current_percent = None
+    db_session.commit()
+
+    response = client.get("/api/shelves/reading:started/books", headers=auth_headers)
+
+    assert response.status_code == status.HTTP_200_OK
+    saved = response.json()["items"][0]["user_book"]
+    assert saved["current_page"] == expected_page
+    assert saved["current_percent"] == expected_percent
+
 
 def _create_book(client, auth_headers, sample_book_data, title_suffix, isbn_suffix):
     payload = sample_book_data.copy()
