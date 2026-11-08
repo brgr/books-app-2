@@ -98,7 +98,7 @@ describe("book detail", () => {
     { page: null, percent: 42.5, expected: { unit: "percent", value: 42.5 } },
     { page: 0, percent: null, expected: { unit: "page", value: 0 } },
     { page: null, percent: 0, expected: { unit: "percent", value: 0 } },
-    { page: null, percent: null, expected: null },
+    { page: null, percent: null, expected: { unit: "percent", value: 0 } },
   ])("passes recorded progress to the reading card: $expected", async ({ page, percent, expected }) => {
     vi.mocked(getBook).mockResolvedValue({
       ...book,
@@ -109,6 +109,19 @@ describe("book detail", () => {
     await vi.waitFor(() => expect(wrapper.findComponent(BookReadingCard).exists()).toBe(true));
 
     expect(wrapper.getComponent(BookReadingCard).props("progress")).toEqual(expected);
+  });
+
+  it("defaults an existing started book without progress to page zero when its page count is known", async () => {
+    vi.mocked(getBook).mockResolvedValue({
+      ...book,
+      page_count: 200,
+      user_book: { ...userBook, shelf: ReadingShelf.STARTED },
+    });
+
+    const wrapper = mountBook();
+    await vi.waitFor(() => expect(wrapper.findComponent(BookReadingCard).exists()).toBe(true));
+
+    expect(wrapper.getComponent(BookReadingCard).props("progress")).toEqual({ unit: "page", value: 0 });
   });
 
   it("renders the selected book immediately, then refreshes it", async () => {

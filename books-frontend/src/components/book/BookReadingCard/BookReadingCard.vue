@@ -9,7 +9,7 @@ import { formatReadingDate } from "../../../utils/date";
 const props = defineProps<{
   shelf: ReadingShelf | null;
   updating?: boolean;
-  progress: ReadingProgress | null;
+  progress: ReadingProgress;
   pageCount?: number | null;
   startedAt?: ReadingDateValue | null;
   finishedAt?: ReadingDateValue | null;
@@ -25,10 +25,10 @@ const emit = defineEmits<{
 // by percent, otherwise derived from the page and the book's length. Null when
 // we can't express one (page tracked but unknown length).
 const displayPercent = computed<number | null>(() => {
-  if (props.progress?.unit === "percent") {
+  if (props.progress.unit === "percent") {
     return Math.min(100, Math.max(0, Math.round(props.progress.value)));
   }
-  if (props.progress?.unit === "page" && props.pageCount) {
+  if (props.progress.unit === "page" && props.pageCount) {
     return Math.min(100, Math.round((props.progress.value / props.pageCount) * 100));
   }
   return null;
@@ -36,7 +36,7 @@ const displayPercent = computed<number | null>(() => {
 
 const editingProgress = ref(false);
 
-watch([() => props.progress?.unit, () => props.progress?.value], () => {
+watch([() => props.progress.unit, () => props.progress.value], () => {
   editingProgress.value = false;
 });
 </script>
@@ -50,10 +50,9 @@ watch([() => props.progress?.unit, () => props.progress?.value], () => {
       </div>
       <div class="progress-summary">
         <span v-if="displayPercent !== null" class="progress-percent">{{ displayPercent }}%</span>
-        <span v-if="progress?.unit === 'page'" class="muted progress-detail">
+        <span v-if="progress.unit === 'page'" class="muted progress-detail">
           Page {{ progress.value }}<span v-if="pageCount"> of {{ pageCount }}</span>
         </span>
-        <span v-else-if="!progress" class="muted progress-detail">No progress yet</span>
       </div>
     </div>
 

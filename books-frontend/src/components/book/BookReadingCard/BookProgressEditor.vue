@@ -5,7 +5,7 @@ import type { ReadingProgress } from "./types";
 type ProgressUnit = ReadingProgress["unit"];
 
 const props = defineProps<{
-  progress: ReadingProgress | null;
+  progress: ReadingProgress;
   pageCount?: number | null;
   isCurrentlySaving?: boolean;
 }>();
@@ -15,11 +15,11 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const progressUnit = ref<ProgressUnit>(props.progress?.unit ?? "page");
+const progressUnit = ref<ProgressUnit>(props.progress.unit);
 const progressDraft = ref<string>(currentValueFor(progressUnit.value));
 
 function currentValueFor(unit: ProgressUnit): string {
-  return props.progress?.unit === unit ? props.progress.value.toString() : "";
+  return props.progress.unit === unit ? props.progress.value.toString() : "";
 }
 
 function selectUnit(unit: ProgressUnit) {

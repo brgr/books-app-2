@@ -14,12 +14,11 @@ describe("BookProgressEditor", () => {
     expectTypeOf<{ unit: "page" }>().not.toExtend<ReadingProgress>();
   });
 
-  it.each<{ progress: ReadingProgress | null; unit: string; value: string }>([
+  it.each<{ progress: ReadingProgress; unit: string; value: string }>([
     { progress: { unit: "page", value: 10 }, unit: "page", value: "10" },
     { progress: { unit: "percent", value: 30 }, unit: "percent", value: "30" },
     { progress: { unit: "page", value: 0 }, unit: "page", value: "0" },
     { progress: { unit: "percent", value: 0 }, unit: "percent", value: "0" },
-    { progress: null, unit: "page", value: "" },
   ])("initializes $progress with the $unit unit", ({ progress, unit, value }) => {
     const wrapper = mount(BookProgressEditor, { props: { progress } });
 
@@ -78,7 +77,7 @@ describe("BookProgressEditor", () => {
     { unit: "percent", value: "101", message: "Please enter a percentage between 0 and 100." },
   ])("rejects '$value' in $unit mode", async ({ unit, value, message }) => {
     const alert = vi.spyOn(window, "alert").mockImplementation(() => {});
-    const wrapper = mount(BookProgressEditor, { props: { progress: null } });
+    const wrapper = mount(BookProgressEditor, { props: { progress: { unit: "page", value: 0 } } });
 
     await wrapper.get(`[data-test="unit-${unit}"]`).trigger("click");
     await wrapper.get('[data-test="progress-input"]').setValue(value);

@@ -10,7 +10,7 @@ function makeProps(
   overrides: Partial<{
     shelf: ReadingShelf | null;
     updating: boolean;
-    progress: ReadingProgress | null;
+    progress: ReadingProgress;
     pageCount: number | null;
     startedAt: ReadingDateValue | null;
     finishedAt: ReadingDateValue | null;
@@ -38,9 +38,10 @@ describe("BookReadingCard", () => {
     expect(wrapper.text()).toContain("of 200");
   });
 
-  it('shows "No progress yet" when no progress is recorded', () => {
-    const wrapper = mount(BookReadingCard, { props: makeProps({ progress: null }) });
-    expect(wrapper.text()).toContain("No progress yet");
+  it("shows zero progress for a newly started book", () => {
+    const wrapper = mount(BookReadingCard, { props: makeProps({ progress: { unit: "page", value: 0 } }) });
+    expect(wrapper.text()).toContain("Page 0 of 200");
+    expect(wrapper.text()).toContain("0%");
   });
 
   it("shows the percentage summary when progress was last set as a percent", () => {

@@ -513,9 +513,12 @@ def project_user_book_state(session: Session, user_book: UserBook) -> UserBook:
     persisted snapshot columns (shelf, current page/percent).
     """
     user_book_id: int = user_book.id
+    latest_start = _latest_event(session, user_book_id, BookEventCode.STARTED_READING)
     latest_progress = _latest_event(session, user_book_id, BookEventCode.PROGRESS_SET)
 
-    if latest_progress:
+    if latest_progress and (
+        latest_start is None or _is_after(latest_progress, latest_start)
+    ):
         progress_entry = (
             session.query(BookEventProgress)
             .filter(BookEventProgress.event_id == latest_progress.id)
@@ -523,6 +526,11 @@ def project_user_book_state(session: Session, user_book: UserBook) -> UserBook:
         )
         user_book.current_page = progress_entry.page if progress_entry else None
         user_book.current_percent = progress_entry.percent if progress_entry else None
+    elif latest_start:
+        # A new reading cycle begins at zero until progress is recorded.
+        page_count_known = user_book.book.page_count is not None
+        user_book.current_page = 0 if page_count_known else None
+        user_book.current_percent = None if page_count_known else 0
     else:
         user_book.current_page = None
         user_book.current_percent = None
