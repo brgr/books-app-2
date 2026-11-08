@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { enableAutoUnmount, mount } from "@vue/test-utils";
 import BookReadingCard from "./BookReadingCard.vue";
+import type { ReadingProgress } from "./types";
 import { ReadingDatePrecision, type ReadingDateValue, ReadingShelf } from "../../../api/types";
 
 enableAutoUnmount(afterEach);
@@ -9,8 +10,7 @@ function makeProps(
   overrides: Partial<{
     shelf: ReadingShelf | null;
     updating: boolean;
-    currentPage: number | null;
-    currentPercent: number | null;
+    progress: ReadingProgress | null;
     pageCount: number | null;
     startedAt: ReadingDateValue | null;
     finishedAt: ReadingDateValue | null;
@@ -20,8 +20,7 @@ function makeProps(
   return {
     shelf: ReadingShelf.STARTED,
     updating: false,
-    currentPage: 10,
-    currentPercent: null,
+    progress: { unit: "page", value: 10 } satisfies ReadingProgress,
     pageCount: 200,
     startedAt: null,
     finishedAt: null,
@@ -33,20 +32,20 @@ function makeProps(
 describe("BookReadingCard", () => {
   it("shows current progress summary", () => {
     const wrapper = mount(BookReadingCard, {
-      props: makeProps({ currentPage: 50, pageCount: 200 }),
+      props: makeProps({ progress: { unit: "page", value: 50 }, pageCount: 200 }),
     });
     expect(wrapper.text()).toContain("Page 50");
     expect(wrapper.text()).toContain("of 200");
   });
 
-  it('shows "No progress yet" when current page is null', () => {
-    const wrapper = mount(BookReadingCard, { props: makeProps({ currentPage: null }) });
+  it('shows "No progress yet" when no progress is recorded', () => {
+    const wrapper = mount(BookReadingCard, { props: makeProps({ progress: null }) });
     expect(wrapper.text()).toContain("No progress yet");
   });
 
   it("shows the percentage summary when progress was last set as a percent", () => {
     const wrapper = mount(BookReadingCard, {
-      props: makeProps({ currentPage: null, currentPercent: 42 }),
+      props: makeProps({ progress: { unit: "percent", value: 42 } }),
     });
     expect(wrapper.text()).toContain("42%");
     expect(wrapper.text()).not.toContain("Page");
@@ -54,7 +53,7 @@ describe("BookReadingCard", () => {
 
   it("shows the page alongside a percentage derived from page count", () => {
     const wrapper = mount(BookReadingCard, {
-      props: makeProps({ currentPage: 50, pageCount: 200 }),
+      props: makeProps({ progress: { unit: "page", value: 50 }, pageCount: 200 }),
     });
     expect(wrapper.text()).toContain("Page 50 of 200");
     expect(wrapper.text()).toContain("25%");
@@ -62,7 +61,7 @@ describe("BookReadingCard", () => {
 
   it("omits the percentage when page count is missing", () => {
     const wrapper = mount(BookReadingCard, {
-      props: makeProps({ currentPage: 50, pageCount: null }),
+      props: makeProps({ progress: { unit: "page", value: 50 }, pageCount: null }),
     });
     expect(wrapper.text()).toContain("Page 50");
     expect(wrapper.text()).not.toContain("%");
@@ -82,19 +81,15 @@ describe("BookReadingCard", () => {
     expect(wrapper.emitted("update-progress")?.[0]?.[0]).toEqual({ unit: "page", value: 10 });
   });
 
-  it.each([
-    { currentPage: 10, currentPercent: null, unit: "page", value: "10", expected: { unit: "page", value: 10 } },
-    {
-      currentPage: null,
-      currentPercent: 3.5,
-      unit: "percent",
-      value: "3.5",
-      expected: { unit: "percent", value: 3.5 },
-    },
-    { currentPage: 0, currentPercent: null, unit: "page", value: "0", expected: { unit: "page", value: 0 } },
-    { currentPage: null, currentPercent: 0, unit: "percent", value: "0", expected: { unit: "percent", value: 0 } },
-  ])("edits the recorded $unit value $value", async ({ currentPage, currentPercent, unit, value, expected }) => {
-    const wrapper = mount(BookReadingCard, { props: makeProps({ currentPage, currentPercent }) });
+  it.each<ReadingProgress>([
+    { unit: "page", value: 10 },
+    { unit: "percent", value: 3.5 },
+    { unit: "page", value: 0 },
+    { unit: "percent", value: 0 },
+  ])("edits the recorded $unit value $value", async (progress) => {
+    const wrapper = mount(BookReadingCard, { props: makeProps({ progress }) });
+    const { unit } = progress;
+    const value = String(progress.value);
     const otherUnit = unit === "page" ? "percent" : "page";
 
     await wrapper.get('[data-test="edit-progress"]').trigger("click");
@@ -106,7 +101,7 @@ describe("BookReadingCard", () => {
     expect(wrapper.get<HTMLInputElement>('[data-test="progress-input"]').element.value).toBe(value);
     await wrapper.get('[data-test="save-progress"]').trigger("click");
 
-    expect(wrapper.emitted("update-progress")).toEqual([[expected]]);
+    expect(wrapper.emitted("update-progress")).toEqual([[progress]]);
   });
 
   it("forwards the saving state and closes the editor when saved progress changes", async () => {
@@ -121,9 +116,19 @@ describe("BookReadingCard", () => {
     expect(wrapper.get('[data-test="save-progress"]').text()).toBe("Saving…");
     expect(wrapper.get<HTMLInputElement>('[data-test="progress-input"]').element.disabled).toBe(true);
 
-    await wrapper.setProps({ currentPage: 42, progressSaving: false });
+    await wrapper.setProps({ progress: { unit: "page", value: 42 }, progressSaving: false });
     expect(wrapper.find('[data-test="progress-input"]').exists()).toBe(false);
     expect(wrapper.text()).toContain("Page 42 of 200");
+  });
+
+  it("preserves the draft when a refresh returns the same progress", async () => {
+    const wrapper = mount(BookReadingCard, { props: makeProps() });
+    await wrapper.get('[data-test="edit-progress"]').trigger("click");
+    await wrapper.get('[data-test="progress-input"]').setValue("42");
+
+    await wrapper.setProps({ progress: { unit: "page", value: 10 } });
+
+    expect(wrapper.get<HTMLInputElement>('[data-test="progress-input"]').element.value).toBe("42");
   });
 
   it("Cancel exits edit mode without emitting", async () => {

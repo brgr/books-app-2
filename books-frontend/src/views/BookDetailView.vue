@@ -6,6 +6,7 @@ import { getMediaUrl } from "../api/client";
 import BookNotes from "../components/book/BookNotes.vue";
 import BookShelfButton from "../components/book/BookShelfButton/BookShelfButton.vue";
 import BookReadingCard from "../components/book/BookReadingCard/BookReadingCard.vue";
+import type { ReadingProgress } from "../components/book/BookReadingCard/types";
 import BookRating from "../components/book/BookRating.vue";
 import NavigationBar from "../components/navigation/NavigationBar.vue";
 import CollapsibleText from "../components/ui/CollapsibleText.vue";
@@ -67,6 +68,19 @@ const {
     initialData: () => takeBookPreview(bookId.value),
   },
 );
+
+const currentProgress = computed<ReadingProgress | null>(() => {
+  const userBook = book.value?.user_book;
+  
+  if (userBook?.current_page !== null && userBook?.current_page !== undefined) {
+    return { unit: "page", value: userBook.current_page };
+  }
+  if (userBook?.current_percent !== null && userBook?.current_percent !== undefined) {
+    return { unit: "percent", value: userBook.current_percent };
+  }
+  
+  return null;
+});
 
 const loadedCover = ref<string>();
 const largeCoverUrl = computed(() => getMediaUrl(book.value?.cover_image_url));
@@ -314,8 +328,7 @@ function handleEdit() {
                 v-else
                 :shelf="book.user_book?.shelf ?? null"
                 :updating="updatingShelf"
-                :current-page="book.user_book?.current_page ?? null"
-                :current-percent="book.user_book?.current_percent ?? null"
+                :progress="currentProgress"
                 :page-count="book.page_count ?? null"
                 :started-at="book.user_book?.started_at ?? null"
                 :finished-at="book.user_book?.finished_at ?? null"

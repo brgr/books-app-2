@@ -9,8 +9,7 @@ import { formatReadingDate } from "../../../utils/date";
 const props = defineProps<{
   shelf: ReadingShelf | null;
   updating?: boolean;
-  currentPage?: number | null;
-  currentPercent?: number | null;
+  progress: ReadingProgress | null;
   pageCount?: number | null;
   startedAt?: ReadingDateValue | null;
   finishedAt?: ReadingDateValue | null;
@@ -22,40 +21,24 @@ const emit = defineEmits<{
   "update-progress": [progress: BookProgressUpdate];
 }>();
 
-const hasPage = computed(() => props.currentPage !== null && props.currentPage !== undefined);
-const hasPercent = computed(() => props.currentPercent !== null && props.currentPercent !== undefined);
-
 // A percentage to show alongside the page: taken directly when the user tracks
 // by percent, otherwise derived from the page and the book's length. Null when
 // we can't express one (page tracked but unknown length).
 const displayPercent = computed<number | null>(() => {
-  if (hasPercent.value) {
-    return Math.min(100, Math.max(0, Math.round(props.currentPercent as number)));
+  if (props.progress?.unit === "percent") {
+    return Math.min(100, Math.max(0, Math.round(props.progress.value)));
   }
-  if (hasPage.value && props.pageCount) {
-    return Math.min(100, Math.round(((props.currentPage as number) / props.pageCount) * 100));
-  }
-  return null;
-});
-
-const editorProgress = computed<ReadingProgress | null>(() => {
-  if (props.currentPage !== null && props.currentPage !== undefined) {
-    return { unit: "page", value: props.currentPage };
-  }
-  if (props.currentPercent !== null && props.currentPercent !== undefined) {
-    return { unit: "percent", value: props.currentPercent };
+  if (props.progress?.unit === "page" && props.pageCount) {
+    return Math.min(100, Math.round((props.progress.value / props.pageCount) * 100));
   }
   return null;
 });
 
 const editingProgress = ref(false);
 
-watch(
-  () => [props.currentPage, props.currentPercent],
-  () => {
-    editingProgress.value = false;
-  },
-);
+watch([() => props.progress?.unit, () => props.progress?.value], () => {
+  editingProgress.value = false;
+});
 </script>
 
 <template>
@@ -67,10 +50,10 @@ watch(
       </div>
       <div class="progress-summary">
         <span v-if="displayPercent !== null" class="progress-percent">{{ displayPercent }}%</span>
-        <span v-if="hasPage" class="muted progress-detail">
-          Page {{ currentPage }}<span v-if="pageCount"> of {{ pageCount }}</span>
+        <span v-if="progress?.unit === 'page'" class="muted progress-detail">
+          Page {{ progress.value }}<span v-if="pageCount"> of {{ pageCount }}</span>
         </span>
-        <span v-else-if="!hasPercent" class="muted progress-detail">No progress yet</span>
+        <span v-else-if="!progress" class="muted progress-detail">No progress yet</span>
       </div>
     </div>
 
@@ -88,7 +71,7 @@ watch(
 
     <BookProgressEditor
       v-if="editingProgress"
-      :progress="editorProgress"
+      :progress="progress"
       :page-count="pageCount"
       :is-currently-saving="progressSaving"
       @save="(progress) => emit('update-progress', progress)"

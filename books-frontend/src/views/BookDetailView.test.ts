@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { enableAutoUnmount, flushPromises, mount } from "@vue/test-utils";
 import BookDetailView from "./BookDetailView.vue";
+import BookReadingCard from "../components/book/BookReadingCard/BookReadingCard.vue";
 import { clearRating, getBook, getBookEvents, setRating } from "../api/books";
 import { type Book, BookEventType, ReadingShelf, type UserBook } from "../api/types";
 import { cacheClear, cacheGet, cacheSet } from "../cache/store";
@@ -91,6 +92,24 @@ describe("book detail", () => {
 
     return wrapper;
   }
+
+  it.each([
+    { page: 10, percent: null, expected: { unit: "page", value: 10 } },
+    { page: null, percent: 42.5, expected: { unit: "percent", value: 42.5 } },
+    { page: 0, percent: null, expected: { unit: "page", value: 0 } },
+    { page: null, percent: 0, expected: { unit: "percent", value: 0 } },
+    { page: null, percent: null, expected: null },
+  ])("passes recorded progress to the reading card: $expected", async ({ page, percent, expected }) => {
+    vi.mocked(getBook).mockResolvedValue({
+      ...book,
+      user_book: { ...userBook, shelf: ReadingShelf.STARTED, current_page: page, current_percent: percent },
+    });
+
+    const wrapper = mountBook();
+    await vi.waitFor(() => expect(wrapper.findComponent(BookReadingCard).exists()).toBe(true));
+
+    expect(wrapper.getComponent(BookReadingCard).props("progress")).toEqual(expected);
+  });
 
   it("renders the selected book immediately, then refreshes it", async () => {
     const shelfBook = {
