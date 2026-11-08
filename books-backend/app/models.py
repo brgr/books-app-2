@@ -184,6 +184,12 @@ class Book(Base):
 
 class UserBook(Base):
     __tablename__ = "user_books"
+    __table_args__ = (
+        CheckConstraint(
+            "current_page IS NULL OR current_percent IS NULL",
+            name="ck_user_books_at_most_one_progress_value",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(

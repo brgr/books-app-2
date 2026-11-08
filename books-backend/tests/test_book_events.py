@@ -118,6 +118,46 @@ def test_database_accepts_one_progress_event_value(db_session, page, percent):
     assert event.progress_entry.percent == percent
 
 
+@pytest.mark.parametrize("page, percent", [(10, 3.5), (0, 0), (0, 3.5), (10, 0)])
+def test_database_rejects_both_current_progress_values(db_session, page, percent):
+    user, book = _create_user_and_book(db_session)
+    record_added_to_library(db_session, user.id, book.id)
+    user_book = db_session.query(UserBook).one()
+
+    with (
+        pytest.raises(IntegrityError, match="ck_user_books_at_most_one_progress_value"),
+        db_session.begin_nested(),
+    ):
+        db_session.execute(
+            update(UserBook)
+            .where(UserBook.id == user_book.id)
+            .values(current_page=page, current_percent=percent)
+        )
+
+    db_session.expire_all()
+    assert user_book.current_page is None
+    assert user_book.current_percent is None
+
+
+@pytest.mark.parametrize(
+    "page, percent", [(None, None), (10, None), (None, 42.5), (0, None), (None, 0)]
+)
+def test_database_accepts_at_most_one_current_progress_value(db_session, page, percent):
+    user, book = _create_user_and_book(db_session)
+    record_added_to_library(db_session, user.id, book.id)
+    user_book = db_session.query(UserBook).one()
+
+    db_session.execute(
+        update(UserBook)
+        .where(UserBook.id == user_book.id)
+        .values(current_page=page, current_percent=percent)
+    )
+    db_session.expire_all()
+
+    assert user_book.current_page == page
+    assert user_book.current_percent == percent
+
+
 def test_added_to_library_only_once(db_session):
     user, book = _create_user_and_book(db_session)
 

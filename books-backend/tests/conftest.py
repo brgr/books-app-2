@@ -49,7 +49,7 @@ def run_migrations():
 
     config = Config("alembic.ini")
     config.set_main_option("sqlalchemy.url", SQLALCHEMY_TEST_DATABASE_URL)
-    with engine.begin() as connection:
+    with engine.connect() as connection:
         config.attributes["connection"] = connection
         command.upgrade(config, "head")
 
