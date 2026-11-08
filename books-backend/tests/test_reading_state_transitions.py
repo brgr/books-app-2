@@ -26,6 +26,11 @@ def test_start_initializes_progress_at_zero(
     ]
     assert saved["current_page"] == expected_page
     assert saved["current_percent"] == expected_percent
+    events = client.get(f"/api/books/{book_id}/events", headers=auth_headers).json()
+    assert sorted(event["event_type"] for event in events) == [
+        "added_to_library",
+        "started_reading",
+    ]
 
 
 @pytest.mark.parametrize("previous_shelf", ["paused", "finished", "abandoned"])
