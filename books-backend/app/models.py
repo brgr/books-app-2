@@ -6,6 +6,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    CheckConstraint,
     DateTime,
     Enum,
     ForeignKey,
@@ -332,6 +333,13 @@ class BookEventRating(Base):
 
 class BookEventProgress(Base):
     __tablename__ = "book_event_progress"
+    __table_args__ = (
+        CheckConstraint(
+            "(page IS NOT NULL AND percent IS NULL) OR "
+            "(page IS NULL AND percent IS NOT NULL)",
+            name="ck_book_event_progress_exactly_one_value",
+        ),
+    )
 
     event_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("book_events.id", ondelete="CASCADE"), primary_key=True

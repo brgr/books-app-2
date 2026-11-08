@@ -1,6 +1,8 @@
 from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy import update
+from sqlalchemy.exc import IntegrityError
 
 from app.auth.security import create_user
 from app.book_events import (
@@ -14,6 +16,7 @@ from app.models import (
     Book,
     BookEvent,
     BookEventCode,
+    BookEventProgress,
     BookEventType,
     ReadingDate,
     ReadingDatePrecision,
@@ -63,6 +66,52 @@ def test_progress_event_accepts_zero(db_session, page, percent):
     user_book = db_session.query(UserBook).one()
 
     event = record_progress_event(db_session, user_book.id, page=page, percent=percent)
+
+    assert event.progress_entry is not None
+    assert event.progress_entry.page == page
+    assert event.progress_entry.percent == percent
+
+
+@pytest.mark.parametrize(
+    "page, percent", [(None, None), (10, 3.5), (0, 0), (0, 3.5), (10, 0)]
+)
+def test_database_rejects_invalid_progress_event(db_session, page, percent):
+    user, book = _create_user_and_book(db_session)
+    record_added_to_library(db_session, user.id, book.id)
+    user_book = db_session.query(UserBook).one()
+    event = record_progress_event(db_session, user_book.id, page=5)
+
+    with (
+        pytest.raises(IntegrityError, match="ck_book_event_progress_exactly_one_value"),
+        db_session.begin_nested(),
+    ):
+        db_session.execute(
+            update(BookEventProgress)
+            .where(BookEventProgress.event_id == event.id)
+            .values(page=page, percent=percent)
+        )
+
+    db_session.expire_all()
+    assert event.progress_entry is not None
+    assert event.progress_entry.page == 5
+    assert event.progress_entry.percent is None
+
+
+@pytest.mark.parametrize(
+    "page, percent", [(10, None), (None, 42.5), (0, None), (None, 0)]
+)
+def test_database_accepts_one_progress_event_value(db_session, page, percent):
+    user, book = _create_user_and_book(db_session)
+    record_added_to_library(db_session, user.id, book.id)
+    user_book = db_session.query(UserBook).one()
+    event = record_progress_event(db_session, user_book.id, page=5)
+
+    db_session.execute(
+        update(BookEventProgress)
+        .where(BookEventProgress.event_id == event.id)
+        .values(page=page, percent=percent)
+    )
+    db_session.expire_all()
 
     assert event.progress_entry is not None
     assert event.progress_entry.page == page
