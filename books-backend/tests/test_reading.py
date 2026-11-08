@@ -461,20 +461,61 @@ def test_progress_accepts_percent_only(client, auth_headers, created_book):
     assert progress[0]["page"] is None
 
 
-def test_progress_accepts_page_and_percent(client, auth_headers, created_book):
-    """Page and percent can be recorded together and are stored independently."""
+@pytest.mark.parametrize(
+    "progress",
+    [
+        {"page": 10, "percent": 3.5},
+        {"page": 0, "percent": 0},
+        {"page": 0, "percent": 3.5},
+        {"page": 10, "percent": 0},
+    ],
+)
+def test_progress_rejects_page_and_percent(
+    client, auth_headers, created_book, progress
+):
+    """Reject ambiguous progress without changing the current position or history."""
     book_id = created_book["id"]
     _start_reading(client, auth_headers, book_id)
 
     response = client.post(
-        f"/api/books/{book_id}/progress",
-        json={"page": 10, "percent": 3.5},
-        headers=auth_headers,
+        f"/api/books/{book_id}/progress", json={"page": 5}, headers=auth_headers
     )
     assert response.status_code == status.HTTP_200_OK
-    data = response.json()
-    assert data["current_page"] == 10
-    assert data["current_percent"] == 3.5
+
+    response = client.post(
+        f"/api/books/{book_id}/progress",
+        json=progress,
+        headers=auth_headers,
+    )
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+    data = client.get(f"/api/books/{book_id}", headers=auth_headers).json()
+    assert data["user_book"]["current_page"] == 5
+    assert data["user_book"]["current_percent"] is None
+
+    events = client.get(f"/api/books/{book_id}/events", headers=auth_headers).json()
+    progress_events = [e for e in events if e["event_type"] == "progress_set"]
+    assert [(e["page"], e["percent"]) for e in progress_events] == [(5, None)]
+
+
+@pytest.mark.parametrize(
+    "progress, field",
+    [
+        ({"page": 0}, "current_page"),
+        ({"percent": 0}, "current_percent"),
+        ({"page": 0, "percent": None}, "current_page"),
+        ({"page": None, "percent": 0}, "current_percent"),
+    ],
+)
+def test_progress_accepts_zero(client, auth_headers, created_book, progress, field):
+    book_id = created_book["id"]
+    _start_reading(client, auth_headers, book_id)
+
+    response = client.post(
+        f"/api/books/{book_id}/progress", json=progress, headers=auth_headers
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()[field] == 0
 
 
 def test_progress_percent_replaces_page(client, auth_headers, created_book):
@@ -494,13 +535,18 @@ def test_progress_percent_replaces_page(client, auth_headers, created_book):
     assert data["current_page"] is None
 
 
-def test_progress_requires_page_or_percent(client, auth_headers, created_book):
+@pytest.mark.parametrize(
+    "progress", [{}, {"page": None}, {"percent": None}, {"page": None, "percent": None}]
+)
+def test_progress_requires_page_or_percent(
+    client, auth_headers, created_book, progress
+):
     """A progress request with neither page nor percent is rejected."""
     book_id = created_book["id"]
     _start_reading(client, auth_headers, book_id)
 
     response = client.post(
-        f"/api/books/{book_id}/progress", json={}, headers=auth_headers
+        f"/api/books/{book_id}/progress", json=progress, headers=auth_headers
     )
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 

@@ -405,9 +405,9 @@ class BookProgressUpdate(BaseModel):
     percent: float | None = Field(default=None, ge=0, le=100)
 
     @model_validator(mode="after")
-    def _require_page_or_percent(self) -> "BookProgressUpdate":
-        if self.page is None and self.percent is None:
-            raise ValueError("Must provide page or percent")
+    def _require_exactly_one_progress_value(self) -> "BookProgressUpdate":
+        if (self.page is None) == (self.percent is None):
+            raise ValueError("Must provide exactly one of page or percent")
         return self
 
 
