@@ -7,6 +7,7 @@ from app.book_events import (
     derive_reading_date_values,
     record_added_to_library,
     record_finished_reading,
+    record_progress_event,
     record_started_reading,
 )
 from app.models import (
@@ -36,6 +37,36 @@ def _today() -> ReadingDate:
 def test_event_type_seeding_is_idempotent(db_session):
     codes = {code for (code,) in db_session.query(BookEventType.code).all()}
     assert codes == {c.value for c in BookEventCode}
+
+
+@pytest.mark.parametrize(
+    "page, percent", [(None, None), (10, 3.5), (0, 0), (0, 3.5), (10, 0)]
+)
+def test_progress_event_requires_exactly_one_value(db_session, page, percent):
+    user, book = _create_user_and_book(db_session)
+    record_added_to_library(db_session, user.id, book.id)
+    user_book = db_session.query(UserBook).one()
+    event_count = db_session.query(BookEvent).count()
+
+    with pytest.raises(
+        ValueError, match="^Progress event requires exactly one of page or percent$"
+    ):
+        record_progress_event(db_session, user_book.id, page=page, percent=percent)
+
+    assert db_session.query(BookEvent).count() == event_count
+
+
+@pytest.mark.parametrize("page, percent", [(0, None), (None, 0)])
+def test_progress_event_accepts_zero(db_session, page, percent):
+    user, book = _create_user_and_book(db_session)
+    record_added_to_library(db_session, user.id, book.id)
+    user_book = db_session.query(UserBook).one()
+
+    event = record_progress_event(db_session, user_book.id, page=page, percent=percent)
+
+    assert event.progress_entry is not None
+    assert event.progress_entry.page == page
+    assert event.progress_entry.percent == percent
 
 
 def test_added_to_library_only_once(db_session):

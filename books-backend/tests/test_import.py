@@ -309,6 +309,34 @@ def test_import_preserves_year_precision_reading_date(client, auth_headers, db_s
 # --- Notes and progress ---
 
 
+@pytest.mark.parametrize("page, percent", [("42", "11"), ("0", "0")])
+def test_import_rejects_both_progress_values(
+    client, auth_headers, db_session, page, percent
+):
+    zip_bytes = _make_zip(
+        [
+            {"Title": "Valid Book", "Current Page": "5"},
+            {
+                "Title": "Ambiguous Progress",
+                "Current Page": page,
+                "Current Percentage": percent,
+            },
+        ]
+    )
+
+    response = _upload_zip(client, auth_headers, zip_bytes)
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.json()["detail"] == (
+        'Book "Ambiguous Progress" has both Current Page and Current Percentage; '
+        "provide only one progress value"
+    )
+    assert db_session.query(Book).count() == 0
+    assert db_session.query(UserBook).count() == 0
+    assert db_session.query(BookEvent).count() == 0
+    assert db_session.query(Import).count() == 0
+
+
 def test_import_notes_and_current_page(client, auth_headers, db_session):
     zip_bytes = _make_zip(
         [

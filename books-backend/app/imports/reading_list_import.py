@@ -238,6 +238,11 @@ def import_reading_list_from_bytes(
         current_page = int(current_page_raw) if current_page_raw else None
         current_percent_raw = (row.get("Current Percentage") or "").strip()
         current_percent = float(current_percent_raw) if current_percent_raw else None
+        if current_page is not None and current_percent is not None:
+            raise ImportReadingListError(
+                f'Book "{title}" has both Current Page and Current Percentage; '
+                "provide only one progress value"
+            )
 
         user_book = UserBook(
             user_id=user_id,
@@ -282,7 +287,6 @@ def import_reading_list_from_bytes(
                 db,
                 user_book.id,
                 page=current_page,
-                percent=current_percent,
             )
         elif current_percent is not None:
             record_progress_event(db, user_book.id, percent=current_percent)

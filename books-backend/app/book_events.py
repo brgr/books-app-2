@@ -357,11 +357,10 @@ def record_progress_event(
 ) -> BookEvent:
     """Append a progress event for the user_book.
 
-    Progress may be expressed as a page, a percent, or both. Page and percent
-    are stored independently; neither is derived from the other.
+    Progress must be expressed as exactly one of page or percent.
     """
-    if page is None and percent is None:
-        raise ValueError("Progress event requires a page or a percent")
+    if (page is None) == (percent is None):
+        raise ValueError("Progress event requires exactly one of page or percent")
 
     event_type = _get_event_type(session, BookEventCode.PROGRESS_SET)
     event = BookEvent(
