@@ -2,7 +2,7 @@
 import { ref } from "vue";
 import type { ReadingProgress } from "./types";
 
-type ProgressUnit = "page" | "percent";
+type ProgressUnit = ReadingProgress["unit"];
 
 const props = defineProps<{
   progress: ReadingProgress | null;
@@ -15,11 +15,11 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const progressUnit = ref<ProgressUnit>(props.progress?.percent !== undefined ? "percent" : "page");
+const progressUnit = ref<ProgressUnit>(props.progress?.unit ?? "page");
 const progressDraft = ref<string>(currentValueFor(progressUnit.value));
 
 function currentValueFor(unit: ProgressUnit): string {
-  return props.progress?.[unit]?.toString() ?? "";
+  return props.progress?.unit === unit ? props.progress.value.toString() : "";
 }
 
 function selectUnit(unit: ProgressUnit) {
@@ -47,7 +47,7 @@ function handleSaveProgress() {
       alert("Please enter a percentage between 0 and 100.");
       return;
     }
-    emit("save", { percent });
+    emit("save", { unit: "percent", value: percent });
     return;
   }
   const page = Number.parseInt(trimmed, 10);
@@ -55,7 +55,7 @@ function handleSaveProgress() {
     alert("Please enter a valid page number.");
     return;
   }
-  emit("save", { page });
+  emit("save", { unit: "page", value: page });
 }
 
 function handleProgressFocus(event: FocusEvent) {

@@ -7,18 +7,18 @@ enableAutoUnmount(afterEach);
 afterEach(() => vi.restoreAllMocks());
 
 describe("BookProgressEditor", () => {
-  it("requires exactly one progress value in its type", () => {
-    expectTypeOf<{ page: number }>().toExtend<ReadingProgress>();
-    expectTypeOf<{ percent: number }>().toExtend<ReadingProgress>();
-    expectTypeOf<{ page: number; percent: number }>().not.toExtend<ReadingProgress>();
-    expectTypeOf<Record<string, never>>().not.toExtend<ReadingProgress>();
+  it("requires a known unit and a value in its type", () => {
+    expectTypeOf<{ unit: "page"; value: number }>().toExtend<ReadingProgress>();
+    expectTypeOf<{ unit: "percent"; value: number }>().toExtend<ReadingProgress>();
+    expectTypeOf<{ unit: "unknown"; value: number }>().not.toExtend<ReadingProgress>();
+    expectTypeOf<{ unit: "page" }>().not.toExtend<ReadingProgress>();
   });
 
   it.each<{ progress: ReadingProgress | null; unit: string; value: string }>([
-    { progress: { page: 10 }, unit: "page", value: "10" },
-    { progress: { percent: 30 }, unit: "percent", value: "30" },
-    { progress: { page: 0 }, unit: "page", value: "0" },
-    { progress: { percent: 0 }, unit: "percent", value: "0" },
+    { progress: { unit: "page", value: 10 }, unit: "page", value: "10" },
+    { progress: { unit: "percent", value: 30 }, unit: "percent", value: "30" },
+    { progress: { unit: "page", value: 0 }, unit: "page", value: "0" },
+    { progress: { unit: "percent", value: 0 }, unit: "percent", value: "0" },
     { progress: null, unit: "page", value: "" },
   ])("initializes $progress with the $unit unit", ({ progress, unit, value }) => {
     const wrapper = mount(BookProgressEditor, { props: { progress } });
@@ -28,16 +28,16 @@ describe("BookProgressEditor", () => {
   });
 
   it("emits the edited page on save", async () => {
-    const wrapper = mount(BookProgressEditor, { props: { progress: { page: 10 } } });
+    const wrapper = mount(BookProgressEditor, { props: { progress: { unit: "page", value: 10 } } });
 
     await wrapper.get('[data-test="progress-input"]').setValue("42");
     await wrapper.get('[data-test="save-progress"]').trigger("click");
 
-    expect(wrapper.emitted("save")).toEqual([[{ page: 42 }]]);
+    expect(wrapper.emitted("save")).toEqual([[{ unit: "page", value: 42 }]]);
   });
 
   it("emits a fractional percentage after switching units", async () => {
-    const wrapper = mount(BookProgressEditor, { props: { progress: { page: 10 }, pageCount: 200 } });
+    const wrapper = mount(BookProgressEditor, { props: { progress: { unit: "page", value: 10 }, pageCount: 200 } });
 
     expect(wrapper.get(".progress-suffix").text()).toBe("of 200");
     await wrapper.get('[data-test="unit-percent"]').trigger("click");
@@ -46,22 +46,22 @@ describe("BookProgressEditor", () => {
     await wrapper.get('[data-test="progress-input"]').setValue("75.5");
     await wrapper.get('[data-test="save-progress"]').trigger("click");
 
-    expect(wrapper.emitted("save")).toEqual([[{ percent: 75.5 }]]);
+    expect(wrapper.emitted("save")).toEqual([[{ unit: "percent", value: 75.5 }]]);
   });
 
   it("restores the recorded value when switching back to its unit", async () => {
-    const wrapper = mount(BookProgressEditor, { props: { progress: { percent: 30 } } });
+    const wrapper = mount(BookProgressEditor, { props: { progress: { unit: "percent", value: 30 } } });
 
     await wrapper.get('[data-test="unit-page"]').trigger("click");
     expect(wrapper.get<HTMLInputElement>('[data-test="progress-input"]').element.value).toBe("");
     await wrapper.get('[data-test="unit-percent"]').trigger("click");
     await wrapper.get('[data-test="save-progress"]').trigger("click");
 
-    expect(wrapper.emitted("save")).toEqual([[{ percent: 30 }]]);
+    expect(wrapper.emitted("save")).toEqual([[{ unit: "percent", value: 30 }]]);
   });
 
   it("emits cancel without saving the draft", async () => {
-    const wrapper = mount(BookProgressEditor, { props: { progress: { page: 10 } } });
+    const wrapper = mount(BookProgressEditor, { props: { progress: { unit: "page", value: 10 } } });
 
     await wrapper.get('[data-test="progress-input"]').setValue("99");
     await wrapper.get('[data-test="cancel-progress"]').trigger("click");
@@ -89,7 +89,7 @@ describe("BookProgressEditor", () => {
   });
 
   it("disables controls while saving and preserves the draft when saving ends", async () => {
-    const wrapper = mount(BookProgressEditor, { props: { progress: { page: 10 } } });
+    const wrapper = mount(BookProgressEditor, { props: { progress: { unit: "page", value: 10 } } });
     await wrapper.get('[data-test="progress-input"]').setValue("42");
     await wrapper.setProps({ isCurrentlySaving: true });
 
@@ -105,6 +105,6 @@ describe("BookProgressEditor", () => {
     await wrapper.setProps({ isCurrentlySaving: false });
     expect(wrapper.get<HTMLInputElement>('[data-test="progress-input"]').element.value).toBe("42");
     await wrapper.get('[data-test="save-progress"]').trigger("click");
-    expect(wrapper.emitted("save")).toEqual([[{ page: 42 }]]);
+    expect(wrapper.emitted("save")).toEqual([[{ unit: "page", value: 42 }]]);
   });
 });

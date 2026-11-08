@@ -139,8 +139,8 @@ class ReadingService:
             apply_progress_event(
                 self.db,
                 user_book,
-                page=progress.page,
-                percent=progress.percent,
+                page=progress.value if progress.unit == "page" else None,
+                percent=progress.value if progress.unit == "percent" else None,
                 max_page=max_page,
             ),
         )

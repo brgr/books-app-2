@@ -79,14 +79,20 @@ describe("BookReadingCard", () => {
     const wrapper = mount(BookReadingCard, { props: makeProps() });
     await wrapper.find('[data-test="edit-progress"]').trigger("click");
     await wrapper.find('[data-test="save-progress"]').trigger("click");
-    expect(wrapper.emitted("update-progress")?.[0]?.[0]).toEqual({ page: 10 });
+    expect(wrapper.emitted("update-progress")?.[0]?.[0]).toEqual({ unit: "page", value: 10 });
   });
 
   it.each([
-    { currentPage: 10, currentPercent: null, unit: "page", value: "10", expected: { page: 10 } },
-    { currentPage: null, currentPercent: 3.5, unit: "percent", value: "3.5", expected: { percent: 3.5 } },
-    { currentPage: 0, currentPercent: null, unit: "page", value: "0", expected: { page: 0 } },
-    { currentPage: null, currentPercent: 0, unit: "percent", value: "0", expected: { percent: 0 } },
+    { currentPage: 10, currentPercent: null, unit: "page", value: "10", expected: { unit: "page", value: 10 } },
+    {
+      currentPage: null,
+      currentPercent: 3.5,
+      unit: "percent",
+      value: "3.5",
+      expected: { unit: "percent", value: 3.5 },
+    },
+    { currentPage: 0, currentPercent: null, unit: "page", value: "0", expected: { unit: "page", value: 0 } },
+    { currentPage: null, currentPercent: 0, unit: "percent", value: "0", expected: { unit: "percent", value: 0 } },
   ])("edits the recorded $unit value $value", async ({ currentPage, currentPercent, unit, value, expected }) => {
     const wrapper = mount(BookReadingCard, { props: makeProps({ currentPage, currentPercent }) });
     const otherUnit = unit === "page" ? "percent" : "page";
@@ -109,7 +115,7 @@ describe("BookReadingCard", () => {
     await wrapper.get('[data-test="progress-input"]').setValue("42");
     await wrapper.get('[data-test="save-progress"]').trigger("click");
 
-    expect(wrapper.emitted("update-progress")?.[0]?.[0]).toEqual({ page: 42 });
+    expect(wrapper.emitted("update-progress")?.[0]?.[0]).toEqual({ unit: "page", value: 42 });
     expect(wrapper.find('[data-test="progress-input"]').exists()).toBe(true);
     await wrapper.setProps({ progressSaving: true });
     expect(wrapper.get('[data-test="save-progress"]').text()).toBe("Saving…");

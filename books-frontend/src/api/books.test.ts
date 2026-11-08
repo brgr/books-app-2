@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { AxiosAdapter, InternalAxiosRequestConfig } from "axios";
 import { apiClient } from "./client";
-import { getShelfBooks, reorderShelfItem } from "./books";
+import { addBookProgress, getShelfBooks, reorderShelfItem } from "./books";
+import type { BookProgressUpdate } from "./types";
 
 const originalAdapter = apiClient.defaults.adapter;
 
@@ -39,5 +40,25 @@ describe("shelf API uses tagged refs", () => {
     await reorderShelfItem("reading:finished", { moved_book_id: 1 });
 
     await expect(request).resolves.toMatchObject({ url: "/shelves/reading:finished/items/reorder" });
+  });
+});
+
+describe("progress API", () => {
+  afterEach(() => {
+    apiClient.defaults.adapter = originalAdapter;
+  });
+
+  it.each<BookProgressUpdate>([
+    { unit: "page", value: 0 },
+    { unit: "percent", value: 42.5 },
+  ])("sends $unit progress as unit and value", async (progress) => {
+    const request = captureRequest();
+
+    await addBookProgress(1, progress);
+
+    await expect(request).resolves.toMatchObject({
+      url: "/books/1/progress",
+      data: JSON.stringify(progress),
+    });
   });
 });

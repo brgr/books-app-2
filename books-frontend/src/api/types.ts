@@ -175,7 +175,7 @@ export interface BookEvent {
   import_id?: number | null;
 }
 
-export type BookProgressUpdate = { page: number; percent?: never } | { percent: number; page?: never };
+export type BookProgressUpdate = { unit: "page"; value: number } | { unit: "percent"; value: number };
 
 export interface ImportRecord {
   id: number;

@@ -400,15 +400,24 @@ class BookEventResponse(BaseModel):
         )
 
 
-class BookProgressUpdate(BaseModel):
-    page: int | None = Field(default=None, ge=0)
-    percent: float | None = Field(default=None, ge=0, le=100)
+class PageProgressUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
-    @model_validator(mode="after")
-    def _require_exactly_one_progress_value(self) -> "BookProgressUpdate":
-        if (self.page is None) == (self.percent is None):
-            raise ValueError("Must provide exactly one of page or percent")
-        return self
+    unit: Literal["page"]
+    value: int = Field(ge=0)
+
+
+class PercentProgressUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    unit: Literal["percent"]
+    value: float = Field(ge=0, le=100)
+
+
+BookProgressUpdate = Annotated[
+    PageProgressUpdate | PercentProgressUpdate,
+    Field(discriminator="unit"),
+]
 
 
 class ImportResponse(BaseModel):

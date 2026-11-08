@@ -40,10 +40,10 @@ const displayPercent = computed<number | null>(() => {
 
 const editorProgress = computed<ReadingProgress | null>(() => {
   if (props.currentPage !== null && props.currentPage !== undefined) {
-    return { page: props.currentPage };
+    return { unit: "page", value: props.currentPage };
   }
   if (props.currentPercent !== null && props.currentPercent !== undefined) {
-    return { percent: props.currentPercent };
+    return { unit: "percent", value: props.currentPercent };
   }
   return null;
 });
