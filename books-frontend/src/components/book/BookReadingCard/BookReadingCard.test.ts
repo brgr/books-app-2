@@ -1,7 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
-import { mount } from "@vue/test-utils";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { enableAutoUnmount, mount } from "@vue/test-utils";
 import BookReadingCard from "./BookReadingCard.vue";
-import { ReadingDatePrecision, type ReadingDateValue, ReadingShelf } from "../../api/types";
+import { ReadingDatePrecision, type ReadingDateValue, ReadingShelf } from "../../../api/types";
+
+enableAutoUnmount(afterEach);
 
 function makeProps(
   overrides: Partial<{
@@ -80,31 +82,60 @@ describe("BookReadingCard", () => {
     expect(wrapper.emitted("update-progress")?.[0]?.[0]).toEqual({ page: 10 });
   });
 
-  it('emits "update-progress" with new page after editing the input', async () => {
-    const wrapper = mount(BookReadingCard, { props: makeProps() });
-    await wrapper.find('[data-test="edit-progress"]').trigger("click");
-    await wrapper.find('[data-test="progress-input"]').setValue("42");
-    await wrapper.find('[data-test="save-progress"]').trigger("click");
-    expect(wrapper.emitted("update-progress")?.[0]?.[0]).toEqual({ page: 42 });
-  });
-
-  it("emits a percent payload when the percent unit is selected", async () => {
-    const wrapper = mount(BookReadingCard, { props: makeProps() });
-    await wrapper.find('[data-test="edit-progress"]').trigger("click");
-    await wrapper.find('[data-test="unit-percent"]').trigger("click");
-    await wrapper.find('[data-test="progress-input"]').setValue("75");
-    await wrapper.find('[data-test="save-progress"]').trigger("click");
-    expect(wrapper.emitted("update-progress")?.[0]?.[0]).toEqual({ percent: 75 });
-  });
-
-  it("defaults the editor to the percent unit when progress was last a percent", async () => {
+  it("keeps both recorded values in the summary and defaults the editor to percent", async () => {
     const wrapper = mount(BookReadingCard, {
-      props: makeProps({ currentPage: null, currentPercent: 30 }),
+      props: makeProps({ currentPage: 10, currentPercent: 3.5 }),
     });
-    await wrapper.find('[data-test="edit-progress"]').trigger("click");
-    expect((wrapper.find('[data-test="progress-input"]').element as HTMLInputElement).value).toBe("30");
-    await wrapper.find('[data-test="save-progress"]').trigger("click");
-    expect(wrapper.emitted("update-progress")?.[0]?.[0]).toEqual({ percent: 30 });
+
+    expect(wrapper.text()).toContain("Page 10 of 200");
+    expect(wrapper.text()).toContain("4%");
+    await wrapper.get('[data-test="edit-progress"]').trigger("click");
+    expect(wrapper.get('[data-test="unit-percent"]').classes()).toContain("active");
+    await wrapper.get('[data-test="save-progress"]').trigger("click");
+    expect(wrapper.emitted("update-progress")?.[0]?.[0]).toEqual({ percent: 3.5 });
+  });
+
+  it.each([
+    { currentPage: 10, currentPercent: 3.5 },
+    { currentPage: 0, currentPercent: 0 },
+  ])("restores both recorded values when switching units: $currentPage pages, $currentPercent%", async (progress) => {
+    const wrapper = mount(BookReadingCard, { props: makeProps(progress) });
+
+    await wrapper.get('[data-test="edit-progress"]').trigger("click");
+    expect(wrapper.get('[data-test="unit-percent"]').classes()).toContain("active");
+    await wrapper.get('[data-test="unit-page"]').trigger("click");
+    expect(wrapper.get<HTMLInputElement>('[data-test="progress-input"]').element.value).toBe(
+      String(progress.currentPage),
+    );
+    await wrapper.get('[data-test="save-progress"]').trigger("click");
+
+    await wrapper.get('[data-test="unit-percent"]').trigger("click");
+    expect(wrapper.get<HTMLInputElement>('[data-test="progress-input"]').element.value).toBe(
+      String(progress.currentPercent),
+    );
+    await wrapper.get('[data-test="save-progress"]').trigger("click");
+
+    expect(wrapper.emitted("update-progress")).toEqual([
+      [{ page: progress.currentPage }],
+      [{ percent: progress.currentPercent }],
+    ]);
+  });
+
+  it("forwards the saving state and closes the editor when saved progress changes", async () => {
+    const wrapper = mount(BookReadingCard, { props: makeProps() });
+    await wrapper.get('[data-test="edit-progress"]').trigger("click");
+    await wrapper.get('[data-test="progress-input"]').setValue("42");
+    await wrapper.get('[data-test="save-progress"]').trigger("click");
+
+    expect(wrapper.emitted("update-progress")?.[0]?.[0]).toEqual({ page: 42 });
+    expect(wrapper.find('[data-test="progress-input"]').exists()).toBe(true);
+    await wrapper.setProps({ progressSaving: true });
+    expect(wrapper.get('[data-test="save-progress"]').text()).toBe("Saving…");
+    expect(wrapper.get<HTMLInputElement>('[data-test="progress-input"]').element.disabled).toBe(true);
+
+    await wrapper.setProps({ currentPage: 42, progressSaving: false });
+    expect(wrapper.find('[data-test="progress-input"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain("Page 42 of 200");
   });
 
   it("Cancel exits edit mode without emitting", async () => {
@@ -114,6 +145,9 @@ describe("BookReadingCard", () => {
     await wrapper.find('[data-test="cancel-progress"]').trigger("click");
     expect(wrapper.emitted("update-progress")).toBeFalsy();
     expect(wrapper.find('[data-test="progress-input"]').exists()).toBe(false);
+
+    await wrapper.get('[data-test="edit-progress"]').trigger("click");
+    expect(wrapper.get<HTMLInputElement>('[data-test="progress-input"]').element.value).toBe("10");
   });
 
   it('re-emits "change" from the shelf button', () => {

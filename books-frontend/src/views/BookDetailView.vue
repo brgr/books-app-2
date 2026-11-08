@@ -5,7 +5,7 @@ import { addBookProgress, clearRating, getBook, getBookEvents, setRating, setShe
 import { getMediaUrl } from "../api/client";
 import BookNotes from "../components/book/BookNotes.vue";
 import BookShelfButton from "../components/book/BookShelfButton/BookShelfButton.vue";
-import BookReadingCard from "../components/book/BookReadingCard.vue";
+import BookReadingCard from "../components/book/BookReadingCard/BookReadingCard.vue";
 import BookRating from "../components/book/BookRating.vue";
 import NavigationBar from "../components/navigation/NavigationBar.vue";
 import CollapsibleText from "../components/ui/CollapsibleText.vue";
