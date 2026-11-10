@@ -340,15 +340,6 @@ function handleEdit() {
               />
             </div>
 
-            <BookRating
-              v-if="book.user_book"
-              :key="book.id"
-              :rating="book.user_book.rating ?? null"
-              :saving="ratingSaving"
-              :error="ratingError"
-              @change="handleRatingChange"
-            />
-
             <div v-if="book.user_book && !canUpdateProgress" class="book-dates">
               <div v-if="book.user_book.started_at" class="date-item">
                 <strong>Started:</strong> {{ formatReadingDate(book.user_book.started_at) }}
@@ -366,7 +357,18 @@ function handleEdit() {
             <CollapsibleText :text="book.description" />
           </div>
 
-          <BookNotes :notes="book.user_book?.notes ?? ''" :saving="notesSaving" @save="handleSaveNotes" />
+          <BookNotes :notes="book.user_book?.notes ?? ''" :saving="notesSaving" @save="handleSaveNotes">
+            <template #header-actions>
+              <BookRating
+                v-if="book.user_book"
+                :key="book.id"
+                :rating="book.user_book.rating ?? null"
+                :saving="ratingSaving"
+                :error="ratingError"
+                @change="handleRatingChange"
+              />
+            </template>
+          </BookNotes>
 
           <BookCustomShelves :book-id="book.id" />
 

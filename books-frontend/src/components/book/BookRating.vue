@@ -35,10 +35,6 @@ function changeRating(event: Event) {
 </template>
 
 <style scoped>
-.book-rating {
-  margin-top: var(--spacing-md);
-}
-
 label {
   display: inline-flex;
   align-items: center;
