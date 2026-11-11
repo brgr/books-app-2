@@ -71,7 +71,7 @@ function mountBook() {
 
 async function renderBook() {
   const wrapper = mountBook();
-  await vi.waitFor(() => expect(wrapper.find("select").exists()).toBe(true));
+  await vi.waitFor(() => expect(wrapper.find(".book-rating").exists()).toBe(true));
   return wrapper;
 }
 
@@ -140,7 +140,7 @@ describe("book detail", () => {
     expect(wrapper.get("h1").text()).toBe("Dune");
     expect(wrapper.text()).toContain("Frank Herbert");
     expect(wrapper.text()).toContain("A desert planet");
-    expect(wrapper.get("select").element.value).toBe("3.5");
+    expect(wrapper.get<HTMLInputElement>("input:checked").element.value).toBe("3.5");
     expect(wrapper.find(".loading").exists()).toBe(false);
     expect(wrapper.get('img[src="/thumb.jpg"]').isVisible()).toBe(true);
     expect(wrapper.get('img[src="/cover.jpg"]').classes()).toContain("book-cover-loading");
@@ -149,7 +149,7 @@ describe("book detail", () => {
     expect(wrapper.get("h1").text()).toBe("Dune");
     finishBook({ ...shelfBook, title: "Fresh Dune", user_book: { ...userBook, rating: 5 } });
     await vi.waitFor(() => expect(wrapper.get("h1").text()).toBe("Fresh Dune"));
-    expect(wrapper.get("select").element.value).toBe("5");
+    expect(wrapper.get<HTMLInputElement>("input:checked").element.value).toBe("5");
     expect((await cacheGet<Book>(cacheKeys.book(1)))?.data.title).toBe("Fresh Dune");
 
     await wrapper.get('img[src="/cover.jpg"]').trigger("load");
@@ -210,7 +210,7 @@ describe("book detail", () => {
     await cacheSet(shelfKey, { items: [book] });
     const wrapper = await renderBook();
 
-    expect(wrapper.get("select").element.value).toBe("3.5");
+    expect(wrapper.get<HTMLInputElement>("input:checked").element.value).toBe("3.5");
 
     vi.mocked(setRating).mockResolvedValue({ ...userBook, rating: 4.5 });
     vi.mocked(getBookEvents).mockResolvedValue([
@@ -222,7 +222,7 @@ describe("book detail", () => {
       },
     ]);
 
-    await wrapper.get("select").setValue("4.5");
+    await wrapper.get('input[value="4.5"]').setValue();
     await vi.waitFor(() => expect(wrapper.text()).toContain("Rated 4.5 / 5 stars"));
     expect(setRating).toHaveBeenCalledWith(1, 4.5);
     expect((await cacheGet<Book>(cacheKeys.book(1)))?.data.user_book?.rating).toBe(4.5);
@@ -242,7 +242,7 @@ describe("book detail", () => {
       },
     ]);
 
-    await wrapper.get("select").setValue("");
+    await wrapper.get(".clear-rating").trigger("click");
 
     await vi.waitFor(() => expect(wrapper.text()).toContain("Rating cleared"));
     expect(clearRating).toHaveBeenCalledWith(1);
@@ -253,7 +253,7 @@ describe("book detail", () => {
     wrapper.unmount();
   });
 
-  it("disables the selector while saving and preserves the saved rating on failure", async () => {
+  it("disables the stars while saving and preserves the saved rating on failure", async () => {
     const wrapper = await renderBook();
     let reject!: (error: Error) => void;
     vi.mocked(setRating).mockReturnValue(
@@ -263,16 +263,16 @@ describe("book detail", () => {
     );
 
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
-    await wrapper.get("select").setValue("5");
+    await wrapper.get('input[value="5"]').setValue();
 
-    expect(wrapper.get("select").element.disabled).toBe(true);
+    expect(wrapper.get<HTMLInputElement>('input[value="5"]').element.disabled).toBe(true);
 
     reject(new Error("Network error"));
     await flushPromises();
 
     expect(wrapper.get('[role="alert"]').text()).toContain("Failed to save rating");
-    expect(wrapper.get("select").element.disabled).toBe(false);
-    expect(wrapper.get("select").element.value).toBe("3.5");
+    expect(wrapper.get<HTMLInputElement>('input[value="5"]').element.disabled).toBe(false);
+    expect(wrapper.get<HTMLInputElement>("input:checked").element.value).toBe("3.5");
 
     log.mockRestore();
     wrapper.unmount();
@@ -293,7 +293,7 @@ describe("book detail", () => {
     });
 
     await vi.waitFor(() => expect(wrapper.text()).toContain("Dune"));
-    expect(wrapper.find("select").exists()).toBe(false);
+    expect(wrapper.find('input[type="radio"]').exists()).toBe(false);
 
     wrapper.unmount();
   });
