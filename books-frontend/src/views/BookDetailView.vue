@@ -357,18 +357,18 @@ function handleEdit() {
             <CollapsibleText :text="book.description" />
           </div>
 
-          <BookNotes :notes="book.user_book?.notes ?? ''" :saving="notesSaving" @save="handleSaveNotes">
-            <template #header-actions>
-              <BookRating
-                v-if="book.user_book"
-                :key="book.id"
-                :rating="book.user_book.rating ?? null"
-                :saving="ratingSaving"
-                :error="ratingError"
-                @change="handleRatingChange"
-              />
-            </template>
-          </BookNotes>
+          <div class="notes-header">
+            <h2>Notes</h2>
+            <BookRating
+              v-if="book.user_book"
+              :key="book.id"
+              :rating="book.user_book.rating ?? null"
+              :saving="ratingSaving"
+              :error="ratingError"
+              @change="handleRatingChange"
+            />
+          </div>
+          <BookNotes :notes="book.user_book?.notes ?? ''" :saving="notesSaving" @save="handleSaveNotes" />
 
           <BookCustomShelves :book-id="book.id" />
 
@@ -547,9 +547,23 @@ function handleEdit() {
   margin-bottom: var(--spacing-xl);
 }
 
-.book-description h2 {
+.book-description h2,
+.notes-header h2 {
   margin: 0 0 var(--spacing-md) 0;
   font-size: 1.25rem;
+}
+
+.notes-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.notes-header h2 {
+  margin: 0;
 }
 
 @media (max-width: 768px) {

@@ -58,10 +58,6 @@ function save() {
 
 <template>
   <div class="book-notes">
-    <div class="notes-header">
-      <h2>Notes</h2>
-      <slot name="header-actions"></slot>
-    </div>
     <template v-if="editing">
       <textarea
         v-model="draft"
@@ -95,20 +91,6 @@ function save() {
 <style scoped>
 .book-notes {
   margin-bottom: var(--spacing-xl);
-}
-
-.notes-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--spacing-sm) var(--spacing-md);
-  margin-bottom: var(--spacing-md);
-}
-
-.notes-header h2 {
-  margin: 0;
-  font-size: 1.25rem;
 }
 
 .notes-textarea {
