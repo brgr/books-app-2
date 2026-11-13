@@ -135,7 +135,7 @@ const ratingError = ref("");
 async function handleRatingChange(rating: number | null) {
   const currentBook = book.value;
 
-  if (!currentBook?.user_book || ratingSaving.value || rating === (currentBook.user_book.rating ?? null)) {
+  if (!currentBook || ratingSaving.value || rating === currentBook.user_book.rating) {
     return;
   }
 
@@ -172,7 +172,7 @@ async function handleRatingChange(rating: number | null) {
   }
 }
 
-const canUpdateProgress = computed(() => book.value?.user_book?.shelf === ReadingShelf.STARTED);
+const canUpdateProgress = computed(() => book.value?.user_book.shelf === ReadingShelf.STARTED);
 
 /**
  * Represents the browser's local calendar day as an ISO timestamp in the local timezone.
@@ -225,8 +225,7 @@ async function handleSaveNotes(notes: string) {
   notesSaving.value = true;
 
   try {
-    const shelf = book.value.user_book?.shelf ?? ReadingShelf.WANT_TO_READ;
-    const userBook = await setShelf(book.value.id, { shelf, notes });
+    const userBook = await setShelf(book.value.id, { shelf: book.value.user_book.shelf, notes });
 
     await setBook({ ...book.value, user_book: userBook });
     await invalidateCache.notesSaved(book.value.id);
@@ -241,7 +240,7 @@ async function handleSaveNotes(notes: string) {
 }
 
 async function handleSaveReview(notes: string, rating: number | null) {
-  if (notes !== (book.value?.user_book?.notes ?? "")) {
+  if (notes !== (book.value?.user_book.notes ?? "")) {
     await handleSaveNotes(notes);
   }
 
@@ -328,26 +327,26 @@ function handleEdit() {
             <div class="book-shelf-section">
               <BookShelfButton
                 v-if="!canUpdateProgress"
-                :shelf="book.user_book?.shelf ?? null"
+                :shelf="book.user_book.shelf"
                 :updating="updatingShelf"
                 @change="changeShelf"
               />
 
               <BookReadingCard
                 v-else
-                :shelf="book.user_book?.shelf ?? null"
+                :shelf="book.user_book.shelf"
                 :updating="updatingShelf"
                 :progress="currentProgress"
                 :page-count="book.page_count ?? null"
-                :started-at="book.user_book?.started_at ?? null"
-                :finished-at="book.user_book?.finished_at ?? null"
+                :started-at="book.user_book.started_at"
+                :finished-at="book.user_book.finished_at"
                 :progress-saving="progressSaving"
                 @change="changeShelf"
                 @update-progress="handleSaveProgress"
               />
             </div>
 
-            <div v-if="book.user_book && !canUpdateProgress" class="book-dates">
+            <div v-if="!canUpdateProgress" class="book-dates">
               <div v-if="book.user_book.started_at" class="date-item">
                 <strong>Started:</strong> {{ formatReadingDate(book.user_book.started_at) }}
               </div>
@@ -366,9 +365,8 @@ function handleEdit() {
 
           <BookNotesAndRating
             :key="book.id"
-            :notes="book.user_book?.notes ?? ''"
-            :rating="book.user_book?.rating ?? null"
-            :can-rate="!!book.user_book"
+            :notes="book.user_book.notes ?? ''"
+            :rating="book.user_book.rating"
             :saving="notesSaving || ratingSaving"
             :error="ratingError"
             @save="handleSaveReview"

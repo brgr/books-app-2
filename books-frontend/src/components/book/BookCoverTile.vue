@@ -114,10 +114,7 @@ onBeforeUnmount(clearPressTimer);
 
 const coverUrl = computed(() => getMediaUrl(props.book.cover_thumbnail_url || props.book.cover_image_url));
 
-const hasPercent = computed(() => {
-  const value = props.book.user_book?.current_percent;
-  return value !== null && value !== undefined;
-});
+const hasPercent = computed(() => props.book.user_book.current_percent !== null);
 
 const showBadge = computed(() => {
   if (!props.showProgress) {
@@ -125,22 +122,19 @@ const showBadge = computed(() => {
   }
 
   const userBook = props.book.user_book;
-  if (userBook?.shelf !== ReadingShelf.STARTED) {
+  if (userBook.shelf !== ReadingShelf.STARTED) {
     return false;
   }
   // A percent-tracked book carries progress even without a page count.
-  return (
-    hasPercent.value ||
-    (Boolean(props.book.page_count) && userBook?.current_page !== null && userBook?.current_page !== undefined)
-  );
+  return hasPercent.value || (Boolean(props.book.page_count) && userBook.current_page !== null);
 });
 
 const progressPercent = computed(() => {
   if (hasPercent.value) {
-    return Math.min(100, Math.max(0, Math.round(props.book.user_book!.current_percent as number)));
+    return Math.min(100, Math.max(0, Math.round(props.book.user_book.current_percent as number)));
   }
   const pageCount = props.book.page_count ?? 0;
-  const currentPage = props.book.user_book?.current_page ?? 0;
+  const currentPage = props.book.user_book.current_page ?? 0;
 
   if (pageCount <= 0) {
     return 0;
@@ -166,7 +160,7 @@ const progressPercent = computed(() => {
     >
       <span v-if="showBadge" class="grid-progress-badge"> {{ progressPercent }}% </span>
       <span
-        v-if="book.user_book?.rating != null"
+        v-if="book.user_book.rating !== null"
         class="grid-rating-badge"
         :aria-label="`Your rating: ${book.user_book.rating} out of 5 stars`"
       >

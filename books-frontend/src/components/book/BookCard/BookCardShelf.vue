@@ -8,18 +8,18 @@ const props = defineProps<{
   book: Book;
 }>();
 
-const shelf = computed(() => props.book.user_book?.shelf || null);
+const shelf = computed(() => props.book.user_book.shelf);
 </script>
 
 <template>
-  <div v-if="shelf" class="book-shelf">
+  <div class="book-shelf">
     <span class="book-shelf-label">Shelf:</span>
     <span class="book-shelf-pill" :style="{ borderColor: getShelfColor(shelf), color: getShelfColor(shelf) }">
       {{ getShelfLabel(shelf) }}
     </span>
   </div>
 
-  <div v-if="book.user_book" class="book-dates text-small text-muted">
+  <div class="book-dates text-small text-muted">
     <div v-if="book.user_book.started_at">Started: {{ formatReadingDate(book.user_book.started_at) }}</div>
     <div v-if="book.user_book.finished_at">Finished: {{ formatReadingDate(book.user_book.finished_at) }}</div>
     <div v-if="book.user_book.current_percent !== null">Progress: {{ book.user_book.current_percent }}%</div>

@@ -6,7 +6,6 @@ import BookRating from "./BookRating.vue";
 const props = defineProps<{
   notes: string;
   rating: number | null;
-  canRate: boolean;
   saving: boolean;
   error: string;
 }>();
@@ -50,7 +49,7 @@ function save() {
   <section class="book-notes-and-rating">
     <h2>Rating &amp; notes</h2>
     <div class="review-card" :class="{ editing }">
-      <BookRating v-if="canRate" v-model="draftRating" :editing="editing" :disabled="saving" @edit="editing = true" />
+      <BookRating v-model="draftRating" :editing="editing" :disabled="saving" @edit="editing = true" />
       <BookNotes v-model="draftNotes" :editing="editing" :disabled="saving" @submit="save" />
     </div>
     <p v-if="error" class="review-error" role="alert">{{ error }}</p>

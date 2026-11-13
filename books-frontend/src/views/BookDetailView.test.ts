@@ -228,7 +228,7 @@ describe("book detail", () => {
     await wrapper.get('[data-test="save"]').trigger("click");
     await vi.waitFor(() => expect(wrapper.text()).toContain("Rated 4.5 / 5 stars"));
     expect(setRating).toHaveBeenCalledWith(1, 4.5);
-    expect((await cacheGet<Book>(cacheKeys.book(1)))?.data.user_book?.rating).toBe(4.5);
+    expect((await cacheGet<Book>(cacheKeys.book(1)))?.data.user_book.rating).toBe(4.5);
     expect(await cacheGet(shelfKey)).toBeUndefined();
     wrapper.unmount();
   });
@@ -251,9 +251,9 @@ describe("book detail", () => {
     await vi.waitFor(() => expect(wrapper.text()).toContain("Rating cleared"));
     expect(clearRating).toHaveBeenCalledWith(1);
     expect(setRating).not.toHaveBeenCalled();
-    expect((await cacheGet<Book>(cacheKeys.book(1)))?.data.user_book?.rating).toBeNull();
+    expect((await cacheGet<Book>(cacheKeys.book(1)))?.data.user_book.rating).toBeNull();
     expect(wrapper.find('[role="alert"]').exists()).toBe(false);
-    expect((await cacheGet<Book>(cacheKeys.book(1)))?.data.user_book?.finished_at).toEqual(userBook.finished_at);
+    expect((await cacheGet<Book>(cacheKeys.book(1)))?.data.user_book.finished_at).toEqual(userBook.finished_at);
     wrapper.unmount();
   });
 
@@ -282,26 +282,6 @@ describe("book detail", () => {
     expect(wrapper.get<HTMLButtonElement>('[data-test="save"]').element.disabled).toBe(false);
 
     log.mockRestore();
-    wrapper.unmount();
-  });
-
-  it("hides rating controls for books outside the library", async () => {
-    vi.mocked(getBook).mockResolvedValue({ ...book, user_book: null });
-    const wrapper = mount(BookDetailView, {
-      global: {
-        stubs: {
-          RouterLink: true,
-          NavigationBar: true,
-          BookShelfButton: true,
-          BookCustomShelves: true,
-          BookMetadata: true,
-        },
-      },
-    });
-
-    await vi.waitFor(() => expect(wrapper.text()).toContain("Dune"));
-    expect(wrapper.find('input[type="radio"]').exists()).toBe(false);
-
     wrapper.unmount();
   });
 });

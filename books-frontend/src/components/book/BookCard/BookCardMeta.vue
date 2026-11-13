@@ -9,7 +9,7 @@ defineProps<{
 
 <template>
   <div class="book-meta">
-    <span v-if="book.user_book?.rating != null" class="meta-item">
+    <span v-if="book.user_book.rating !== null" class="meta-item">
       <strong>Your rating:</strong> {{ book.user_book.rating }} / 5 <span aria-hidden="true">★</span>
     </span>
     <span v-if="book.isbn" class="meta-item"> <strong>ISBN:</strong> {{ book.isbn }} </span>

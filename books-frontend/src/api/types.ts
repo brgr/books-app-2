@@ -101,7 +101,7 @@ export interface Book {
   cover_thumbnail_url: string | null;
   created_at: string;
   updated_at: string;
-  user_book: UserBook | null;
+  user_book: UserBook;
 }
 
 export interface PaginatedBooks {
