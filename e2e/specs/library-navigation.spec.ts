@@ -11,8 +11,7 @@ function userBook(bookId: number) {
     started_at: null,
     finished_at: null,
     notes: null,
-    current_page: null,
-    current_percent: null,
+    progress: null,
     rating: null,
   };
 }

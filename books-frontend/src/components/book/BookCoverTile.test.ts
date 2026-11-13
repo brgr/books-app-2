@@ -43,7 +43,7 @@ describe("BookCoverTile", () => {
           page_count: 200,
           user_book: makeUserBook({
             shelf: ReadingShelf.STARTED,
-            current_page: 50,
+            progress: { unit: "page", value: 50 },
           }),
         }),
       },
@@ -60,7 +60,7 @@ describe("BookCoverTile", () => {
           page_count: 200,
           user_book: makeUserBook({
             shelf: ReadingShelf.STARTED,
-            current_page: 50,
+            progress: { unit: "page", value: 50 },
           }),
         }),
       },
@@ -79,7 +79,7 @@ describe("BookCoverTile", () => {
           page_count: 200,
           user_book: makeUserBook({
             shelf: ReadingShelf.WANT_TO_READ,
-            current_page: 50,
+            progress: { unit: "page", value: 50 },
           }),
         }),
       },

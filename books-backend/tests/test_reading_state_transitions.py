@@ -17,15 +17,15 @@ def test_start_initializes_progress_at_zero(
     )
 
     assert response.status_code == status.HTTP_200_OK
-    expected_page = 0 if page_count is not None else None
-    expected_percent = None if page_count is not None else 0
-    assert response.json()["current_page"] == expected_page
-    assert response.json()["current_percent"] == expected_percent
+    expected_progress = {
+        "unit": "page" if page_count is not None else "percent",
+        "value": 0,
+    }
+    assert response.json()["progress"] == expected_progress
     saved = client.get(f"/api/books/{book_id}", headers=auth_headers).json()[
         "user_book"
     ]
-    assert saved["current_page"] == expected_page
-    assert saved["current_percent"] == expected_percent
+    assert saved["progress"] == expected_progress
     events = client.get(f"/api/books/{book_id}/events", headers=auth_headers).json()
     assert sorted(event["event_type"] for event in events) == [
         "added_to_library",
@@ -61,11 +61,10 @@ def test_resume_preserves_progress_and_new_cycle_resets_it(
     )
 
     assert response.status_code == status.HTTP_200_OK
-    assert response.json()["current_page"] == (
-        None if previous_shelf == "paused" else 0
-    )
-    assert response.json()["current_percent"] == (
-        42.5 if previous_shelf == "paused" else None
+    assert response.json()["progress"] == (
+        {"unit": "percent", "value": 42.5}
+        if previous_shelf == "paused"
+        else {"unit": "page", "value": 0}
     )
 
 

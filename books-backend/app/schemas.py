@@ -129,6 +129,40 @@ class UserBookRatingUpdate(BaseModel):
     rating: float = Field(gt=0, le=5, multiple_of=0.5)
 
 
+# Progress schemas
+class PageProgressUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    unit: Literal["page"]
+    value: int = Field(ge=0)
+
+
+class PercentProgressUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    unit: Literal["percent"]
+    value: float = Field(ge=0, le=100)
+
+
+BookProgressUpdate = Annotated[
+    PageProgressUpdate | PercentProgressUpdate,
+    Field(discriminator="unit"),
+]
+
+
+def build_progress(
+    page: int | None, percent: float | None
+) -> BookProgressUpdate | None:
+    """Express a stored page-or-percent pair as one progress value, if any is set."""
+    if page is not None:
+        return PageProgressUpdate(unit="page", value=page)
+
+    if percent is not None:
+        return PercentProgressUpdate(unit="percent", value=percent)
+
+    return None
+
+
 class UserBookResponse(BaseModel):
     id: int
     user_id: int
@@ -138,8 +172,7 @@ class UserBookResponse(BaseModel):
     rating: float | None = None
     started_at: ReadingDateValue | None = None
     finished_at: ReadingDateValue | None = None
-    current_page: int | None = None
-    current_percent: float | None = None
+    progress: BookProgressUpdate | None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -168,8 +201,7 @@ class UserBookResponse(BaseModel):
             finished_at=ReadingDateValue.from_domain(finished_at)
             if finished_at
             else None,
-            current_page=user_book.current_page,
-            current_percent=user_book.current_percent,
+            progress=build_progress(user_book.current_page, user_book.current_percent),
         )
 
 
@@ -329,27 +361,6 @@ class UserBooksExportResponse(BaseModel):
     books: list[ExportBookEntry]
 
 
-# Progress schemas
-class PageProgressUpdate(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    unit: Literal["page"]
-    value: int = Field(ge=0)
-
-
-class PercentProgressUpdate(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    unit: Literal["percent"]
-    value: float = Field(ge=0, le=100)
-
-
-BookProgressUpdate = Annotated[
-    PageProgressUpdate | PercentProgressUpdate,
-    Field(discriminator="unit"),
-]
-
-
 # Book event schemas
 #
 # An event carries only the data of its own type, so a client can read it without
@@ -435,13 +446,9 @@ def build_book_event_response(event: BookEvent) -> BookEventResponse:
 
     if code == BookEventCode.PROGRESS_SET:
         entry = event.progress_entry
-        progress: BookProgressUpdate
+        progress = build_progress(entry.page, entry.percent) if entry else None
 
-        if entry and entry.page is not None:
-            progress = PageProgressUpdate(unit="page", value=entry.page)
-        elif entry and entry.percent is not None:
-            progress = PercentProgressUpdate(unit="percent", value=entry.percent)
-        else:
+        if progress is None:
             raise ValueError(f"Progress event {event.id} has no progress value")
 
         return ProgressSetEvent(event_type=code, progress=progress, **base)

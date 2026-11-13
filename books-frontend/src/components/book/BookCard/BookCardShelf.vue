@@ -22,9 +22,9 @@ const shelf = computed(() => props.book.user_book.shelf);
   <div class="book-dates text-small text-muted">
     <div v-if="book.user_book.started_at">Started: {{ formatReadingDate(book.user_book.started_at) }}</div>
     <div v-if="book.user_book.finished_at">Finished: {{ formatReadingDate(book.user_book.finished_at) }}</div>
-    <div v-if="book.user_book.current_percent !== null">Progress: {{ book.user_book.current_percent }}%</div>
-    <div v-else-if="book.user_book.current_page !== null">
-      Progress: {{ book.user_book.current_page }}
+    <div v-if="book.user_book.progress?.unit === 'percent'">Progress: {{ book.user_book.progress.value }}%</div>
+    <div v-else-if="book.user_book.progress">
+      Progress: {{ book.user_book.progress.value }}
       <span v-if="book.page_count">/ {{ book.page_count }}</span>
     </div>
   </div>

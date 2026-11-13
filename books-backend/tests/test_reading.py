@@ -426,7 +426,7 @@ def test_progress_clamps_to_page_count(client, auth_headers, created_book):
     )
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
-    assert data["current_page"] == created_book["page_count"]
+    assert data["progress"] == {"unit": "page", "value": created_book["page_count"]}
 
     events_response = client.get(f"/api/books/{book_id}/events", headers=auth_headers)
     assert events_response.status_code == status.HTTP_200_OK
@@ -462,8 +462,7 @@ def test_progress_accepts_percent_only(client, auth_headers, created_book, perce
     )
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
-    assert data["current_percent"] == percent
-    assert data["current_page"] is None
+    assert data["progress"] == {"unit": "percent", "value": percent}
 
     events = client.get(f"/api/books/{book_id}/events", headers=auth_headers).json()
     progress = [e for e in events if e["event_type"] == "progress_set"]
@@ -507,8 +506,7 @@ def test_progress_rejects_invalid_payload(client, auth_headers, created_book, pr
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     data = client.get(f"/api/books/{book_id}", headers=auth_headers).json()
-    assert data["user_book"]["current_page"] == 5
-    assert data["user_book"]["current_percent"] is None
+    assert data["user_book"]["progress"] == {"unit": "page", "value": 5}
 
     events = client.get(f"/api/books/{book_id}/events", headers=auth_headers).json()
     progress_events = [e for e in events if e["event_type"] == "progress_set"]
@@ -516,13 +514,10 @@ def test_progress_rejects_invalid_payload(client, auth_headers, created_book, pr
 
 
 @pytest.mark.parametrize(
-    "progress, field",
-    [
-        ({"unit": "page", "value": 0}, "current_page"),
-        ({"unit": "percent", "value": 0}, "current_percent"),
-    ],
+    "progress",
+    [{"unit": "page", "value": 0}, {"unit": "percent", "value": 0}],
 )
-def test_progress_accepts_zero(client, auth_headers, created_book, progress, field):
+def test_progress_accepts_zero(client, auth_headers, created_book, progress):
     book_id = created_book["id"]
     _start_reading(client, auth_headers, book_id)
 
@@ -530,7 +525,7 @@ def test_progress_accepts_zero(client, auth_headers, created_book, progress, fie
         f"/api/books/{book_id}/progress", json=progress, headers=auth_headers
     )
     assert response.status_code == status.HTTP_200_OK
-    assert response.json()[field] == 0
+    assert response.json()["progress"] == progress
 
 
 def test_progress_percent_replaces_page(client, auth_headers, created_book):
@@ -550,8 +545,7 @@ def test_progress_percent_replaces_page(client, auth_headers, created_book):
     )
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
-    assert data["current_percent"] == 50
-    assert data["current_page"] is None
+    assert data["progress"] == {"unit": "percent", "value": 50}
 
 
 @pytest.mark.parametrize(

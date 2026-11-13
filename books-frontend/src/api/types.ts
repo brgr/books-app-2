@@ -73,8 +73,7 @@ export interface UserBook {
   started_at: ReadingDateValue | null;
   finished_at: ReadingDateValue | null;
   notes: string | null;
-  current_page: number | null;
-  current_percent: number | null;
+  progress: BookProgressUpdate | null;
   rating: number | null;
 }
 

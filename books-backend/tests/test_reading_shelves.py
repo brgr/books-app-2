@@ -5,12 +5,12 @@ from app.models import UserBook
 
 
 @pytest.mark.parametrize(
-    "page_count, progress, expected_page, expected_percent",
+    "page_count, progress, expected_progress",
     [
-        (300, None, 0, None),
-        (None, None, None, 0),
-        (300, {"unit": "percent", "value": 42.5}, None, 42.5),
-        (None, {"unit": "page", "value": 10}, 10, None),
+        (300, None, {"unit": "page", "value": 0}),
+        (None, None, {"unit": "percent", "value": 0}),
+        (300, {"unit": "percent", "value": 42.5}, {"unit": "percent", "value": 42.5}),
+        (None, {"unit": "page", "value": 10}, {"unit": "page", "value": 10}),
     ],
 )
 def test_shelf_books_project_progress_from_events(
@@ -20,8 +20,7 @@ def test_shelf_books_project_progress_from_events(
     db_session,
     page_count,
     progress,
-    expected_page,
-    expected_percent,
+    expected_progress,
 ):
     book_id = client.post(
         "/api/books",
@@ -48,8 +47,7 @@ def test_shelf_books_project_progress_from_events(
 
     assert response.status_code == status.HTTP_200_OK
     saved = response.json()["items"][0]["user_book"]
-    assert saved["current_page"] == expected_page
-    assert saved["current_percent"] == expected_percent
+    assert saved["progress"] == expected_progress
 
 
 def _create_book(client, auth_headers, sample_book_data, title_suffix, isbn_suffix):

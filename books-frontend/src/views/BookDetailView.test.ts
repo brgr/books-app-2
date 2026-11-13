@@ -32,8 +32,7 @@ const userBook: UserBook = {
   started_at: { value: "2026-09-01T00:00:00+02:00", precision: "day" },
   finished_at: { value: "2026-09-05T00:00:00+02:00", precision: "day" },
   notes: null,
-  current_page: null,
-  current_percent: null,
+  progress: null,
   rating: 3.5,
 };
 const book: Book = {
@@ -90,15 +89,15 @@ describe("book detail", () => {
   }
 
   it.each([
-    { page: 10, percent: null, expected: { unit: "page", value: 10 } },
-    { page: null, percent: 42.5, expected: { unit: "percent", value: 42.5 } },
-    { page: 0, percent: null, expected: { unit: "page", value: 0 } },
-    { page: null, percent: 0, expected: { unit: "percent", value: 0 } },
-    { page: null, percent: null, expected: { unit: "percent", value: 0 } },
-  ])("passes recorded progress to the reading card: $expected", async ({ page, percent, expected }) => {
+    { progress: { unit: "page", value: 10 }, expected: { unit: "page", value: 10 } },
+    { progress: { unit: "percent", value: 42.5 }, expected: { unit: "percent", value: 42.5 } },
+    { progress: { unit: "page", value: 0 }, expected: { unit: "page", value: 0 } },
+    { progress: { unit: "percent", value: 0 }, expected: { unit: "percent", value: 0 } },
+    { progress: null, expected: { unit: "percent", value: 0 } },
+  ] as const)("passes recorded progress to the reading card: $expected", async ({ progress, expected }) => {
     vi.mocked(getBook).mockResolvedValue({
       ...book,
-      user_book: { ...userBook, shelf: ReadingShelf.STARTED, current_page: page, current_percent: percent },
+      user_book: { ...userBook, shelf: ReadingShelf.STARTED, progress },
     });
 
     const wrapper = mountBook();

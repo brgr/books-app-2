@@ -69,18 +69,8 @@ const {
 );
 
 const currentProgress = computed<ReadingProgress>(() => {
-  const userBook = book.value?.user_book;
-
-  if (userBook?.current_page !== null && userBook?.current_page !== undefined) {
-    return { unit: "page", value: userBook.current_page };
-  }
-  if (userBook?.current_percent !== null && userBook?.current_percent !== undefined) {
-    return { unit: "percent", value: userBook.current_percent };
-  }
-
-  return book.value?.page_count !== null && book.value?.page_count !== undefined
-    ? { unit: "page", value: 0 }
-    : { unit: "percent", value: 0 };
+  const startingProgress: ReadingProgress = { unit: book.value?.page_count != null ? "page" : "percent", value: 0 };
+  return book.value?.user_book.progress ?? startingProgress;
 });
 
 const loadedCover = ref<string>();

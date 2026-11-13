@@ -114,35 +114,26 @@ onBeforeUnmount(clearPressTimer);
 
 const coverUrl = computed(() => getMediaUrl(props.book.cover_thumbnail_url || props.book.cover_image_url));
 
-const hasPercent = computed(() => props.book.user_book.current_percent !== null);
+// Null when there is nothing to show: no progress yet, or pages without a known page count.
+const progressPercent = computed<number | null>(() => {
+  const progress = props.book.user_book.progress;
+  const pageCount = props.book.page_count;
+  let percent: number;
 
-const showBadge = computed(() => {
-  if (!props.showProgress) {
-    return false;
+  if (progress?.unit === "percent") {
+    percent = progress.value;
+  } else if (progress && pageCount) {
+    percent = (progress.value / pageCount) * 100;
+  } else {
+    return null;
   }
 
-  const userBook = props.book.user_book;
-  if (userBook.shelf !== ReadingShelf.STARTED) {
-    return false;
-  }
-  // A percent-tracked book carries progress even without a page count.
-  return hasPercent.value || (Boolean(props.book.page_count) && userBook.current_page !== null);
+  return Math.min(100, Math.max(0, Math.round(percent)));
 });
 
-const progressPercent = computed(() => {
-  if (hasPercent.value) {
-    return Math.min(100, Math.max(0, Math.round(props.book.user_book.current_percent as number)));
-  }
-  const pageCount = props.book.page_count ?? 0;
-  const currentPage = props.book.user_book.current_page ?? 0;
-
-  if (pageCount <= 0) {
-    return 0;
-  }
-
-  const percent = Math.round((currentPage / pageCount) * 100);
-  return Math.min(100, Math.max(0, percent));
-});
+const showBadge = computed(
+  () => props.showProgress && props.book.user_book.shelf === ReadingShelf.STARTED && progressPercent.value !== null,
+);
 </script>
 
 <template>
