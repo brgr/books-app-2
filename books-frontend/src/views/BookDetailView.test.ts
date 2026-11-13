@@ -35,8 +35,6 @@ const userBook: UserBook = {
   current_page: null,
   current_percent: null,
   rating: 3.5,
-  created_at: "",
-  updated_at: "",
 };
 const book: Book = {
   id: 1,
@@ -49,8 +47,6 @@ const book: Book = {
   page_count: null,
   cover_image_url: null,
   cover_thumbnail_url: null,
-  created_at: "",
-  updated_at: "",
   user_book: userBook,
 };
 

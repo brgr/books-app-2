@@ -33,7 +33,6 @@ const googleBooksUrl = computed(() => {
       <div v-if="book.published_date" class="metadata-item">
         <strong>Published:</strong> {{ formatShortDate(book.published_date) }}
       </div>
-      <div class="metadata-item"><strong>Added:</strong> {{ formatShortDate(book.created_at) }}</div>
       <div class="metadata-item">
         <a :href="googleBooksUrl" target="_blank" rel="noopener noreferrer">
           {{ book.google_books_id ? "View on Google Books" : "Search on Google Books" }}

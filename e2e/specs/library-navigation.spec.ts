@@ -14,8 +14,6 @@ function userBook(bookId: number) {
     current_page: null,
     current_percent: null,
     rating: null,
-    created_at: "",
-    updated_at: "",
   };
 }
 

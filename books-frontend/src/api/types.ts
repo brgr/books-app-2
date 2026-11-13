@@ -63,7 +63,6 @@ export interface Shelf {
 export interface User {
   id: number;
   username: string;
-  created_at: string;
 }
 
 export interface UserBook {
@@ -77,8 +76,6 @@ export interface UserBook {
   current_page: number | null;
   current_percent: number | null;
   rating: number | null;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface ShelfReorderRequest {
@@ -99,8 +96,6 @@ export interface Book {
   page_count: number | null;
   cover_image_url: string | null;
   cover_thumbnail_url: string | null;
-  created_at: string;
-  updated_at: string;
   user_book: UserBook;
 }
 

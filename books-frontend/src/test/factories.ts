@@ -12,8 +12,6 @@ export function makeUserBook(overrides: Partial<UserBook> = {}): UserBook {
     current_page: null,
     current_percent: null,
     rating: null,
-    created_at: "",
-    updated_at: "",
     ...overrides,
   };
 }
@@ -30,8 +28,6 @@ export function makeBook(overrides: Partial<Book> = {}): Book {
     page_count: null,
     cover_image_url: null,
     cover_thumbnail_url: null,
-    created_at: "",
-    updated_at: "",
     user_book: makeUserBook({ book_id: overrides.id ?? 1 }),
     ...overrides,
   };
