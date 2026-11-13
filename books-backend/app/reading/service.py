@@ -16,13 +16,11 @@ from app.book_events import (
     record_reading_event,
     record_started_reading,
 )
-from app.books.queries import get_user_book
 from app.models import (
     BookEvent,
     BookEventCode,
     ReadingDate,
     ReadingShelf,
-    User,
     UserBook,
 )
 from app.schemas import (
@@ -35,13 +33,8 @@ from app.schemas import (
 
 
 class ReadingService:
-    def __init__(self, db: Session, user: User):
+    def __init__(self, db: Session):
         self.db = db
-        self.user = user
-
-    @property
-    def _user_id(self) -> int:
-        return self.user.id
 
     # TODO: We should separate the API for reading and custom shelves. For custom shelves, we don't "set" a shelf,
     #  but we add or remove a book from that shelf. For reading, in the API, we might want to talk about
@@ -81,15 +74,6 @@ class ReadingService:
             user_book.rating = None
 
         self.db.commit()
-
-    def remove_from_library(self, book_id: int) -> bool:
-        user_book = get_user_book(self.db, user_id=self._user_id, book_id=book_id)
-        if not user_book:
-            return False
-
-        self.db.delete(user_book)
-        self.db.commit()
-        return True
 
     def get_events(self, user_book: UserBook) -> list[BookEvent]:
         return (

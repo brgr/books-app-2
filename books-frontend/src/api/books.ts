@@ -16,13 +16,6 @@ import type {
 } from "./types";
 import { parseShelfRef } from "./types";
 
-export async function getBooks(page = 1, pageSize = 20): Promise<PaginatedBooks> {
-  const response = await apiClient.get<PaginatedBooks>("/books", {
-    params: { page, page_size: pageSize },
-  });
-  return response.data;
-}
-
 export async function getShelfBooks(shelf: ShelfRef, page = 1, pageSize = 20): Promise<PaginatedBooks> {
   const response = await apiClient.get<PaginatedBooks>(`/shelves/${shelf}/books`, {
     params: { page, page_size: pageSize },
@@ -92,10 +85,6 @@ export async function deleteAllBooks(): Promise<void> {
 export async function setShelf(bookId: number, data: UserBookShelfUpdate): Promise<UserBook> {
   const response = await apiClient.put<UserBook>(`/books/${bookId}/shelf`, data);
   return response.data;
-}
-
-export async function removeFromLibrary(bookId: number): Promise<void> {
-  await apiClient.delete(`/books/${bookId}/shelf`);
 }
 
 export async function setRating(bookId: number, rating: number): Promise<UserBook> {

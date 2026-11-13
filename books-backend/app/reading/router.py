@@ -3,10 +3,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.auth.security import get_current_user
 from app.books.dependencies import get_library_user_book
 from app.database import get_db
-from app.models import User, UserBook
+from app.models import UserBook
 from app.reading.service import ReadingService
 from app.schemas import (
     BookEventResponse,
@@ -20,11 +19,8 @@ from app.schemas import (
 router = APIRouter()
 
 
-def get_reading_service(
-    db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)],
-) -> ReadingService:
-    return ReadingService(db, current_user)
+def get_reading_service(db: Annotated[Session, Depends(get_db)]) -> ReadingService:
+    return ReadingService(db)
 
 
 @router.put("/books/{book_id}/shelf", response_model=UserBookResponse)
@@ -59,19 +55,6 @@ def clear_rating(
 ):
     """Clear the current user's rating for a book."""
     service.clear_rating(user_book)
-
-
-@router.delete("/books/{book_id}/shelf", status_code=status.HTTP_204_NO_CONTENT)
-def remove_from_library(
-    book_id: int,
-    service: Annotated[ReadingService, Depends(get_reading_service)],
-):
-    """Remove a book from the current user's library."""
-    if not service.remove_from_library(book_id):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Book not in your reading list",
-        )
 
 
 @router.get("/books/{book_id}/events", response_model=list[BookEventResponse])

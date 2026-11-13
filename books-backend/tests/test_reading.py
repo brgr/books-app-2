@@ -195,24 +195,6 @@ def test_get_book_includes_user_book(client, auth_headers, created_book):
     assert book["user_book"]["notes"] == "Excellent!"
 
 
-def test_remove_from_library(client, auth_headers, created_book):
-    """Test removing a book from the library."""
-    book_id = created_book["id"]
-
-    # Put it on a shelf
-    client.put(
-        f"/api/books/{book_id}/shelf", json={"shelf": "started"}, headers=auth_headers
-    )
-
-    # Remove it from the library
-    response = client.delete(f"/api/books/{book_id}/shelf", headers=auth_headers)
-    assert response.status_code == status.HTTP_204_NO_CONTENT
-
-    # Verify it's removed - the book is no longer in the user's library
-    response = client.get(f"/api/books/{book_id}", headers=auth_headers)
-    assert response.status_code == status.HTTP_404_NOT_FOUND
-
-
 def test_cannot_revert_to_want_after_start(client, auth_headers, created_book):
     book_id = created_book["id"]
 
@@ -228,17 +210,6 @@ def test_cannot_revert_to_want_after_start(client, auth_headers, created_book):
     )
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert "Cannot revert to 'want_to_read'" in response.json()["detail"]
-
-
-def test_remove_nonexistent_shelf_entry(client, auth_headers, created_book):
-    """Test removing a shelf entry that doesn't exist."""
-    book_id = created_book["id"]
-
-    # Creating a book auto-assigns a shelf; remove it first so we can test the 404 path.
-    client.delete(f"/api/books/{book_id}/shelf", headers=auth_headers)
-
-    response = client.delete(f"/api/books/{book_id}/shelf", headers=auth_headers)
-    assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 def test_shelf_endpoints_require_auth(client, created_book):
