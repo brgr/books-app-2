@@ -136,7 +136,7 @@ export interface UserBookShelfUpdate {
 
 export interface GoogleBookResult {
   title: string;
-  author: string;
+  author: string | null;
   isbn: string | null;
   description: string | null;
   published_date: string | null;

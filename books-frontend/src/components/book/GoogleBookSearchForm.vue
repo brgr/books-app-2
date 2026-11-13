@@ -121,7 +121,7 @@ async function handleSelectBook(book: GoogleBookResult) {
             <div v-else class="book-thumbnail-placeholder">No Image</div>
             <div class="book-info">
               <h5 class="book-title">{{ book.title }}</h5>
-              <p class="book-author">{{ book.author }}</p>
+              <p v-if="book.author" class="book-author">{{ book.author }}</p>
               <div class="book-details">
                 <span v-if="book.published_date" class="detail">
                   {{ book.published_date }}

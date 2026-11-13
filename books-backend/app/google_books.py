@@ -247,7 +247,7 @@ def _normalize_book_data(item: dict) -> dict | None:
 
         # Get authors (can be multiple)
         authors = volume_info.get("authors", [])
-        author = ", ".join(authors) if authors else "Unknown Author"
+        author = ", ".join(authors) if authors else None
 
         # Get ISBNs - prefer ISBN_13, fall back to ISBN_10
         isbn = None

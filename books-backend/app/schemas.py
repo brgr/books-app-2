@@ -231,7 +231,7 @@ class GoogleBookResult(BaseModel):
     """Result from Google Books API search."""
 
     title: str
-    author: str
+    author: str | None = None
     isbn: str | None = None
     description: str | None = None
     published_date: str | None = None
