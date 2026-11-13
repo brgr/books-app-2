@@ -3,11 +3,10 @@ import { computed, ref, toRaw, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { addBookProgress, clearRating, getBook, getBookEvents, setRating, setShelf } from "../api/books";
 import { getMediaUrl } from "../api/client";
-import BookNotes from "../components/book/BookNotes.vue";
+import BookNotesAndRating from "../components/book/BookNotesAndRating.vue";
 import BookShelfButton from "../components/book/BookShelfButton/BookShelfButton.vue";
 import BookReadingCard from "../components/book/BookReadingCard/BookReadingCard.vue";
 import type { ReadingProgress } from "../components/book/BookReadingCard/types";
-import BookRating from "../components/book/BookRating.vue";
 import NavigationBar from "../components/navigation/NavigationBar.vue";
 import CollapsibleText from "../components/ui/CollapsibleText.vue";
 import BookMetadata from "../components/book/BookMetadata.vue";
@@ -241,6 +240,14 @@ async function handleSaveNotes(notes: string) {
   }
 }
 
+async function handleSaveReview(notes: string, rating: number | null) {
+  if (notes !== (book.value?.user_book?.notes ?? "")) {
+    await handleSaveNotes(notes);
+  }
+
+  await handleRatingChange(rating);
+}
+
 async function handleSaveProgress(progress: BookProgressUpdate) {
   if (!book.value || !canUpdateProgress.value) {
     return;
@@ -357,18 +364,15 @@ function handleEdit() {
             <CollapsibleText :text="book.description" />
           </div>
 
-          <div class="notes-header">
-            <h2>Notes</h2>
-            <BookRating
-              v-if="book.user_book"
-              :key="book.id"
-              :rating="book.user_book.rating ?? null"
-              :saving="ratingSaving"
-              :error="ratingError"
-              @change="handleRatingChange"
-            />
-          </div>
-          <BookNotes :notes="book.user_book?.notes ?? ''" :saving="notesSaving" @save="handleSaveNotes" />
+          <BookNotesAndRating
+            :key="book.id"
+            :notes="book.user_book?.notes ?? ''"
+            :rating="book.user_book?.rating ?? null"
+            :can-rate="!!book.user_book"
+            :saving="notesSaving || ratingSaving"
+            :error="ratingError"
+            @save="handleSaveReview"
+          />
 
           <BookCustomShelves :book-id="book.id" />
 
@@ -547,23 +551,9 @@ function handleEdit() {
   margin-bottom: var(--spacing-xl);
 }
 
-.book-description h2,
-.notes-header h2 {
+.book-description h2 {
   margin: 0 0 var(--spacing-md) 0;
   font-size: 1.25rem;
-}
-
-.notes-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-sm) var(--spacing-md);
-  margin-bottom: var(--spacing-md);
-}
-
-.notes-header h2 {
-  margin: 0;
 }
 
 @media (max-width: 768px) {

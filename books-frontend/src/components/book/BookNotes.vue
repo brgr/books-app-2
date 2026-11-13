@@ -1,30 +1,21 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed } from "vue";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 
-const props = defineProps<{
-  notes: string;
-  saving: boolean;
+defineProps<{
+  editing: boolean;
+  disabled?: boolean;
 }>();
+
+const notes = defineModel<string>({ required: true });
 
 const emit = defineEmits<{
-  save: [notes: string];
+  submit: [];
 }>();
 
-const editing = ref(false);
-const draft = ref(props.notes);
-
-watch(
-  () => props.notes,
-  (val) => {
-    draft.value = val;
-    editing.value = false;
-  },
-);
-
 const renderedNotes = computed(() => {
-  const raw = props.notes.trim();
+  const raw = notes.value.trim();
 
   if (!raw) {
     return "";
@@ -34,90 +25,42 @@ const renderedNotes = computed(() => {
     USE_PROFILES: { html: true },
   });
 });
-
-const dirty = computed(() => draft.value !== props.notes);
-
-function startEditing() {
-  draft.value = props.notes;
-  editing.value = true;
-}
-
-function cancel() {
-  draft.value = props.notes;
-  editing.value = false;
-}
-
-function save() {
-  if (!dirty.value || props.saving) {
-    return;
-  }
-
-  emit("save", draft.value);
-}
 </script>
 
 <template>
-  <div class="book-notes">
-    <template v-if="editing">
-      <textarea
-        v-model="draft"
-        class="notes-textarea"
-        rows="6"
-        placeholder="Add your notes about this book... (Markdown supported)"
-        @keydown.ctrl.enter.prevent="save"
-      ></textarea>
-
-      <div class="notes-actions">
-        <button type="button" class="btn-secondary" data-test="cancel" :disabled="saving" @click="cancel">
-          Cancel
-        </button>
-        <button class="btn-primary" data-test="save" :disabled="saving || !dirty" @click="save">
-          {{ saving ? "Saving..." : "Save Notes" }}
-        </button>
-      </div>
-    </template>
-    <template v-else>
-      <!-- eslint-disable-next-line vue/no-v-html -- renderedNotes is sanitized with DOMPurify -->
-      <div v-if="renderedNotes" class="notes-rendered" v-html="renderedNotes"></div>
-      <p v-else class="notes-empty">No notes yet.</p>
-
-      <div class="notes-actions">
-        <button type="button" class="btn-secondary" data-test="edit" @click="startEditing">Update</button>
-      </div>
-    </template>
-  </div>
+  <textarea
+    v-if="editing"
+    v-model="notes"
+    class="notes-textarea"
+    rows="6"
+    aria-label="Notes"
+    placeholder="Your notes about this book."
+    :disabled="disabled"
+    @keydown.ctrl.enter.prevent="emit('submit')"
+  ></textarea>
+  <!-- eslint-disable-next-line vue/no-v-html -- renderedNotes is sanitized with DOMPurify -->
+  <div v-else-if="renderedNotes" class="notes-rendered" v-html="renderedNotes"></div>
+  <p v-else class="notes-empty">No notes yet.</p>
 </template>
 
 <style scoped>
-.book-notes {
-  margin-bottom: var(--spacing-xl);
-}
-
 .notes-textarea {
   width: 100%;
   min-height: 120px;
   resize: vertical;
-  padding: var(--spacing-sm);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--color-border);
-  background: var(--color-bg);
+  padding: 0;
+  border: none;
+  background: none;
   color: var(--color-text);
   font-family: inherit;
   line-height: 1.5;
 }
 
-.notes-actions {
-  margin-top: var(--spacing-sm);
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--spacing-sm);
+.notes-textarea:focus {
+  outline: none;
 }
 
 .notes-rendered {
-  padding: var(--spacing-sm);
-  border-radius: var(--border-radius);
-  border: 1px solid var(--color-border);
-  background: var(--color-bg);
   color: var(--color-text);
   line-height: 1.5;
 }
