@@ -166,22 +166,10 @@ async def preview_cover(
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def start_cover_upgrade_search(
-    book_id: int,
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(get_db)],
+    book: Annotated[Book, Depends(get_library_book)],
     service: Annotated[BookService, Depends(get_book_service)],
 ):
     """Kick off an async search for higher-resolution versions of this cover."""
-    book = get_book_by_id(db, book_id)
-    if not book:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
-        )
-    user_book = get_user_book(db, user_id=current_user.id, book_id=book.id)
-    if not user_book:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
-        )
     cover_path = book.cover_image_url
     if not cover_path or cover_path.startswith("http"):
         raise HTTPException(
