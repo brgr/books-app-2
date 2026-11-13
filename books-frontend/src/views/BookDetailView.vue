@@ -5,6 +5,7 @@ import BookNotesAndRating from "../components/book/BookNotesAndRating.vue";
 import BookShelfButton from "../components/book/BookShelfButton/BookShelfButton.vue";
 import BookReadingCard from "../components/book/BookReadingCard/BookReadingCard.vue";
 import type { ReadingProgress } from "../components/book/BookReadingCard/types";
+import BackToShelfLink from "../components/navigation/BackToShelfLink.vue";
 import NavigationBar from "../components/navigation/NavigationBar.vue";
 import CollapsibleText from "../components/ui/CollapsibleText.vue";
 import BookMetadata from "../components/book/BookMetadata.vue";
@@ -14,30 +15,9 @@ import BookCover from "../components/book/cover/BookCover.vue";
 import { ReadingShelf } from "../api/types";
 import { formatReadingDate } from "../utils/date";
 import { useBookDetail } from "../composables/useBookDetail";
-import { libraryOrigin } from "../router/libraryNavigation";
 
 const router = useRouter();
 const route = useRoute();
-const backToShelf = computed(() => libraryOrigin(router, route.query?.from));
-
-function returnToShelf(event: MouseEvent, navigate: (event: MouseEvent) => unknown) {
-  // Use browser history when the shelf is immediately behind us, so Forward reopens the book.
-  if (
-    !event.defaultPrevented &&
-    event.button === 0 &&
-    !event.metaKey &&
-    !event.ctrlKey &&
-    !event.shiftKey &&
-    !event.altKey &&
-    router.options.history.state.back === backToShelf.value
-  ) {
-    event.preventDefault();
-    router.back();
-    return;
-  }
-  void navigate(event);
-}
-
 const bookId = computed(() => {
   const id = parseInt(route.params.id as string);
   return isNaN(id) ? 0 : id;
@@ -77,11 +57,7 @@ function handleEdit() {
     <NavigationBar />
 
     <div class="container">
-      <RouterLink v-slot="{ href, navigate }" :to="backToShelf" custom>
-        <a :href="href" class="back-to-shelf" @click="returnToShelf($event, navigate)">
-          <span aria-hidden="true">←</span> Back to shelf
-        </a>
-      </RouterLink>
+      <BackToShelfLink />
       <div v-if="!book && !error" class="loading">Loading book...</div>
 
       <div v-else-if="error && !book" class="error">
@@ -166,20 +142,6 @@ function handleEdit() {
 </template>
 
 <style scoped>
-.back-to-shelf {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  min-height: 44px;
-  margin-bottom: var(--spacing-md);
-  color: var(--color-primary);
-  text-decoration: none;
-}
-
-.back-to-shelf:hover {
-  text-decoration: underline;
-}
-
 .book-detail-page {
   min-height: 100vh;
   background-color: var(--color-bg);

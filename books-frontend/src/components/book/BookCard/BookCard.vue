@@ -7,6 +7,7 @@ import KebabButton from "../../ui/KebabButton.vue";
 import BookCardMeta from "./BookCardMeta.vue";
 import BookCardShelf from "./BookCardShelf.vue";
 import { navigateWithBookPreview } from "../../../router/bookPreview";
+import { isPlainLeftClick } from "../../../utils/click";
 
 const props = defineProps<{
   book: Book;
@@ -30,14 +31,7 @@ const detailRoute = computed(() => ({
 const coverUrl = computed(() => props.book.cover_thumbnail_url || props.book.cover_image_url);
 
 function openBook(event: MouseEvent, navigate: (event: MouseEvent) => Promise<unknown>) {
-  if (
-    event.defaultPrevented ||
-    event.button !== 0 ||
-    event.metaKey ||
-    event.ctrlKey ||
-    event.shiftKey ||
-    event.altKey
-  ) {
+  if (event.defaultPrevented || !isPlainLeftClick(event)) {
     return;
   }
 

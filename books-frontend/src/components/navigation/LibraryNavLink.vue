@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { type RouteLocationRaw, RouterLink } from "vue-router";
+import { isPlainLeftClick } from "../../utils/click";
 import { scrollToTop } from "../../utils/scrollToTop";
 
 defineProps<{ label: string; active: boolean; to: RouteLocationRaw; scrollToTopOnClick?: boolean }>();
@@ -10,15 +11,7 @@ function handleClick(event: MouseEvent, reselected: boolean, navigate: (event: M
   // actions like Ctrl/Cmd-click to open a new tab. We therefore intercept only
   // primary-button clicks without modifiers, and we respect any earlier handler
   // that canceled the click.
-  if (
-    reselected &&
-    !event.defaultPrevented &&
-    event.button === 0 &&
-    !event.metaKey &&
-    !event.ctrlKey &&
-    !event.shiftKey &&
-    !event.altKey
-  ) {
+  if (reselected && !event.defaultPrevented && isPlainLeftClick(event)) {
     event.preventDefault();
     scrollToTop();
     return;

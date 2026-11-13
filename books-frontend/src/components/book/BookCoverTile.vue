@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount } from "vue";
 import { type Book, ReadingShelf } from "../../api/types";
 import { getMediaUrl } from "../../api/client";
+import { isPlainLeftClick } from "../../utils/click";
 
 const props = withDefaults(
   defineProps<{
@@ -102,7 +103,7 @@ function onClick(event: MouseEvent) {
   }
 
   // Ordinary clicks are handled by ourselves; for clicks with special keys, keep the browser's usual (link) behavior
-  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+  if (!isPlainLeftClick(event)) {
     return;
   }
 
