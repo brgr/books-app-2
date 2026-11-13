@@ -8,12 +8,12 @@ import { formatReadingDate } from "../../../utils/date";
 
 const props = defineProps<{
   shelf: ReadingShelf;
-  updating?: boolean;
+  updating: boolean;
   progress: ReadingProgress;
-  pageCount?: number | null;
-  startedAt?: ReadingDateValue | null;
-  finishedAt?: ReadingDateValue | null;
-  progressSaving?: boolean;
+  pageCount: number | null;
+  startedAt: ReadingDateValue | null;
+  finishedAt: ReadingDateValue | null;
+  progressSaving: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -93,7 +93,7 @@ watch([() => props.progress.unit, () => props.progress.value], () => {
       </button>
       <BookShelfButton
         :shelf="shelf"
-        :updating="updating ?? false"
+        :updating="updating"
         @change="(shelf, readingDate) => emit('change', shelf, readingDate)"
       />
     </div>

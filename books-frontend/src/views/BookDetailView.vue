@@ -327,7 +327,7 @@ function handleEdit() {
                 :shelf="book.user_book.shelf"
                 :updating="updatingShelf"
                 :progress="currentProgress"
-                :page-count="book.page_count ?? null"
+                :page-count="book.page_count"
                 :started-at="book.user_book.started_at"
                 :finished-at="book.user_book.finished_at"
                 :progress-saving="progressSaving"
