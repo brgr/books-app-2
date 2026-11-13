@@ -475,6 +475,11 @@ def build_book_event_response(event: BookEvent) -> BookEventResponse:
     return ReadingStateEvent(event_type=code, reading_date=reading_date, **base)
 
 
+class ImportResultResponse(BaseModel):
+    imported: int
+    skipped: int
+
+
 class ImportResponse(BaseModel):
     id: int
     filename: str | None = None

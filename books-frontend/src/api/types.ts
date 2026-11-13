@@ -188,6 +188,11 @@ export type BookEvent = {
     }
 );
 
+export interface ImportResult {
+  imported: number;
+  skipped: number;
+}
+
 export interface ImportRecord {
   id: number;
   filename: string | null;

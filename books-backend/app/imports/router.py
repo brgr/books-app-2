@@ -10,12 +10,12 @@ from app.imports.reading_list_import import (
     import_reading_list_from_bytes,
 )
 from app.models import Import, User
-from app.schemas import ImportResponse
+from app.schemas import ImportResponse, ImportResultResponse
 
 router = APIRouter()
 
 
-@router.post("/import/reading-list")
+@router.post("/import/reading-list", response_model=ImportResultResponse)
 def import_reading_list(
     file: Annotated[UploadFile, File(...)],
     current_user: Annotated[User, Depends(get_current_user)],

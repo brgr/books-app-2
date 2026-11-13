@@ -4,7 +4,7 @@ import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import NavigationBar from "../components/navigation/NavigationBar.vue";
 import { deleteAllBooks, getImports, importReadingList } from "../api/books";
-import type { ImportRecord } from "../api/types";
+import type { ImportRecord, ImportResult } from "../api/types";
 
 const router = useRouter();
 const showConfirm = ref(false);
@@ -12,7 +12,7 @@ const isDeleting = ref(false);
 
 const importFile = ref<File | null>(null);
 const isImporting = ref(false);
-const importResult = ref<{ imported: number } | null>(null);
+const importResult = ref<ImportResult | null>(null);
 const importError = ref<string | null>(null);
 
 const imports = ref<ImportRecord[]>([]);
@@ -101,7 +101,11 @@ async function handleImport() {
               {{ isImporting ? "Importing..." : "Import" }}
             </button>
           </div>
-          <p v-if="importResult" class="import-success">Successfully imported {{ importResult.imported }} books.</p>
+          <p v-if="importResult" class="import-success">
+            Successfully imported {{ importResult.imported }} books<span v-if="importResult.skipped > 0"
+              >, {{ importResult.skipped }} skipped</span
+            >.
+          </p>
           <p v-if="importError" class="import-error">{{ importError }}</p>
         </div>
 

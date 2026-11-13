@@ -7,6 +7,7 @@ import type {
   BookUpdate,
   GoogleBookResult,
   ImportRecord,
+  ImportResult,
   PaginatedBooks,
   Shelf,
   ShelfRef,
@@ -113,10 +114,10 @@ export async function addBookProgress(bookId: number, data: BookProgressUpdate):
   return response.data;
 }
 
-export async function importReadingList(file: File): Promise<{ imported: number }> {
+export async function importReadingList(file: File): Promise<ImportResult> {
   const formData = new FormData();
   formData.append("file", file);
-  const response = await apiClient.post<{ imported: number }>("/import/reading-list", formData, {
+  const response = await apiClient.post<ImportResult>("/import/reading-list", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
   return response.data;
