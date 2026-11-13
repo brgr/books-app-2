@@ -1,26 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { mount } from "@vue/test-utils";
 import BookCoverTile from "./BookCoverTile.vue";
-import { ReadingShelf, type Book } from "../../api/types";
-
-function makeBook(overrides: Partial<Book> = {}): Book {
-  return {
-    id: 1,
-    title: "Dune",
-    author: "Frank Herbert",
-    isbn: null,
-    google_books_id: null,
-    description: null,
-    published_date: null,
-    page_count: null,
-    cover_image_url: null,
-    cover_thumbnail_url: null,
-    created_at: "",
-    updated_at: "",
-    user_book: null,
-    ...overrides,
-  };
-}
+import { ReadingShelf } from "../../api/types";
+import { makeBook, makeUserBook } from "../../test/factories";
 
 describe("BookCoverTile", () => {
   it("renders cover image when thumbnail url is present", () => {
@@ -59,10 +41,10 @@ describe("BookCoverTile", () => {
         href: "/books/1",
         book: makeBook({
           page_count: 200,
-          user_book: {
+          user_book: makeUserBook({
             shelf: ReadingShelf.STARTED,
             current_page: 50,
-          } as Book["user_book"],
+          }),
         }),
       },
     });
@@ -76,10 +58,10 @@ describe("BookCoverTile", () => {
         showProgress: true,
         book: makeBook({
           page_count: 200,
-          user_book: {
+          user_book: makeUserBook({
             shelf: ReadingShelf.STARTED,
             current_page: 50,
-          } as Book["user_book"],
+          }),
         }),
       },
     });
@@ -95,10 +77,10 @@ describe("BookCoverTile", () => {
         showProgress: true,
         book: makeBook({
           page_count: 200,
-          user_book: {
+          user_book: makeUserBook({
             shelf: ReadingShelf.WANT_TO_READ,
             current_page: 50,
-          } as Book["user_book"],
+          }),
         }),
       },
     });

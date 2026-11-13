@@ -1,23 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { mount } from "@vue/test-utils";
 import type { Book } from "../../api/types";
+import { makeBook } from "../../test/factories";
 import BookMetadata from "./BookMetadata.vue";
 
-const book: Book = {
-  id: 1,
-  title: "Dune",
-  author: "Frank Herbert",
-  isbn: "9780441172719",
-  google_books_id: null,
-  description: null,
-  published_date: null,
-  page_count: null,
-  cover_image_url: null,
-  cover_thumbnail_url: null,
-  created_at: "2026-10-18T12:00:00Z",
-  updated_at: "2026-10-18T12:00:00Z",
-  user_book: null,
-};
+const book = makeBook({ isbn: "9780441172719" });
 
 describe("Amazon.it link", () => {
   it.each([

@@ -1,6 +1,24 @@
 import { expect, type Page, test } from "@playwright/test";
 import { authenticate } from "../support/auth";
 
+// The API always returns a book together with its library entry.
+function userBook(bookId: number) {
+  return {
+    id: bookId,
+    user_id: 1,
+    book_id: bookId,
+    shelf: "want_to_read",
+    started_at: null,
+    finished_at: null,
+    notes: null,
+    current_page: null,
+    current_percent: null,
+    rating: null,
+    created_at: "",
+    updated_at: "",
+  };
+}
+
 // A deterministic, multi-page library exercises navigation without importing hundreds of books.
 async function mockLibrary(page: Page, covers = false) {
   const books = Array.from({ length: 205 }, (_, index) => ({
@@ -10,7 +28,7 @@ async function mockLibrary(page: Page, covers = false) {
     description: null,
     cover_image_url: covers ? "/preview-cover.svg" : null,
     cover_thumbnail_url: covers ? "/preview-thumbnail.svg" : null,
-    user_book: null,
+    user_book: userBook(index + 1),
   }));
 
   const shelves = [
@@ -108,7 +126,7 @@ for (const mode of ["list", "grid"] as const) {
           author: "Fresh author",
           cover_thumbnail_url: "/preview-thumbnail.svg",
           cover_image_url: "/preview-cover.svg",
-          user_book: null,
+          user_book: userBook(1),
         },
       });
     });

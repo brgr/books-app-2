@@ -2,13 +2,13 @@ import { afterEach, describe, expect, it } from "vitest";
 import { enableAutoUnmount, flushPromises, mount } from "@vue/test-utils";
 import { h } from "vue";
 import { createMemoryHistory, createRouter, RouterView } from "vue-router";
-import type { Book } from "../../../api/types";
 import { takeBookPreview } from "../../../router/bookPreview";
+import { makeBook } from "../../../test/factories";
 import BookCard from "./BookCard.vue";
 
 enableAutoUnmount(afterEach);
 
-const book = { id: 1, title: "Selected book", user_book: null } as Book;
+const book = makeBook({ title: "Selected book" });
 
 async function mountCard() {
   const router = createRouter({

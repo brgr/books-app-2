@@ -4,11 +4,11 @@ import { createMemoryHistory, createRouter, RouterView } from "vue-router";
 import BookEditView from "./BookEditView.vue";
 import { getBook, updateBook } from "../api/books";
 import { uploadBookCover } from "../api/covers";
-import type { Book } from "../api/types";
 import { invalidateCache } from "../cache/invalidate";
 import { cacheClear } from "../cache/store";
 import CoverEditField from "../components/book/cover/CoverEditField.vue";
 import { getPendingCover, stagePendingCover } from "../components/book/cover/pendingCoverUploads";
+import { makeBook } from "../test/factories";
 
 vi.mock("../api/books", () => ({ getBook: vi.fn(), updateBook: vi.fn(), deleteBook: vi.fn() }));
 vi.mock("../api/covers", async (importOriginal) => ({
@@ -17,21 +17,12 @@ vi.mock("../api/covers", async (importOriginal) => ({
 }));
 vi.mock("../cache/invalidate", () => ({ invalidateCache: { bookUpdated: vi.fn(), bookDeleted: vi.fn() } }));
 
-const book: Book = {
+const book = makeBook({
   id: 42,
-  title: "Dune",
-  author: "Frank Herbert",
-  isbn: null,
-  google_books_id: null,
-  description: null,
   published_date: "1965-08-01T00:00:00",
   page_count: 0,
   cover_image_url: "/uploads/original.jpg",
-  cover_thumbnail_url: null,
-  created_at: "",
-  updated_at: "",
-  user_book: null,
-};
+});
 
 async function mountEditView() {
   const router = createRouter({

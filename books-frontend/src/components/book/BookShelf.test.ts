@@ -10,6 +10,7 @@ import { type Book, type PaginatedBooks, type ShelfRef } from "../../api/types";
 import { cacheClear } from "../../cache/store";
 import { provideLibraryPage } from "../../composables/useLibraryPage";
 import { takeBookPreview } from "../../router/bookPreview";
+import { makeBook } from "../../test/factories";
 
 enableAutoUnmount(afterEach);
 
@@ -24,25 +25,6 @@ vi.mock("../../api/books", () => ({
   getShelfBooks: (...args: unknown[]) => getShelfBooks(...args),
   reorderShelfItem: vi.fn(async () => ({})),
 }));
-
-function makeBook(overrides: Partial<Book> = {}): Book {
-  return {
-    id: 1,
-    title: "Dune",
-    author: "Frank Herbert",
-    isbn: null,
-    google_books_id: null,
-    description: null,
-    published_date: null,
-    page_count: null,
-    cover_image_url: null,
-    cover_thumbnail_url: null,
-    created_at: "",
-    updated_at: "",
-    user_book: null,
-    ...overrides,
-  };
-}
 
 const books = [makeBook(), makeBook({ id: 2, title: "Europe", author: "Tim Flannery" })];
 
