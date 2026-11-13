@@ -8,7 +8,6 @@ from app.book_events import (
     apply_progress_event,
     build_user_book_response,
     current_reading_shelf,
-    ensure_added_event,
     move_reading_shelf_placement,
     project_user_book_state,
     record_finished_reading,
@@ -48,9 +47,8 @@ class ReadingService:
     #  but we add or remove a book from that shelf. For reading, in the API, we might want to talk about
     #  reading state instead; and use a different API endpoint, even though the DB model differs only slightly.
     def set_shelf(
-        self, book_id: int, shelf_data: UserBookShelfUpdate
+        self, user_book: UserBook, shelf_data: UserBookShelfUpdate
     ) -> UserBookResponse:
-        user_book = ensure_added_event(self.db, self._user_id, book_id)
         previous = current_reading_shelf(self.db, user_book.id)
         reading_date = self._reading_date_from_input(shelf_data.reading_date)
         self._apply_transition(user_book, previous, shelf_data.shelf, reading_date)
@@ -66,12 +64,8 @@ class ReadingService:
         return build_user_book_response(self.db, user_book)
 
     def set_rating(
-        self, book_id: int, rating_data: UserBookRatingUpdate
-    ) -> UserBookResponse | None:
-        user_book = get_user_book(self.db, user_id=self._user_id, book_id=book_id)
-        if user_book is None:
-            return None
-
+        self, user_book: UserBook, rating_data: UserBookRatingUpdate
+    ) -> UserBookResponse:
         if user_book.rating != rating_data.rating:
             record_rating_event(self.db, user_book.id, rating_data.rating)
             user_book.rating = rating_data.rating
@@ -81,18 +75,12 @@ class ReadingService:
 
         return build_user_book_response(self.db, user_book)
 
-    def clear_rating(self, book_id: int) -> bool:
-        user_book = get_user_book(self.db, user_id=self._user_id, book_id=book_id)
-        if user_book is None:
-            return False
-
+    def clear_rating(self, user_book: UserBook) -> None:
         if user_book.rating is not None:
             record_rating_event(self.db, user_book.id, None)
             user_book.rating = None
 
         self.db.commit()
-
-        return True
 
     def remove_from_library(self, book_id: int) -> bool:
         user_book = get_user_book(self.db, user_id=self._user_id, book_id=book_id)
@@ -103,11 +91,7 @@ class ReadingService:
         self.db.commit()
         return True
 
-    def get_events(self, book_id: int) -> list[BookEvent]:
-        user_book = get_user_book(self.db, user_id=self._user_id, book_id=book_id)
-        if not user_book:
-            return []
-
+    def get_events(self, user_book: UserBook) -> list[BookEvent]:
         return (
             self.db.query(BookEvent)
             .options(
@@ -124,14 +108,9 @@ class ReadingService:
         )
 
     def add_progress(
-        self, book_id: int, max_page: int | None, progress: BookProgressUpdate
+        self, user_book: UserBook, progress: BookProgressUpdate
     ) -> UserBookResponse:
-        user_book = get_user_book(self.db, user_id=self._user_id, book_id=book_id)
-
-        if (
-            not user_book
-            or current_reading_shelf(self.db, user_book.id) != ReadingShelf.STARTED
-        ):
+        if current_reading_shelf(self.db, user_book.id) != ReadingShelf.STARTED:
             raise ValueError("Cannot record progress before starting reading")
 
         return build_user_book_response(
@@ -141,7 +120,7 @@ class ReadingService:
                 user_book,
                 page=progress.value if progress.unit == "page" else None,
                 percent=progress.value if progress.unit == "percent" else None,
-                max_page=max_page,
+                max_page=user_book.book.page_count,
             ),
         )
 
