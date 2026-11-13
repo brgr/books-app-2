@@ -14,6 +14,7 @@ from app.schemas import (
     UserBookRatingUpdate,
     UserBookResponse,
     UserBookShelfUpdate,
+    build_book_event_response,
 )
 
 router = APIRouter()
@@ -105,9 +106,7 @@ def get_book_events(
             status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
         )
 
-    return [
-        BookEventResponse.from_event(event) for event in service.get_events(book_id)
-    ]
+    return [build_book_event_response(event) for event in service.get_events(book_id)]
 
 
 @router.post("/books/{book_id}/progress", response_model=UserBookResponse)

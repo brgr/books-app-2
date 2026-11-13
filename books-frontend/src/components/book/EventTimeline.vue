@@ -8,7 +8,7 @@ defineProps<{
 function formatEventType(event: BookEvent): string {
   switch (event.event_type) {
     case BookEventType.ADDED_TO_LIBRARY:
-      return event.import_id != null ? "Imported to library" : "Added to library";
+      return event.import_id !== null ? "Imported to library" : "Added to library";
     case BookEventType.STARTED_READING:
       return "Started reading";
     case BookEventType.PAUSED_READING:
@@ -24,24 +24,21 @@ function formatEventType(event: BookEvent): string {
     case BookEventType.PROGRESS_SET:
       return "Progress updated";
     case BookEventType.RATING_SET:
-      return event.rating == null ? "Rating cleared" : `Rated ${event.rating} / 5 stars`;
+      return event.rating === null ? "Rating cleared" : `Rated ${event.rating} / 5 stars`;
     case BookEventType.COVER_CHANGED:
       return "Cover changed";
-    default:
-      return event.event_type;
   }
 }
 
-function formatProgress(event: BookEvent): string | null {
-  if (event.event_type !== BookEventType.PROGRESS_SET) {
-    return null;
+function eventDetail(event: BookEvent): string | null {
+  switch (event.event_type) {
+    case BookEventType.NOTE_SET:
+      return event.note;
+    case BookEventType.PROGRESS_SET:
+      return event.progress.unit === "page" ? `Page ${event.progress.value}` : `${event.progress.value}%`;
+    default:
+      return null;
   }
-
-  if (event.page != null) {
-    return `Page ${event.page}`;
-  }
-
-  return event.percent != null ? `${event.percent}%` : null;
 }
 
 function formatDate(dateStr: string): string {
@@ -72,10 +69,7 @@ function formatTime(dateStr: string): string {
         <div class="timeline-content">
           <div class="event-label">{{ formatEventType(event) }}</div>
           <div class="event-date">{{ formatDate(event.occurred_at) }} at {{ formatTime(event.occurred_at) }}</div>
-          <div v-if="event.event_type === BookEventType.NOTE_SET && event.note" class="event-note">
-            {{ event.note }}
-          </div>
-          <div v-if="formatProgress(event)" class="event-note">{{ formatProgress(event) }}</div>
+          <div v-if="eventDetail(event)" class="event-note">{{ eventDetail(event) }}</div>
         </div>
       </div>
     </div>

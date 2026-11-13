@@ -436,7 +436,10 @@ def test_progress_clamps_to_page_count(client, auth_headers, created_book):
         if event["event_type"] == "progress_set"
     ]
     assert progress_events
-    assert progress_events[0]["page"] == created_book["page_count"]
+    assert progress_events[0]["progress"] == {
+        "unit": "page",
+        "value": created_book["page_count"],
+    }
 
 
 def _start_reading(client, auth_headers, book_id):
@@ -464,8 +467,7 @@ def test_progress_accepts_percent_only(client, auth_headers, created_book, perce
 
     events = client.get(f"/api/books/{book_id}/events", headers=auth_headers).json()
     progress = [e for e in events if e["event_type"] == "progress_set"]
-    assert progress[0]["percent"] == percent
-    assert progress[0]["page"] is None
+    assert progress[0]["progress"] == {"unit": "percent", "value": percent}
 
 
 @pytest.mark.parametrize(
@@ -510,7 +512,7 @@ def test_progress_rejects_invalid_payload(client, auth_headers, created_book, pr
 
     events = client.get(f"/api/books/{book_id}/events", headers=auth_headers).json()
     progress_events = [e for e in events if e["event_type"] == "progress_set"]
-    assert [(e["page"], e["percent"]) for e in progress_events] == [(5, None)]
+    assert [e["progress"] for e in progress_events] == [{"unit": "page", "value": 5}]
 
 
 @pytest.mark.parametrize(

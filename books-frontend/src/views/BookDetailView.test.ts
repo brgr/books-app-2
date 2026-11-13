@@ -216,6 +216,7 @@ describe("book detail", () => {
         event_type: BookEventType.RATING_SET,
         rating: 4.5,
         occurred_at: "2026-09-05T12:00:00Z",
+        import_id: null,
       },
     ]);
 
@@ -238,6 +239,7 @@ describe("book detail", () => {
         event_type: BookEventType.RATING_SET,
         rating: null,
         occurred_at: "2026-09-05T12:00:00Z",
+        import_id: null,
       },
     ]);
 

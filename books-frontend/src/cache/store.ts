@@ -8,7 +8,7 @@ interface CacheEntry<T = unknown> {
 
 const DB_NAME = "books-cache";
 const STORE_NAME = "cache";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 

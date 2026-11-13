@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Annotated, Literal, cast
+from typing import Annotated, Literal
 
 from pydantic import (
     BaseModel,
@@ -341,65 +341,7 @@ class UserBooksExportResponse(BaseModel):
     books: list[ExportBookEntry]
 
 
-# Book event schemas
-class BookEventResponse(BaseModel):
-    """Response schema for a book event."""
-
-    id: str
-    event_type: BookEventCode
-    occurred_at: datetime
-    reading_date: ReadingDateValue | None = None
-    note: str | None = None
-    rating: float | None = None
-    page: int | None = None
-    percent: float | None = None
-    old_cover_image_url: str | None = None
-    new_cover_image_url: str | None = None
-    old_cover_thumbnail_url: str | None = None
-    new_cover_thumbnail_url: str | None = None
-    import_id: int | None = None
-
-    model_config = ConfigDict(from_attributes=True)
-
-    @classmethod
-    def from_event(cls, event: BookEvent) -> "BookEventResponse":
-        """Flatten a BookEvent and its detail rows into a response object."""
-        reading_date = (
-            ReadingDateValue.from_domain(
-                ReadingDate(
-                    event.reading_date_entry.value,
-                    event.reading_date_entry.precision,
-                )
-            )
-            if event.reading_date_entry
-            else None
-        )
-
-        return cls(
-            id=str(event.id),
-            event_type=cast(BookEventCode, event.event_type.code),
-            occurred_at=event.occurred_at,
-            reading_date=reading_date,
-            note=event.note_entry.note if event.note_entry else None,
-            rating=event.rating_entry.rating if event.rating_entry else None,
-            page=event.progress_entry.page if event.progress_entry else None,
-            percent=event.progress_entry.percent if event.progress_entry else None,
-            old_cover_image_url=event.cover_entry.old_cover_image_url
-            if event.cover_entry
-            else None,
-            new_cover_image_url=event.cover_entry.new_cover_image_url
-            if event.cover_entry
-            else None,
-            old_cover_thumbnail_url=event.cover_entry.old_cover_thumbnail_url
-            if event.cover_entry
-            else None,
-            new_cover_thumbnail_url=event.cover_entry.new_cover_thumbnail_url
-            if event.cover_entry
-            else None,
-            import_id=event.import_source.import_id if event.import_source else None,
-        )
-
-
+# Progress schemas
 class PageProgressUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -418,6 +360,124 @@ BookProgressUpdate = Annotated[
     PageProgressUpdate | PercentProgressUpdate,
     Field(discriminator="unit"),
 ]
+
+
+# Book event schemas
+#
+# An event carries only the data of its own type, so a client can read it without
+# checking for fields that belong to other event types.
+class BookEventBase(BaseModel):
+    id: str
+    occurred_at: datetime
+    import_id: int | None = None
+
+
+class AddedToLibraryEvent(BookEventBase):
+    event_type: Literal[BookEventCode.ADDED_TO_LIBRARY]
+
+
+class ReadingStateEvent(BookEventBase):
+    event_type: Literal[
+        BookEventCode.STARTED_READING,
+        BookEventCode.PAUSED_READING,
+        BookEventCode.RESUMED_READING,
+        BookEventCode.FINISHED_READING,
+        BookEventCode.ABANDONED_READING,
+    ]
+    reading_date: ReadingDateValue | None
+
+
+class NoteSetEvent(BookEventBase):
+    """``note`` is null when the note was cleared."""
+
+    event_type: Literal[BookEventCode.NOTE_SET]
+    note: str | None
+
+
+class RatingSetEvent(BookEventBase):
+    """``rating`` is null when the rating was cleared."""
+
+    event_type: Literal[BookEventCode.RATING_SET]
+    rating: float | None
+
+
+class ProgressSetEvent(BookEventBase):
+    event_type: Literal[BookEventCode.PROGRESS_SET]
+    progress: BookProgressUpdate
+
+
+class CoverChangedEvent(BookEventBase):
+    event_type: Literal[BookEventCode.COVER_CHANGED]
+    old_cover_image_url: str | None
+    new_cover_image_url: str | None
+    old_cover_thumbnail_url: str | None
+    new_cover_thumbnail_url: str | None
+
+
+BookEventResponse = Annotated[
+    AddedToLibraryEvent
+    | ReadingStateEvent
+    | NoteSetEvent
+    | RatingSetEvent
+    | ProgressSetEvent
+    | CoverChangedEvent,
+    Field(discriminator="event_type"),
+]
+
+
+def build_book_event_response(event: BookEvent) -> BookEventResponse:
+    """Turn a BookEvent and its detail row into the response for its event type."""
+    code = BookEventCode(event.event_type.code)
+    base = {
+        "id": str(event.id),
+        "occurred_at": event.occurred_at,
+        "import_id": event.import_source.import_id if event.import_source else None,
+    }
+
+    if code == BookEventCode.ADDED_TO_LIBRARY:
+        return AddedToLibraryEvent(event_type=code, **base)
+
+    if code == BookEventCode.NOTE_SET:
+        note = event.note_entry.note if event.note_entry else None
+        return NoteSetEvent(event_type=code, note=note, **base)
+
+    if code == BookEventCode.RATING_SET:
+        rating = event.rating_entry.rating if event.rating_entry else None
+        return RatingSetEvent(event_type=code, rating=rating, **base)
+
+    if code == BookEventCode.PROGRESS_SET:
+        entry = event.progress_entry
+        progress: BookProgressUpdate
+
+        if entry and entry.page is not None:
+            progress = PageProgressUpdate(unit="page", value=entry.page)
+        elif entry and entry.percent is not None:
+            progress = PercentProgressUpdate(unit="percent", value=entry.percent)
+        else:
+            raise ValueError(f"Progress event {event.id} has no progress value")
+
+        return ProgressSetEvent(event_type=code, progress=progress, **base)
+
+    if code == BookEventCode.COVER_CHANGED:
+        cover = event.cover_entry
+        return CoverChangedEvent(
+            event_type=code,
+            old_cover_image_url=cover.old_cover_image_url if cover else None,
+            new_cover_image_url=cover.new_cover_image_url if cover else None,
+            old_cover_thumbnail_url=cover.old_cover_thumbnail_url if cover else None,
+            new_cover_thumbnail_url=cover.new_cover_thumbnail_url if cover else None,
+            **base,
+        )
+
+    date_entry = event.reading_date_entry
+    reading_date = (
+        ReadingDateValue.from_domain(
+            ReadingDate(date_entry.value, date_entry.precision)
+        )
+        if date_entry
+        else None
+    )
+    return ReadingStateEvent(event_type=code, reading_date=reading_date, **base)
 
 
 class ImportResponse(BaseModel):

@@ -160,19 +160,34 @@ export const BookEventType = {
 
 export type BookEventType = (typeof BookEventType)[keyof typeof BookEventType];
 
-export interface BookEvent {
-  id: string;
-  event_type: BookEventType;
-  occurred_at: string;
-  reading_date?: ReadingDateValue | null;
-  note?: string | null;
-  page?: number | null;
-  percent?: number | null;
-  rating?: number | null;
-  import_id?: number | null;
-}
-
 export type BookProgressUpdate = { unit: "page"; value: number } | { unit: "percent"; value: number };
+
+type ReadingStateEventType =
+  | typeof BookEventType.STARTED_READING
+  | typeof BookEventType.PAUSED_READING
+  | typeof BookEventType.RESUMED_READING
+  | typeof BookEventType.FINISHED_READING
+  | typeof BookEventType.ABANDONED_READING;
+
+export type BookEvent = {
+  id: string;
+  occurred_at: string;
+  import_id: number | null;
+} & (
+  | { event_type: typeof BookEventType.ADDED_TO_LIBRARY }
+  | { event_type: ReadingStateEventType; reading_date: ReadingDateValue | null }
+  // A null note or rating means it was cleared
+  | { event_type: typeof BookEventType.NOTE_SET; note: string | null }
+  | { event_type: typeof BookEventType.RATING_SET; rating: number | null }
+  | { event_type: typeof BookEventType.PROGRESS_SET; progress: BookProgressUpdate }
+  | {
+      event_type: typeof BookEventType.COVER_CHANGED;
+      old_cover_image_url: string | null;
+      new_cover_image_url: string | null;
+      old_cover_thumbnail_url: string | null;
+      new_cover_thumbnail_url: string | null;
+    }
+);
 
 export interface ImportRecord {
   id: number;
