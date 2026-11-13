@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, toRaw } from "vue";
+import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { addBookProgress, clearRating, getBook, getBookEvents, setRating, setShelf } from "../api/books";
 import BookNotesAndRating from "../components/book/BookNotesAndRating.vue";
 import BookShelfButton from "../components/book/BookShelfButton/BookShelfButton.vue";
 import BookReadingCard from "../components/book/BookReadingCard/BookReadingCard.vue";
@@ -12,20 +11,10 @@ import BookMetadata from "../components/book/BookMetadata.vue";
 import EventTimeline from "../components/book/EventTimeline.vue";
 import BookCustomShelves from "../components/book/BookCustomShelves.vue";
 import BookCover from "../components/book/cover/BookCover.vue";
-import {
-  type Book,
-  type BookEvent,
-  type BookProgressUpdate,
-  ReadingDatePrecision,
-  type ReadingDateValue,
-  ReadingShelf,
-} from "../api/types";
+import { ReadingShelf } from "../api/types";
 import { formatReadingDate } from "../utils/date";
-import { useCachedQuery } from "../composables/useCachedQuery";
-import { cacheKeys } from "../cache/keys";
-import { invalidateCache } from "../cache/invalidate";
+import { useBookDetail } from "../composables/useBookDetail";
 import { libraryOrigin } from "../router/libraryNavigation";
-import { takeBookPreview } from "../router/bookPreview";
 
 const router = useRouter();
 const route = useRoute();
@@ -55,183 +44,24 @@ const bookId = computed(() => {
 });
 
 const {
-  data: book,
-  error: bookError,
-  refresh: refreshBook,
-  setData: setBook,
-} = useCachedQuery<Book>(
-  computed(() => (bookId.value ? cacheKeys.book(bookId.value) : "")),
-  () => getBook(bookId.value),
-  {
-    enabled: computed(() => bookId.value > 0),
-    initialData: () => takeBookPreview(bookId.value),
-  },
-);
+  book,
+  events,
+  error,
+  savingShelf,
+  savingReview,
+  savingProgress,
+  reviewError,
+  changeShelf,
+  saveProgress,
+  saveReview,
+} = useBookDetail(bookId);
 
 const currentProgress = computed<ReadingProgress>(() => {
   const startingProgress: ReadingProgress = { unit: book.value?.page_count != null ? "page" : "percent", value: 0 };
   return book.value?.user_book.progress ?? startingProgress;
 });
 
-const { data: events, refresh: refreshEvents } = useCachedQuery<BookEvent[]>(
-  computed(() => (bookId.value ? cacheKeys.bookEvents(bookId.value) : "")),
-  () => getBookEvents(bookId.value),
-  { enabled: computed(() => bookId.value > 0) },
-);
-
-const error = computed(() => {
-  const e = bookError.value;
-  if (!e) {
-    return "";
-  }
-  if (e instanceof Error) {
-    return e.message;
-  }
-
-  return "Failed to load book. Please try again.";
-});
-const updatingShelf = ref(false);
-const notesSaving = ref(false);
-const progressSaving = ref(false);
-const ratingSaving = ref(false);
-const ratingError = ref("");
-
-async function handleRatingChange(rating: number | null) {
-  const currentBook = book.value;
-
-  if (!currentBook || ratingSaving.value || rating === currentBook.user_book.rating) {
-    return;
-  }
-
-  ratingSaving.value = true;
-  ratingError.value = "";
-
-  try {
-    let userBook;
-
-    if (rating === null) {
-      await clearRating(currentBook.id);
-      // Copy the underlying data so nested reading dates remain serializable in IndexedDB.
-      userBook = { ...toRaw(currentBook.user_book), rating: null };
-    } else {
-      userBook = await setRating(currentBook.id, rating);
-    }
-
-    if (bookId.value === currentBook.id) {
-      await setBook({ ...book.value!, user_book: userBook });
-    }
-
-    await invalidateCache.ratingSaved(currentBook.id);
-
-    if (bookId.value === currentBook.id) {
-      await refreshEvents();
-    }
-  } catch (error) {
-    console.error("Failed to save rating:", error);
-    if (bookId.value === currentBook.id) {
-      ratingError.value = "Failed to save rating. Please try again.";
-    }
-  } finally {
-    ratingSaving.value = false;
-  }
-}
-
 const canUpdateProgress = computed(() => book.value?.user_book.shelf === ReadingShelf.STARTED);
-
-/**
- * Represents the browser's local calendar day as an ISO timestamp in the local timezone.
- *
- * Example:
- * - 2026-09-01 in Rome (UTC+02:00) becomes `2026-09-01T00:00:00+02:00`
- */
-function localDayValue(date: Date): string {
-  const pad = (value: number) => String(value).padStart(2, "0");
-  const localMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const offsetMinutes = -localMidnight.getTimezoneOffset();
-  const offsetSign = offsetMinutes >= 0 ? "+" : "-";
-  const offsetHours = pad(Math.floor(Math.abs(offsetMinutes) / 60));
-  const offsetRemainder = pad(Math.abs(offsetMinutes) % 60);
-
-  return `${localMidnight.getFullYear()}-${pad(localMidnight.getMonth() + 1)}-${pad(localMidnight.getDate())}T00:00:00${offsetSign}${offsetHours}:${offsetRemainder}`;
-}
-
-async function changeShelf(shelf: ReadingShelf, readingDate?: ReadingDateValue) {
-  if (!book.value) {
-    return;
-  }
-
-  updatingShelf.value = true;
-
-  try {
-    const now = new Date();
-    const date = readingDate ?? {
-      value: localDayValue(now),
-      precision: ReadingDatePrecision.DAY,
-    };
-    await setShelf(book.value.id, { shelf, reading_date: date });
-    await invalidateCache.shelfChanged(book.value.id);
-
-    await refreshBook();
-    await refreshEvents();
-  } catch (err) {
-    console.error("Failed to update shelf:", err);
-    alert("Failed to update shelf");
-  } finally {
-    updatingShelf.value = false;
-  }
-}
-
-async function handleSaveNotes(notes: string) {
-  if (!book.value) {
-    return;
-  }
-
-  notesSaving.value = true;
-
-  try {
-    const userBook = await setShelf(book.value.id, { shelf: book.value.user_book.shelf, notes });
-
-    await setBook({ ...book.value, user_book: userBook });
-    await invalidateCache.notesSaved(book.value.id);
-
-    await refreshEvents();
-  } catch (error) {
-    console.error("Failed to save notes:", error);
-    alert("Failed to save notes");
-  } finally {
-    notesSaving.value = false;
-  }
-}
-
-async function handleSaveReview(notes: string, rating: number | null) {
-  if (notes !== (book.value?.user_book.notes ?? "")) {
-    await handleSaveNotes(notes);
-  }
-
-  await handleRatingChange(rating);
-}
-
-async function handleSaveProgress(progress: BookProgressUpdate) {
-  if (!book.value || !canUpdateProgress.value) {
-    return;
-  }
-
-  progressSaving.value = true;
-
-  try {
-    const userBook = await addBookProgress(book.value.id, progress);
-
-    await setBook({ ...book.value, user_book: userBook });
-    await invalidateCache.progressSaved(book.value.id);
-
-    await refreshEvents();
-  } catch (error) {
-    console.error("Failed to save progress:", error);
-    alert("Failed to save progress");
-  } finally {
-    progressSaving.value = false;
-  }
-}
 
 function handleEdit() {
   if (!book.value) {
@@ -276,21 +106,21 @@ function handleEdit() {
               <BookShelfButton
                 v-if="!canUpdateProgress"
                 :shelf="book.user_book.shelf"
-                :updating="updatingShelf"
+                :updating="savingShelf"
                 @change="changeShelf"
               />
 
               <BookReadingCard
                 v-else
                 :shelf="book.user_book.shelf"
-                :updating="updatingShelf"
+                :updating="savingShelf"
                 :progress="currentProgress"
                 :page-count="book.page_count"
                 :started-at="book.user_book.started_at"
                 :finished-at="book.user_book.finished_at"
-                :progress-saving="progressSaving"
+                :progress-saving="savingProgress"
                 @change="changeShelf"
-                @update-progress="handleSaveProgress"
+                @update-progress="saveProgress"
               />
             </div>
 
@@ -315,9 +145,9 @@ function handleEdit() {
             :key="book.id"
             :notes="book.user_book.notes ?? ''"
             :rating="book.user_book.rating"
-            :saving="notesSaving || ratingSaving"
-            :error="ratingError"
-            @save="handleSaveReview"
+            :saving="savingReview"
+            :error="reviewError"
+            @save="saveReview"
           />
 
           <BookCustomShelves :book-id="book.id" />

@@ -62,3 +62,23 @@ export function formatReadingDate(readingDate: ReadingDateValue | null): string 
   }
   return DATE_FORMATTER.format(parsedDate);
 }
+
+/**
+ * Represents the browser's local calendar day as an ISO timestamp in the local timezone.
+ *
+ * The example below assumes the browser is in Rome (UTC+02:00).
+ *
+ * @example
+ * localDayValue(new Date(2026, 8, 1, 15, 30));
+ * // "2026-09-01T00:00:00+02:00"
+ */
+export function localDayValue(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  const localMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const offsetMinutes = -localMidnight.getTimezoneOffset();
+  const offsetSign = offsetMinutes >= 0 ? "+" : "-";
+  const offsetHours = pad(Math.floor(Math.abs(offsetMinutes) / 60));
+  const offsetRemainder = pad(Math.abs(offsetMinutes) % 60);
+
+  return `${localMidnight.getFullYear()}-${pad(localMidnight.getMonth() + 1)}-${pad(localMidnight.getDate())}T00:00:00${offsetSign}${offsetHours}:${offsetRemainder}`;
+}
