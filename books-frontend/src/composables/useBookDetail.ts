@@ -1,5 +1,5 @@
-import { computed, ref, toRaw, type Ref } from "vue";
-import { addBookProgress, clearRating, getBook, getBookEvents, setRating, setShelf } from "../api/books";
+import { ref, toRaw, type Ref } from "vue";
+import { addBookProgress, clearRating, getBookEvents, setRating, setShelf } from "../api/books";
 import {
   type Book,
   type BookEvent,
@@ -13,35 +13,16 @@ import { invalidateCache } from "../cache/invalidate";
 import { cacheKeys } from "../cache/keys";
 import { takeBookPreview } from "../router/bookPreview";
 import { localDayValue } from "../utils/date";
+import { useBook } from "./useBook";
 import { useCachedQuery } from "./useCachedQuery";
 
 export function useBookDetail(bookId: Ref<number>) {
-  const hasBook = computed(() => bookId.value > 0);
-
-  const {
-    data: book,
-    error: bookError,
-    setData: setBook,
-  } = useCachedQuery<Book>(
-    () => (hasBook.value ? cacheKeys.book(bookId.value) : ""),
-    () => getBook(bookId.value),
-    { enabled: hasBook, initialData: () => takeBookPreview(bookId.value) },
-  );
+  const { book, error, setBook } = useBook(bookId, () => takeBookPreview(bookId.value));
 
   const { data: events, refresh: refreshEvents } = useCachedQuery<BookEvent[]>(
-    () => (hasBook.value ? cacheKeys.bookEvents(bookId.value) : ""),
+    () => (bookId.value > 0 ? cacheKeys.bookEvents(bookId.value) : ""),
     () => getBookEvents(bookId.value),
-    { enabled: hasBook },
   );
-
-  const error = computed(() => {
-    const e = bookError.value;
-    if (!e) {
-      return "";
-    }
-
-    return e instanceof Error ? e.message : "Failed to load book. Please try again.";
-  });
 
   const savingShelf = ref(false);
   const savingReview = ref(false);

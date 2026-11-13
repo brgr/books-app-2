@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRouter } from "vue-router";
 import BookNotesAndRating from "../components/book/BookNotesAndRating.vue";
 import BookShelfButton from "../components/book/BookShelfButton/BookShelfButton.vue";
 import BookReadingCard from "../components/book/BookReadingCard/BookReadingCard.vue";
@@ -14,14 +14,11 @@ import BookCustomShelves from "../components/book/BookCustomShelves.vue";
 import BookCover from "../components/book/cover/BookCover.vue";
 import { ReadingShelf } from "../api/types";
 import { formatReadingDate } from "../utils/date";
+import { useRouteBookId } from "../composables/useBook";
 import { useBookDetail } from "../composables/useBookDetail";
 
 const router = useRouter();
-const route = useRoute();
-const bookId = computed(() => {
-  const id = parseInt(route.params.id as string);
-  return isNaN(id) ? 0 : id;
-});
+const bookId = useRouteBookId();
 
 const {
   book,

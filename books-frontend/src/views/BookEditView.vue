@@ -1,47 +1,22 @@
 <script lang="ts" setup>
 import { isAxiosError } from "axios";
-import { computed, ref, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
-import { deleteBook, getBook, updateBook } from "../api/books";
-import type { Book } from "../api/types";
+import { ref, watch } from "vue";
+import { useRouter } from "vue-router";
+import { deleteBook, updateBook } from "../api/books";
 import NavigationBar from "../components/navigation/NavigationBar.vue";
 import BookFields from "../components/book/BookFields.vue";
 import { bookToForm, emptyBookForm, formToPayload } from "../components/book/bookForm";
 import { savePendingCover } from "../components/book/cover/savePendingCover";
-import { useCachedQuery } from "../composables/useCachedQuery";
-import { cacheKeys } from "../cache/keys";
+import { useBook, useRouteBookId } from "../composables/useBook";
 import { invalidateCache } from "../cache/invalidate";
 
-const route = useRoute();
 const router = useRouter();
-
-const bookId = computed(() => {
-  const id = parseInt(route.params.id as string);
-  return isNaN(id) ? 0 : id;
-});
-
-const { data: book, error: bookError } = useCachedQuery<Book>(
-  computed(() => (bookId.value ? cacheKeys.book(bookId.value) : "")),
-  () => getBook(bookId.value),
-  { enabled: computed(() => bookId.value > 0) },
-);
+const { book, error: loadError } = useBook(useRouteBookId());
 
 const formData = ref(emptyBookForm());
 
 const loading = ref(false);
 const error = ref("");
-
-const loadError = computed(() => {
-  const e = bookError.value;
-  if (!e) {
-    return "";
-  }
-  if (e instanceof Error) {
-    return e.message;
-  }
-
-  return "Failed to load book.";
-});
 
 watch(
   book,
