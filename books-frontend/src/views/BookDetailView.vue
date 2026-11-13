@@ -145,11 +145,7 @@ function handleEdit() {
 }
 
 .book-detail {
-  background: transparent;
-  border-radius: var(--border-radius);
-  box-shadow: none;
   overflow: hidden;
-  max-width: 100%;
 }
 
 .book-header {
@@ -157,15 +153,7 @@ function handleEdit() {
   grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
   column-gap: var(--spacing-xl);
   padding: var(--spacing-xl);
-  background: transparent;
   align-items: flex-start;
-  width: 100%;
-  max-width: 100%;
-}
-
-.book-cover-section {
-  flex-shrink: 0;
-  max-width: 100%;
 }
 
 .book-info {
@@ -195,21 +183,16 @@ function handleEdit() {
   margin-top: var(--spacing-xl);
   margin-bottom: var(--spacing-xl);
   flex-wrap: wrap;
-  justify-content: flex-start;
 }
 
 .book-actions button {
   flex: 0 0 auto;
   min-width: 140px;
   max-width: 220px;
-  width: auto;
 }
 
 .book-shelf-section {
   margin-bottom: var(--spacing-lg);
-  padding: 0;
-  background-color: transparent;
-  border: none;
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
@@ -233,7 +216,6 @@ function handleEdit() {
 .book-body {
   padding: var(--spacing-xl);
   overflow-x: hidden;
-  background: transparent;
 }
 
 .book-description {
@@ -247,15 +229,7 @@ function handleEdit() {
 
 @media (max-width: 768px) {
   .book-detail-page {
-    border-radius: 0;
     min-height: 100%;
-  }
-
-  .book-detail {
-    border: none;
-    border-radius: 0;
-    box-shadow: none;
-    background: transparent;
   }
 
   .book-header {
@@ -264,7 +238,6 @@ function handleEdit() {
     align-items: center;
     text-align: center;
     padding: var(--spacing-lg) 0;
-    flex-wrap: wrap;
   }
 
   .book-cover-section {
@@ -278,25 +251,16 @@ function handleEdit() {
     font-size: 1.5rem;
   }
 
-  .book-info {
-    width: 100%;
-  }
-
   .book-actions {
     flex-direction: column;
   }
 
   .book-actions button {
     width: 100%;
-    flex: 0 0 auto;
   }
 
   .book-shelf-section {
     align-items: center;
-  }
-
-  .book-shelf-section select {
-    max-width: 100%;
   }
 
   .book-body {
