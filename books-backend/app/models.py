@@ -276,7 +276,9 @@ class BookEvent(Base):
         cascade="all, delete-orphan",
     )
 
-    __table_args__ = (UniqueConstraint("id", name="uq_book_events_id"),)
+    __table_args__ = (
+        Index("ix_book_events_user_book_id_occurred_at", "user_book_id", "occurred_at"),
+    )
 
     def __repr__(self):
         return (
@@ -439,7 +441,7 @@ class Shelf(Base):
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     kind: Mapped[ShelfKind] = mapped_column(
-        Enum(ShelfKind, name="shelf_kind"), nullable=False
+        Enum(ShelfKind, name="shelf_kind", length=20), nullable=False
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
 
