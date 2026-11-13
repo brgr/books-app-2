@@ -115,20 +115,6 @@ class ReadingDateValue(BaseModel):
         return cls(value=reading_date.value, precision=reading_date.precision)
 
 
-class UserBookBase(BaseModel):
-    shelf: ReadingShelf
-    notes: str | None = None
-
-
-class UserBookCreate(UserBookBase):
-    pass
-
-
-class UserBookUpdate(BaseModel):
-    shelf: ReadingShelf | None = None
-    notes: str | None = None
-
-
 class UserBookShelfUpdate(BaseModel):
     """Schema for updating just the shelf via PUT endpoint."""
 
@@ -143,10 +129,12 @@ class UserBookRatingUpdate(BaseModel):
     rating: float = Field(gt=0, le=5, multiple_of=0.5)
 
 
-class UserBookResponse(UserBookBase):
+class UserBookResponse(BaseModel):
     id: int
     user_id: int
     book_id: int
+    shelf: ReadingShelf
+    notes: str | None = None
     rating: float | None = None
     started_at: ReadingDateValue | None = None
     finished_at: ReadingDateValue | None = None
