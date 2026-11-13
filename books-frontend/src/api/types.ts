@@ -155,6 +155,7 @@ export const BookEventType = {
   NOTE_SET: "note_set",
   PROGRESS_SET: "progress_set",
   RATING_SET: "rating_set",
+  COVER_CHANGED: "cover_changed",
 } as const;
 
 export type BookEventType = (typeof BookEventType)[keyof typeof BookEventType];
@@ -166,6 +167,7 @@ export interface BookEvent {
   reading_date?: ReadingDateValue | null;
   note?: string | null;
   page?: number | null;
+  percent?: number | null;
   rating?: number | null;
   import_id?: number | null;
 }

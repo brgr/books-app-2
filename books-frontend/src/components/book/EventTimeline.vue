@@ -25,9 +25,23 @@ function formatEventType(event: BookEvent): string {
       return "Progress updated";
     case BookEventType.RATING_SET:
       return event.rating == null ? "Rating cleared" : `Rated ${event.rating} / 5 stars`;
+    case BookEventType.COVER_CHANGED:
+      return "Cover changed";
     default:
       return event.event_type;
   }
+}
+
+function formatProgress(event: BookEvent): string | null {
+  if (event.event_type !== BookEventType.PROGRESS_SET) {
+    return null;
+  }
+
+  if (event.page != null) {
+    return `Page ${event.page}`;
+  }
+
+  return event.percent != null ? `${event.percent}%` : null;
 }
 
 function formatDate(dateStr: string): string {
@@ -61,12 +75,7 @@ function formatTime(dateStr: string): string {
           <div v-if="event.event_type === BookEventType.NOTE_SET && event.note" class="event-note">
             {{ event.note }}
           </div>
-          <div
-            v-if="event.event_type === BookEventType.PROGRESS_SET && event.page !== null && event.page !== undefined"
-            class="event-note"
-          >
-            Page {{ event.page }}
-          </div>
+          <div v-if="formatProgress(event)" class="event-note">{{ formatProgress(event) }}</div>
         </div>
       </div>
     </div>
