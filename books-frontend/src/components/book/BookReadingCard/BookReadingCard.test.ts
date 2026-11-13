@@ -8,7 +8,7 @@ enableAutoUnmount(afterEach);
 
 function makeProps(
   overrides: Partial<{
-    shelf: ReadingShelf | null;
+    shelf: ReadingShelf;
     updating: boolean;
     progress: ReadingProgress;
     pageCount: number | null;

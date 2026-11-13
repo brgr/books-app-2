@@ -4,7 +4,7 @@ import { type ReadingDateValue, ReadingShelf } from "../../../api/types";
 import ReadingDateMenu from "./ReadingDateMenu.vue";
 
 const props = defineProps<{
-  shelf: ReadingShelf | null;
+  shelf: ReadingShelf;
   updating: boolean;
 }>();
 

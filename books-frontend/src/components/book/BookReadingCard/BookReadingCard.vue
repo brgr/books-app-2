@@ -7,7 +7,7 @@ import { type BookProgressUpdate, type ReadingDateValue, ReadingShelf } from "..
 import { formatReadingDate } from "../../../utils/date";
 
 const props = defineProps<{
-  shelf: ReadingShelf | null;
+  shelf: ReadingShelf;
   updating?: boolean;
   progress: ReadingProgress;
   pageCount?: number | null;
