@@ -4,9 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.auth.security import get_current_user
-from app.books.queries import get_book_by_id
+from app.books.dependencies import get_library_book
 from app.database import get_db
-from app.models import User
+from app.models import Book, User
 from app.reading.service import ReadingService
 from app.schemas import (
     BookEventResponse,
@@ -29,19 +29,13 @@ def get_reading_service(
 
 @router.put("/books/{book_id}/shelf", response_model=UserBookResponse)
 def set_shelf(
-    book_id: int,
     shelf_data: UserBookShelfUpdate,
-    db: Annotated[Session, Depends(get_db)],
+    book: Annotated[Book, Depends(get_library_book)],
     service: Annotated[ReadingService, Depends(get_reading_service)],
 ):
-    """Set or update the shelf for a book for the current user."""
-    if not get_book_by_id(db, book_id):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
-        )
-
+    """Set or update the shelf for a book in the current user's library."""
     try:
-        return service.set_shelf(book_id, shelf_data)
+        return service.set_shelf(book.id, shelf_data)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
@@ -96,35 +90,22 @@ def remove_from_library(
 
 @router.get("/books/{book_id}/events", response_model=list[BookEventResponse])
 def get_book_events(
-    book_id: int,
-    db: Annotated[Session, Depends(get_db)],
+    book: Annotated[Book, Depends(get_library_book)],
     service: Annotated[ReadingService, Depends(get_reading_service)],
 ):
     """Get all events for a book for the current user, ordered by most recent first."""
-    if not get_book_by_id(db, book_id):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
-        )
-
-    return [build_book_event_response(event) for event in service.get_events(book_id)]
+    return [build_book_event_response(event) for event in service.get_events(book.id)]
 
 
 @router.post("/books/{book_id}/progress", response_model=UserBookResponse)
 def add_progress_event(
-    book_id: int,
     progress: BookProgressUpdate,
-    db: Annotated[Session, Depends(get_db)],
+    book: Annotated[Book, Depends(get_library_book)],
     service: Annotated[ReadingService, Depends(get_reading_service)],
 ):
     """Record a progress event for the current user."""
-    book = get_book_by_id(db, book_id)
-    if not book:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
-        )
-
     try:
-        return service.add_progress(book_id, book.page_count, progress)
+        return service.add_progress(book.id, book.page_count, progress)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
