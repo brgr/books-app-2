@@ -1,10 +1,7 @@
 <script setup lang="ts">
-import { computed } from "vue";
 import { useRouter } from "vue-router";
 import BookNotesAndRating from "../components/book/BookNotesAndRating.vue";
-import BookShelfButton from "../components/book/BookShelfButton/BookShelfButton.vue";
-import BookReadingCard from "../components/book/BookReadingCard/BookReadingCard.vue";
-import type { ReadingProgress } from "../components/book/BookReadingCard/types";
+import BookReadingStatus from "../components/book/BookReadingStatus.vue";
 import BackToShelfLink from "../components/navigation/BackToShelfLink.vue";
 import NavigationBar from "../components/navigation/NavigationBar.vue";
 import CollapsibleText from "../components/ui/CollapsibleText.vue";
@@ -12,8 +9,6 @@ import BookMetadata from "../components/book/BookMetadata.vue";
 import EventTimeline from "../components/book/EventTimeline.vue";
 import BookCustomShelves from "../components/book/BookCustomShelves.vue";
 import BookCover from "../components/book/cover/BookCover.vue";
-import { ReadingShelf } from "../api/types";
-import { formatReadingDate } from "../utils/date";
 import { useRouteBookId } from "../composables/useBook";
 import { useBookDetail } from "../composables/useBookDetail";
 
@@ -32,13 +27,6 @@ const {
   saveProgress,
   saveReview,
 } = useBookDetail(bookId);
-
-const currentProgress = computed<ReadingProgress>(() => {
-  const startingProgress: ReadingProgress = { unit: book.value?.page_count != null ? "page" : "percent", value: 0 };
-  return book.value?.user_book.progress ?? startingProgress;
-});
-
-const canUpdateProgress = computed(() => book.value?.user_book.shelf === ReadingShelf.STARTED);
 
 function handleEdit() {
   if (!book.value) {
@@ -75,36 +63,14 @@ function handleEdit() {
             <h1>{{ book.title }}</h1>
             <p v-if="book.author" class="book-author">by {{ book.author }}</p>
 
-            <div class="book-shelf-section">
-              <BookShelfButton
-                v-if="!canUpdateProgress"
-                :shelf="book.user_book.shelf"
-                :updating="savingShelf"
-                @change="changeShelf"
-              />
-
-              <BookReadingCard
-                v-else
-                :shelf="book.user_book.shelf"
-                :updating="savingShelf"
-                :progress="currentProgress"
-                :page-count="book.page_count"
-                :started-at="book.user_book.started_at"
-                :finished-at="book.user_book.finished_at"
-                :progress-saving="savingProgress"
-                @change="changeShelf"
-                @update-progress="saveProgress"
-              />
-            </div>
-
-            <div v-if="!canUpdateProgress" class="book-dates">
-              <div v-if="book.user_book.started_at" class="date-item">
-                <strong>Started:</strong> {{ formatReadingDate(book.user_book.started_at) }}
-              </div>
-              <div v-if="book.user_book.finished_at" class="date-item">
-                <strong>Finished:</strong> {{ formatReadingDate(book.user_book.finished_at) }}
-              </div>
-            </div>
+            <BookReadingStatus
+              :user-book="book.user_book"
+              :page-count="book.page_count"
+              :saving-shelf="savingShelf"
+              :saving-progress="savingProgress"
+              @change="changeShelf"
+              @update-progress="saveProgress"
+            />
           </div>
         </div>
 
@@ -191,28 +157,6 @@ function handleEdit() {
   max-width: 220px;
 }
 
-.book-shelf-section {
-  margin-bottom: var(--spacing-lg);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-}
-
-.book-dates {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-}
-
-.date-item {
-  font-size: 14px;
-  color: var(--color-text-secondary);
-}
-
-.date-item strong {
-  color: var(--color-text);
-}
-
 .book-body {
   padding: var(--spacing-xl);
   overflow-x: hidden;
@@ -257,10 +201,6 @@ function handleEdit() {
 
   .book-actions button {
     width: 100%;
-  }
-
-  .book-shelf-section {
-    align-items: center;
   }
 
   .book-body {
