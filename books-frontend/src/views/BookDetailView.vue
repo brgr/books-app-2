@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, toRaw, watch } from "vue";
+import { computed, ref, toRaw } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { addBookProgress, clearRating, getBook, getBookEvents, setRating, setShelf } from "../api/books";
-import { getMediaUrl } from "../api/client";
 import BookNotesAndRating from "../components/book/BookNotesAndRating.vue";
 import BookShelfButton from "../components/book/BookShelfButton/BookShelfButton.vue";
 import BookReadingCard from "../components/book/BookReadingCard/BookReadingCard.vue";
@@ -12,6 +11,7 @@ import CollapsibleText from "../components/ui/CollapsibleText.vue";
 import BookMetadata from "../components/book/BookMetadata.vue";
 import EventTimeline from "../components/book/EventTimeline.vue";
 import BookCustomShelves from "../components/book/BookCustomShelves.vue";
+import BookCover from "../components/book/cover/BookCover.vue";
 import {
   type Book,
   type BookEvent,
@@ -72,32 +72,6 @@ const currentProgress = computed<ReadingProgress>(() => {
   const startingProgress: ReadingProgress = { unit: book.value?.page_count != null ? "page" : "percent", value: 0 };
   return book.value?.user_book.progress ?? startingProgress;
 });
-
-const loadedCover = ref<string>();
-const largeCoverUrl = computed(() => getMediaUrl(book.value?.cover_image_url));
-const thumbnailUrl = computed(() => getMediaUrl(book.value?.cover_thumbnail_url));
-const hasThumbnail = computed(() =>
-  Boolean(thumbnailUrl.value && largeCoverUrl.value && thumbnailUrl.value !== largeCoverUrl.value),
-);
-const showThumbnail = computed(() => hasThumbnail.value && loadedCover.value !== largeCoverUrl.value);
-watch([bookId, largeCoverUrl], () => {
-  loadedCover.value = undefined;
-});
-
-async function revealCover(event: Event) {
-  const image = event.currentTarget as HTMLImageElement;
-  const url = image.getAttribute("src");
-  const id = bookId.value;
-  try {
-    // Loading finishes before the browser necessarily has pixels ready to paint.
-    await image.decode?.();
-  } catch {
-    return; // Keep the thumbnail if decoding fails.
-  }
-  if (id === bookId.value && url === largeCoverUrl.value) {
-    loadedCover.value = url;
-  }
-}
 
 const { data: events, refresh: refreshEvents } = useCachedQuery<BookEvent[]>(
   computed(() => (bookId.value ? cacheKeys.bookEvents(bookId.value) : "")),
@@ -287,27 +261,11 @@ function handleEdit() {
       <div v-else-if="book" class="book-detail">
         <div class="book-header">
           <div class="book-cover-section">
-            <div v-if="largeCoverUrl || thumbnailUrl" class="book-cover-stack">
-              <!-- Retain the thumbnail's layout box: rounded thumbnail dimensions can differ from the full cover. -->
-              <img
-                v-if="hasThumbnail"
-                :src="thumbnailUrl"
-                :alt="showThumbnail ? book.title : ''"
-                :aria-hidden="!showThumbnail ? true : undefined"
-                class="book-cover-large"
-                :class="{ 'book-cover-loading': !showThumbnail }"
-              />
-              <img
-                :key="largeCoverUrl || thumbnailUrl"
-                :src="largeCoverUrl || thumbnailUrl"
-                :alt="showThumbnail ? '' : book.title"
-                :aria-hidden="showThumbnail ? true : undefined"
-                class="book-cover-large"
-                :class="{ 'book-cover-overlay': hasThumbnail, 'book-cover-loading': showThumbnail }"
-                @load="revealCover"
-              />
-            </div>
-            <div v-else class="book-cover-large book-cover-placeholder">No Cover</div>
+            <BookCover
+              :title="book.title"
+              :cover-url="book.cover_image_url"
+              :thumbnail-url="book.cover_thumbnail_url"
+            />
           </div>
 
           <div class="book-info">
@@ -421,52 +379,6 @@ function handleEdit() {
   max-width: 100%;
 }
 
-.book-cover-stack {
-  position: relative;
-  width: min(240px, 100%);
-}
-
-.book-cover-loading {
-  visibility: hidden;
-}
-
-.book-cover-large {
-  width: min(240px, 100%);
-  max-width: 100%;
-  height: auto;
-  border-radius: var(--border-radius);
-  box-shadow: var(--shadow);
-  display: block;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-  touch-action: manipulation;
-}
-
-.book-cover-large.book-cover-overlay {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.book-cover-placeholder {
-  aspect-ratio: 2 / 3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-secondary);
-  font-size: 14px;
-  text-align: center;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-  touch-action: manipulation;
-}
-
 .book-info {
   display: flex;
   flex-direction: column;
@@ -571,12 +483,6 @@ function handleEdit() {
     justify-content: center;
     width: 100%;
     margin-bottom: var(--spacing-lg);
-  }
-
-  .book-cover-large,
-  .book-cover-stack {
-    width: min(200px, 100%);
-    height: auto;
   }
 
   .book-info h1 {
