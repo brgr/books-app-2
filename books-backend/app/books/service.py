@@ -42,7 +42,7 @@ class BookService:
 
         self._add_to_library(book)
         self.db.commit()
-        return book
+        return self.attach_user_book(book)
 
     async def update(self, book: Book, book_data: BookUpdate) -> Book:
         """Apply a partial update, resolving and journaling any cover change."""

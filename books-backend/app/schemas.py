@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Annotated, Literal, Optional, cast
+from typing import Annotated, Literal, cast
 
 from pydantic import (
     BaseModel,
@@ -87,7 +87,7 @@ class BookUpdate(BaseModel):
 class BookResponse(BookBase):
     id: int
     cover_thumbnail_url: str | None = None
-    user_book: Optional["UserBookResponse"] = None
+    user_book: "UserBookResponse"
 
     model_config = ConfigDict(from_attributes=True)
 
