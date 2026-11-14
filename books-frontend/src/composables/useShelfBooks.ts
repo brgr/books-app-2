@@ -1,9 +1,9 @@
-import { computed, onActivated, watch } from "vue";
+import { useInfiniteQuery } from "@tanstack/vue-query";
+import { computed } from "vue";
 import { getShelfBooks } from "../api/books";
 import type { Book, ShelfRef } from "../api/types";
-import { cacheKeys } from "../cache/keys";
+import { queryKeys } from "../query/keys";
 import { useLibraryPage } from "./useLibraryPage.ts";
-import { usePaginatedList } from "./usePaginatedList.ts";
 
 export interface ShelfBooksOptions {
   shelf: ShelfRef;
@@ -11,39 +11,53 @@ export interface ShelfBooksOptions {
 }
 
 export function useShelfBooks(options: ShelfBooksOptions) {
-  const { searchQuery, refreshToken, registerShelf } = useLibraryPage();
+  const { searchQuery, registerShelf } = useLibraryPage();
 
   const {
-    items,
-    replaceItems,
-    hasMore,
-    isLoadingMore,
-    loaded,
+    data,
     error: loadError,
-    loadMore,
-    reload,
-    refreshLoaded,
-  } = usePaginatedList<Book, ShelfRef>({
-    resourceId: options.shelf,
-    cacheKey: (shelf, page) => cacheKeys.shelfBooks(shelf, page, options.pageSize),
-    cacheKeyPrefix: (shelf) => cacheKeys.shelfBooksPrefix(shelf),
-    fetchPage: (shelf, page) => getShelfBooks(shelf, page, options.pageSize),
-    itemKey: (book) => book.id,
+    hasNextPage: hasMore,
+    isFetching,
+    isPending,
+    fetchNextPage,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: computed(() => queryKeys.shelves.books(options.shelf, options.pageSize)),
+    queryFn: ({ pageParam }) => getShelfBooks(options.shelf, pageParam, options.pageSize),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.page < last.pages ? last.page + 1 : undefined),
   });
 
-  let hasActivated = false;
-  onActivated(() => {
-    if (hasActivated) {
-      // We keep the books visible while refreshing all pages the user has already loaded.
-      // If the refresh fails, we keep showing those books and report the error through loadError.
-      void refreshLoaded().catch(() => {});
+  /** True once the first page has resolved at least once. */
+  const loaded = computed(() => data.value !== undefined);
+
+  /** True while a further page loads or the loaded pages refresh, but not during the very first load. */
+  const isLoadingMore = computed(() => isFetching.value && !isPending.value);
+
+  const items = computed(() => {
+    // A book that moved between two pages while they were fetched shows once
+    const unique = new Map<number, Book>();
+    for (const page of data.value?.pages ?? []) {
+      for (const book of page.items) {
+        if (!unique.has(book.id)) {
+          unique.set(book.id, book);
+        }
+      }
     }
 
-    hasActivated = true;
+    return [...unique.values()];
   });
 
-  // The page reloads its shelves after mutating the library (e.g. adding a book)
-  watch(refreshToken, () => void reload());
+  function loadMore() {
+    if (!isFetching.value && hasMore.value) {
+      void fetchNextPage();
+    }
+  }
+
+  /** Refetches every loaded page, keeping the books visible meanwhile. Rejects when that fails. */
+  async function refresh() {
+    await refetch({ throwOnError: true });
+  }
 
   const error = computed(() => {
     const e = loadError.value;
@@ -73,5 +87,5 @@ export function useShelfBooks(options: ShelfBooksOptions) {
 
   registerShelf(computed(() => ({ loaded: loaded.value, count: books.value.length })));
 
-  return { books, error, hasMore, isLoadingMore, loadMore, reload, replaceItems, refreshLoaded };
+  return { books, error, hasMore, isLoadingMore, loadMore, refresh };
 }

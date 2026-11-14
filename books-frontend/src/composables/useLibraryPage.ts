@@ -1,4 +1,4 @@
-import { computed, inject, onBeforeUnmount, provide, ref, shallowRef, type InjectionKey, type Ref } from "vue";
+import { computed, inject, onBeforeUnmount, provide, shallowRef, type InjectionKey, type Ref } from "vue";
 
 /** What a shelf reports back to the page, so the page can tell when everything it shows is empty. */
 export interface ShelfState {
@@ -12,8 +12,6 @@ export interface ShelfState {
 export interface LibraryPageContext {
   /** The one search box driving all shelves on the page. */
   searchQuery: Ref<string>;
-  /** Bumped when the page mutates the library (e.g. a book was added); shelves reload off it. */
-  refreshToken: Ref<number>;
   registerShelf: (state: Ref<ShelfState>) => void;
 }
 
@@ -28,7 +26,6 @@ export function provideLibraryPage(state: Pick<LibraryPageContext, "searchQuery"
   // Shelves come and go with the page's own v-ifs, so the registry is rebuilt by reassignment
   // rather than mutated: a shallowRef keeps the reported state refs intact instead of unwrapping them.
   const registered = shallowRef<Ref<ShelfState>[]>([]);
-  const refreshToken = ref(0);
 
   function registerShelf(shelfState: Ref<ShelfState>) {
     registered.value = [...registered.value, shelfState];
@@ -38,7 +35,7 @@ export function provideLibraryPage(state: Pick<LibraryPageContext, "searchQuery"
     });
   }
 
-  provide(libraryPageKey, { ...state, refreshToken, registerShelf });
+  provide(libraryPageKey, { ...state, registerShelf });
 
   return {
     /** Every shelf on the page has loaded and come back with nothing to show. */
@@ -46,10 +43,6 @@ export function provideLibraryPage(state: Pick<LibraryPageContext, "searchQuery"
       () =>
         registered.value.length > 0 && registered.value.every((shelf) => shelf.value.loaded && shelf.value.count === 0),
     ),
-    /** Reloads every shelf on the page. */
-    refreshShelves: () => {
-      refreshToken.value += 1;
-    },
   };
 }
 

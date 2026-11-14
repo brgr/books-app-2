@@ -1,7 +1,10 @@
+import type { ShelfRef } from "../api/types";
+
 export const queryKeys = {
   shelves: {
     all: () => ["shelves"] as const,
     list: () => ["shelves", "list"] as const,
+    books: (shelf: ShelfRef, pageSize: number) => ["shelves", shelf, "books", { pageSize }] as const,
   },
   book: {
     detail: (bookId: number) => ["books", bookId, "detail"] as const,

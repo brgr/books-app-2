@@ -8,7 +8,6 @@ import BookCoverTile from "./BookCoverTile.vue";
 import BookContextMenu from "./BookContextMenu.vue";
 import { reorderShelfItem } from "../../api/books";
 import { type Book, type PaginatedBooks, type ShelfRef } from "../../api/types";
-import { cacheClear } from "../../cache/store";
 import { provideLibraryPage } from "../../composables/useLibraryPage";
 import { queryKeys } from "../../query/keys";
 import { makeBook } from "../../test/factories";
@@ -69,9 +68,8 @@ function mountShelf(
 }
 
 describe("BookShelf", () => {
-  beforeEach(async () => {
-    await cacheClear();
-    queryClient = new QueryClient();
+  beforeEach(() => {
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     localStorage.clear();
     push.mockReset();
     push.mockResolvedValue(undefined);

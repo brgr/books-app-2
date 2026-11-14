@@ -73,7 +73,7 @@ function toggleCollapsed() {
   }
 }
 
-const { books: filteredBooks, error, hasMore, isLoadingMore, loadMore, reload, refreshLoaded } = useShelfBooks(props);
+const { books: filteredBooks, error, hasMore, isLoadingMore, loadMore, refresh } = useShelfBooks(props);
 
 /**
  * vuedraggable reorders the array it renders from in place, so the shelf draws from a mutable
@@ -99,8 +99,17 @@ const { isDragging, isSaving, dragOptions, ignoresClick, handleDragStart, handle
     hasMore,
     shelf: props.shelf,
     enabled: isReorderable,
-    refresh: refreshLoaded,
+    refresh: reconcileOrder,
   });
+
+/**
+ * Brings the shelf back in line with the server after a reorder. A refresh that finds the order unchanged (the
+ * reorder was rejected) leaves `filteredBooks` as it was, so the dragged copy is reset here rather than by the watcher.
+ */
+async function reconcileOrder() {
+  await refresh();
+  books.value = [...filteredBooks.value];
+}
 
 const showSentinel = computed(() => props.paginated && (hasMore.value || isLoadingMore.value));
 
@@ -174,7 +183,6 @@ async function handleContextRemove() {
   try {
     await removeBookFromShelf(props.shelf, bookId);
     await invalidateCache.shelfChanged(bookId);
-    await reload();
   } catch (error) {
     console.error("Failed to remove book from shelf:", error);
     alert("Failed to remove book from this shelf.");
