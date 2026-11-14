@@ -1,27 +1,21 @@
 <script setup lang="ts">
+import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, nextTick, ref } from "vue";
 import { RouterLink } from "vue-router";
-import { addBookToShelf, getBookShelves, getShelves, removeBookFromShelf } from "../../api/books";
+import { addBookToShelf, getBookShelves, removeBookFromShelf } from "../../api/books";
 import type { Shelf } from "../../api/types";
-import { cacheKeys } from "../../cache/keys";
 import { invalidateCache } from "../../cache/invalidate";
-import { useCachedQuery } from "../../composables/useCachedQuery";
+import { useShelves } from "../../composables/useShelves";
+import { queryKeys } from "../../query/keys";
 
 const props = defineProps<{ bookId: number }>();
 
-const {
-  data: shelves,
-  error: shelvesError,
-  refresh: refreshShelves,
-} = useCachedQuery<Shelf[]>(cacheKeys.shelves, getShelves);
-const {
-  data: bookShelves,
-  error: bookShelvesError,
-  refresh: refreshBookShelves,
-} = useCachedQuery<Shelf[]>(
-  computed(() => cacheKeys.shelvesForBook(props.bookId)),
-  () => getBookShelves(props.bookId),
-);
+const queryClient = useQueryClient();
+const { data: shelves, error: shelvesError } = useShelves();
+const { data: bookShelves, error: bookShelvesError } = useQuery({
+  queryKey: computed(() => queryKeys.book.customShelves(props.bookId)),
+  queryFn: () => getBookShelves(props.bookId),
+});
 const updating = ref<string | null>(null);
 const showShelfEditor = ref(false);
 const openButton = ref<HTMLButtonElement | null>(null);
@@ -59,8 +53,13 @@ async function toggleShelf(shelf: Shelf) {
       await addBookToShelf(shelf.ref, props.bookId);
     }
 
+    // This already starts refreshing the shelves and this book's memberships
     await invalidateCache.shelfChanged(props.bookId);
-    await Promise.all([refreshShelves(), refreshBookShelves()]);
+    // Keep the editor locked until the checkboxes reflect the change, by waiting for that refresh
+    await queryClient.invalidateQueries(
+      { queryKey: queryKeys.book.customShelves(props.bookId) },
+      { cancelRefetch: false },
+    );
   } catch (error) {
     console.error("Failed to update shelves:", error);
     alert("Failed to update shelves");

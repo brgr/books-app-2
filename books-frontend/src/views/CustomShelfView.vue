@@ -1,17 +1,17 @@
 <script setup lang="ts">
+import { useQueryClient } from "@tanstack/vue-query";
 import { computed, onDeactivated, ref } from "vue";
 import { useRouter } from "vue-router";
-import { deleteShelf, getShelves, renameShelf } from "../api/books";
+import { deleteShelf, renameShelf } from "../api/books";
 import { parseShelfRef, type Shelf, type ShelfRef } from "../api/types";
 import BookShelf from "../components/book/BookShelf.vue";
 import CustomShelfEditModal from "../components/modals/CustomShelfEditModal.vue";
 import BooksSearchHeader from "../components/book/BooksSearchHeader.vue";
 import NavigationBar from "../components/navigation/NavigationBar.vue";
 import GoToTopButton from "../components/ui/GoToTopButton.vue";
-import { cacheKeys } from "../cache/keys";
-import { cacheDel } from "../cache/store";
 import { provideLibraryPage } from "../composables/useLibraryPage";
-import { useCachedQuery } from "../composables/useCachedQuery";
+import { useShelves } from "../composables/useShelves";
+import { queryKeys } from "../query/keys";
 
 const props = defineProps<{ id: string }>();
 const router = useRouter();
@@ -25,7 +25,8 @@ const shelfRef = computed<ShelfRef>(() => {
   return parseShelfRef(`custom:${id}`);
 });
 
-const { data: shelves, error: shelvesError, refresh } = useCachedQuery<Shelf[]>(cacheKeys.shelves, getShelves);
+const queryClient = useQueryClient();
+const { data: shelves, error: shelvesError, refetch } = useShelves();
 const shelf = computed(() => (shelves.value ?? []).find((item) => item.ref === shelfRef.value));
 const { allShelvesEmpty } = provideLibraryPage({ searchQuery });
 const showEditShelf = ref(false);
@@ -57,7 +58,7 @@ async function saveRename(name: string) {
   actionError.value = "";
   try {
     await renameShelf(shelfRef.value, name);
-    await refresh();
+    await queryClient.invalidateQueries({ queryKey: queryKeys.shelves.list() });
     closeEditShelf();
   } catch (error) {
     console.error("Failed to rename shelf:", error);
@@ -75,13 +76,14 @@ async function confirmDeleteShelf() {
   saving.value = true;
   actionError.value = "";
   try {
-    await deleteShelf(shelfRef.value);
-
-    // Invalidate the shelves cache so that the deleted shelf is removed from the list
-    await cacheDel(cacheKeys.shelves());
+    const deleted = shelfRef.value;
+    await deleteShelf(deleted);
 
     // After deleting the shelf, remove that shelf from the navigation and go back to the custom shelves page instead
     await router.replace({ name: "custom-shelves" });
+
+    queryClient.setQueryData<Shelf[]>(queryKeys.shelves.list(), (list) => list?.filter((item) => item.ref !== deleted));
+    void queryClient.invalidateQueries({ queryKey: queryKeys.shelves.list() });
   } catch (error) {
     console.error("Failed to delete shelf:", error);
     actionError.value = error instanceof Error ? error.message : "Failed to delete shelf.";
@@ -100,7 +102,7 @@ async function confirmDeleteShelf() {
 
       <div v-if="shelvesError" class="error-state">
         Failed to load this shelf. Please try again.
-        <button type="button" class="btn-small" @click="refresh">Retry</button>
+        <button type="button" class="btn-small" @click="() => refetch()">Retry</button>
       </div>
       <div v-else-if="!shelves" class="loading">Loading shelf...</div>
       <div v-else-if="!shelf" class="empty-state">This shelf no longer exists.</div>

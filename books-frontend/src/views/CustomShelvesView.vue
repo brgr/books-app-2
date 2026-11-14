@@ -1,14 +1,15 @@
 <script setup lang="ts">
+import { useQueryClient } from "@tanstack/vue-query";
 import { computed, nextTick, onDeactivated, ref } from "vue";
 import { useRouter } from "vue-router";
-import { createShelf, getShelves } from "../api/books";
-import type { Shelf } from "../api/types";
+import { createShelf } from "../api/books";
 import NavigationBar from "../components/navigation/NavigationBar.vue";
-import { cacheKeys } from "../cache/keys";
-import { useCachedQuery } from "../composables/useCachedQuery";
+import { useShelves } from "../composables/useShelves";
+import { queryKeys } from "../query/keys";
 
 const router = useRouter();
-const { data: shelves, error, refresh } = useCachedQuery<Shelf[]>(cacheKeys.shelves, getShelves);
+const queryClient = useQueryClient();
+const { data: shelves, error } = useShelves();
 const customShelves = computed(() => (shelves.value ?? []).filter((shelf) => shelf.ref.startsWith("custom:")));
 const abandonedShelf = computed(() => (shelves.value ?? []).find((shelf) => shelf.ref === "reading:abandoned"));
 const shelvesToDisplay = computed(() => [
@@ -56,7 +57,7 @@ async function createNewShelf() {
     newShelfName.value = "";
     showCreateShelf.value = false;
 
-    await refresh();
+    await queryClient.invalidateQueries({ queryKey: queryKeys.shelves.list() });
     await router.push({ name: "custom-shelf", params: { id: shelf.ref.slice("custom:".length) } });
   } catch (error) {
     console.error("Failed to create shelf:", error);

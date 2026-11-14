@@ -1,3 +1,6 @@
+import type { QueryKey } from "@tanstack/vue-query";
+import { queryClient } from "../query/client";
+import { queryKeys } from "../query/keys";
 import { cacheKeys } from "./keys";
 import { cacheDel, cacheInvalidateByPrefix } from "./store";
 
@@ -6,10 +9,16 @@ interface Targets {
   keys?: string[];
   /** Key prefixes to drop, covering every entry below them (e.g. all cached pages of a shelf). */
   prefixes?: string[];
+  /** TanStack Query keys to invalidate, for the data that has already moved there. */
+  queries?: QueryKey[];
 }
 
 async function drop(targets: Targets): Promise<void> {
   await Promise.all([...(targets.keys ?? []).map(cacheDel), ...(targets.prefixes ?? []).map(cacheInvalidateByPrefix)]);
+
+  for (const queryKey of targets.queries ?? []) {
+    void queryClient.invalidateQueries({ queryKey });
+  }
 }
 
 /**
@@ -18,20 +27,23 @@ async function drop(targets: Targets): Promise<void> {
  * Callers name the change they just performed and this decides which entries go.
  */
 export const invalidateCache = {
-  bookAdded: () => drop({ prefixes: [cacheKeys.shelvesPrefix()] }),
+  bookAdded: () => drop({ prefixes: [cacheKeys.shelvesPrefix()], queries: [queryKeys.shelves.all()] }),
 
-  bookUpdated: (bookId: number) => drop({ keys: [cacheKeys.book(bookId)], prefixes: [cacheKeys.shelvesPrefix()] }),
+  bookUpdated: (bookId: number) =>
+    drop({ keys: [cacheKeys.book(bookId)], prefixes: [cacheKeys.shelvesPrefix()], queries: [queryKeys.shelves.all()] }),
 
   bookDeleted: (bookId: number) =>
     drop({
       keys: [cacheKeys.book(bookId), cacheKeys.bookEvents(bookId)],
       prefixes: [cacheKeys.shelvesPrefix()],
+      queries: [queryKeys.shelves.all(), queryKeys.book.customShelves(bookId)],
     }),
 
   shelfChanged: (bookId: number) =>
     drop({
       keys: [cacheKeys.book(bookId), cacheKeys.bookEvents(bookId)],
       prefixes: [cacheKeys.shelvesPrefix()],
+      queries: [queryKeys.shelves.all(), queryKeys.book.customShelves(bookId)],
     }),
 
   // The book itself is written directly into the cache, but the timeline is not; it's not really possible
@@ -41,8 +53,16 @@ export const invalidateCache = {
 
   // Shelf tiles render the reading progress, so their cached pages go stale along with the timeline.
   progressSaved: (bookId: number) =>
-    drop({ keys: [cacheKeys.bookEvents(bookId)], prefixes: [cacheKeys.shelvesPrefix()] }),
+    drop({
+      keys: [cacheKeys.bookEvents(bookId)],
+      prefixes: [cacheKeys.shelvesPrefix()],
+      queries: [queryKeys.shelves.all()],
+    }),
 
   ratingSaved: (bookId: number) =>
-    drop({ keys: [cacheKeys.bookEvents(bookId)], prefixes: [cacheKeys.shelvesPrefix()] }),
+    drop({
+      keys: [cacheKeys.bookEvents(bookId)],
+      prefixes: [cacheKeys.shelvesPrefix()],
+      queries: [queryKeys.shelves.all()],
+    }),
 };

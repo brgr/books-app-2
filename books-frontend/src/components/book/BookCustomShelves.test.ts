@@ -1,50 +1,52 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
-import { isRef, ref } from "vue";
+import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
 import BookCustomShelves from "./BookCustomShelves.vue";
 
-const { addBookToShelf, removeBookFromShelf, shelfChanged } = vi.hoisted(() => ({
+const { addBookToShelf, removeBookFromShelf, getShelves, getBookShelves, shelfChanged } = vi.hoisted(() => ({
   addBookToShelf: vi.fn(),
   removeBookFromShelf: vi.fn(),
+  getShelves: vi.fn(),
+  getBookShelves: vi.fn(),
   shelfChanged: vi.fn(),
 }));
 
 vi.mock("../../api/books", () => ({
   addBookToShelf,
   removeBookFromShelf,
-  getShelves: vi.fn(),
-  getBookShelves: vi.fn(),
+  getShelves,
+  getBookShelves,
 }));
 vi.mock("../../cache/invalidate", () => ({ invalidateCache: { shelfChanged } }));
 
-const shelves = ref([
+const shelves = [
   { ref: "custom:1", display_name: "A long custom shelf name", name: "A long custom shelf name" },
   { ref: "custom:2", display_name: "Another shelf", name: "Another shelf" },
-]);
-const bookShelves = ref([shelves.value[0]]);
-vi.mock("../../composables/useCachedQuery", () => ({
-  useCachedQuery: (key: string | (() => string)) => ({
-    data: isRef(key) ? bookShelves : shelves,
-    error: ref(null),
-    refresh: vi.fn(),
-  }),
-}));
+];
+
+async function mountShelves() {
+  const wrapper = mount(BookCustomShelves, {
+    props: { bookId: 42 },
+    attachTo: document.body,
+    global: { stubs: { RouterLink: true }, plugins: [[VueQueryPlugin, { queryClient: new QueryClient() }]] },
+  });
+  await flushPromises();
+
+  return wrapper;
+}
 
 describe("BookCustomShelves editor", () => {
   beforeEach(() => {
-    bookShelves.value = [shelves.value[0]];
     vi.clearAllMocks();
+    getShelves.mockResolvedValue(shelves);
+    getBookShelves.mockResolvedValue([shelves[0]]);
   });
   afterEach(() => {
     document.body.innerHTML = "";
   });
 
   it("opens with focus in the dialog and restores focus when closed", async () => {
-    const wrapper = mount(BookCustomShelves, {
-      props: { bookId: 42 },
-      attachTo: document.body,
-      global: { stubs: { RouterLink: true } },
-    });
+    const wrapper = await mountShelves();
     const open = wrapper.get("button").element;
     await wrapper.get("button").trigger("click");
     expect(document.activeElement).toBe(document.querySelector(".modal-header button"));
@@ -59,11 +61,7 @@ describe("BookCustomShelves editor", () => {
   });
 
   it("toggles a shelf immediately without closing the editor", async () => {
-    const wrapper = mount(BookCustomShelves, {
-      props: { bookId: 42 },
-      attachTo: document.body,
-      global: { stubs: { RouterLink: true } },
-    });
+    const wrapper = await mountShelves();
     await wrapper.get("button").trigger("click");
     const checkboxes = document.querySelectorAll<HTMLInputElement>(".shelf-option input");
     expect(checkboxes[0]?.checked).toBe(true);
