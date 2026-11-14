@@ -1,11 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { enableAutoUnmount, flushPromises, mount } from "@vue/test-utils";
+import { VueQueryPlugin } from "@tanstack/vue-query";
 import BookDetailView from "./BookDetailView.vue";
 import BookReadingCard from "../components/book/BookReadingCard/BookReadingCard.vue";
 import { clearRating, getBook, getBookEvents, setRating } from "../api/books";
 import { type Book, BookEventType, ReadingShelf, type UserBook } from "../api/types";
 import { cacheClear, cacheGet, cacheSet } from "../cache/store";
 import { cacheKeys } from "../cache/keys";
+import { queryClient } from "../query/client";
+import { queryKeys } from "../query/keys";
 import { navigateWithBookPreview } from "../router/bookPreview";
 
 enableAutoUnmount(afterEach);
@@ -52,6 +55,7 @@ const book: Book = {
 function mountBook() {
   return mount(BookDetailView, {
     global: {
+      plugins: [[VueQueryPlugin, { queryClient }]],
       stubs: {
         RouterLink: true,
         NavigationBar: true,
@@ -75,6 +79,7 @@ describe("book detail", () => {
   beforeEach(async () => {
     vi.resetAllMocks();
     await cacheClear();
+    queryClient.clear();
     vi.mocked(getBook).mockResolvedValue(book);
     vi.mocked(getBookEvents).mockResolvedValue([]);
   });
@@ -126,7 +131,6 @@ describe("book detail", () => {
       cover_thumbnail_url: "/thumb.jpg",
       cover_image_url: "/cover.jpg",
     };
-    await cacheSet(cacheKeys.book(1), { ...book, title: "Older cached title" });
     let finishBook!: (value: Book) => void;
     let finishEvents!: (value: []) => void;
     vi.mocked(getBook).mockReturnValue(new Promise((resolve) => (finishBook = resolve)));
@@ -146,7 +150,7 @@ describe("book detail", () => {
     finishBook({ ...shelfBook, title: "Fresh Dune", user_book: { ...userBook, rating: 5 } });
     await vi.waitFor(() => expect(wrapper.get("h1").text()).toBe("Fresh Dune"));
     expect(wrapper.get(".stars").attributes("aria-label")).toBe("Edit rating: 5 out of 5 stars");
-    expect((await cacheGet<Book>(cacheKeys.book(1)))?.data.title).toBe("Fresh Dune");
+    expect(queryClient.getQueryData<Book>(queryKeys.book.detail(1))?.title).toBe("Fresh Dune");
 
     await wrapper.get('img[src="/cover.jpg"]').trigger("load");
     expect(wrapper.get('img[src="/thumb.jpg"]').attributes("aria-hidden")).toBe("true");
@@ -224,7 +228,7 @@ describe("book detail", () => {
     await wrapper.get('[data-test="save"]').trigger("click");
     await vi.waitFor(() => expect(wrapper.text()).toContain("Rated 4.5 / 5 stars"));
     expect(setRating).toHaveBeenCalledWith(1, 4.5);
-    expect((await cacheGet<Book>(cacheKeys.book(1)))?.data.user_book.rating).toBe(4.5);
+    expect(queryClient.getQueryData<Book>(queryKeys.book.detail(1))?.user_book.rating).toBe(4.5);
     expect(await cacheGet(shelfKey)).toBeUndefined();
     wrapper.unmount();
   });
@@ -248,9 +252,11 @@ describe("book detail", () => {
     await vi.waitFor(() => expect(wrapper.text()).toContain("Rating cleared"));
     expect(clearRating).toHaveBeenCalledWith(1);
     expect(setRating).not.toHaveBeenCalled();
-    expect((await cacheGet<Book>(cacheKeys.book(1)))?.data.user_book.rating).toBeNull();
+    expect(queryClient.getQueryData<Book>(queryKeys.book.detail(1))?.user_book.rating).toBeNull();
     expect(wrapper.find('[role="alert"]').exists()).toBe(false);
-    expect((await cacheGet<Book>(cacheKeys.book(1)))?.data.user_book.finished_at).toEqual(userBook.finished_at);
+    expect(queryClient.getQueryData<Book>(queryKeys.book.detail(1))?.user_book.finished_at).toEqual(
+      userBook.finished_at,
+    );
     wrapper.unmount();
   });
 

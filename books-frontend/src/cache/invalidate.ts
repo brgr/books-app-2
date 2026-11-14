@@ -30,7 +30,11 @@ export const invalidateCache = {
   bookAdded: () => drop({ prefixes: [cacheKeys.shelvesPrefix()], queries: [queryKeys.shelves.all()] }),
 
   bookUpdated: (bookId: number) =>
-    drop({ keys: [cacheKeys.book(bookId)], prefixes: [cacheKeys.shelvesPrefix()], queries: [queryKeys.shelves.all()] }),
+    drop({
+      keys: [cacheKeys.book(bookId)],
+      prefixes: [cacheKeys.shelvesPrefix()],
+      queries: [queryKeys.shelves.all(), queryKeys.book.detail(bookId)],
+    }),
 
   bookDeleted: (bookId: number) =>
     drop({
@@ -43,26 +47,32 @@ export const invalidateCache = {
     drop({
       keys: [cacheKeys.book(bookId), cacheKeys.bookEvents(bookId)],
       prefixes: [cacheKeys.shelvesPrefix()],
-      queries: [queryKeys.shelves.all(), queryKeys.book.customShelves(bookId)],
+      queries: [
+        queryKeys.shelves.all(),
+        queryKeys.book.detail(bookId),
+        queryKeys.book.events(bookId),
+        queryKeys.book.customShelves(bookId),
+      ],
     }),
 
   // The book itself is written directly into the cache, but the timeline is not; it's not really possible
   // to know what the timeline will look like after a note is added (only the server knows its datetime, for example),
   // so we just drop it and let it be refetched.
-  notesSaved: (bookId: number) => drop({ keys: [cacheKeys.bookEvents(bookId)] }),
+  notesSaved: (bookId: number) =>
+    drop({ keys: [cacheKeys.bookEvents(bookId)], queries: [queryKeys.book.events(bookId)] }),
 
   // Shelf tiles render the reading progress, so their cached pages go stale along with the timeline.
   progressSaved: (bookId: number) =>
     drop({
       keys: [cacheKeys.bookEvents(bookId)],
       prefixes: [cacheKeys.shelvesPrefix()],
-      queries: [queryKeys.shelves.all()],
+      queries: [queryKeys.shelves.all(), queryKeys.book.events(bookId)],
     }),
 
   ratingSaved: (bookId: number) =>
     drop({
       keys: [cacheKeys.bookEvents(bookId)],
       prefixes: [cacheKeys.shelvesPrefix()],
-      queries: [queryKeys.shelves.all()],
+      queries: [queryKeys.shelves.all(), queryKeys.book.events(bookId)],
     }),
 };

@@ -1,8 +1,8 @@
-import { ref, toRaw, type Ref } from "vue";
+import { useQuery } from "@tanstack/vue-query";
+import { computed, ref, toRaw, type Ref } from "vue";
 import { addBookProgress, clearRating, getBookEvents, setRating, setShelf } from "../api/books";
 import {
   type Book,
-  type BookEvent,
   type BookProgressUpdate,
   ReadingDatePrecision,
   type ReadingDateValue,
@@ -10,19 +10,19 @@ import {
   type UserBook,
 } from "../api/types";
 import { invalidateCache } from "../cache/invalidate";
-import { cacheKeys } from "../cache/keys";
 import { takeBookPreview } from "../router/bookPreview";
 import { localDayValue } from "../utils/date";
+import { queryKeys } from "../query/keys";
 import { useBook } from "./useBook";
-import { useCachedQuery } from "./useCachedQuery";
 
 export function useBookDetail(bookId: Ref<number>) {
-  const { book, error, setBook } = useBook(bookId, () => takeBookPreview(bookId.value));
+  const { book, error, setBook } = useBook(bookId, () => takeBookPreview(bookId.value) ?? undefined);
 
-  const { data: events, refresh: refreshEvents } = useCachedQuery<BookEvent[]>(
-    () => (bookId.value > 0 ? cacheKeys.bookEvents(bookId.value) : ""),
-    () => getBookEvents(bookId.value),
-  );
+  const { data: events, refetch: refetchEvents } = useQuery({
+    queryKey: computed(() => queryKeys.book.events(bookId.value)),
+    queryFn: () => getBookEvents(bookId.value),
+    enabled: () => bookId.value > 0,
+  });
 
   const savingShelf = ref(false);
   const savingReview = ref(false);
@@ -48,7 +48,8 @@ export function useBookDetail(bookId: Ref<number>) {
       // The user may have moved on to another book while the request was running
       if (bookId.value === target.id) {
         await setBook({ ...(book.value ?? target), user_book: userBook });
-        await refreshEvents();
+        // The invalidation above already started refetching the timeline; wait for that rather than fetching again
+        await refetchEvents({ cancelRefetch: false });
       }
     } finally {
       saving.value = false;

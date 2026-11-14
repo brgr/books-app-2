@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { enableAutoUnmount, flushPromises, mount } from "@vue/test-utils";
+import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
 import { createMemoryHistory, createRouter, RouterView } from "vue-router";
 import BookEditView from "./BookEditView.vue";
 import { getBook, updateBook } from "../api/books";
 import { uploadBookCover } from "../api/covers";
 import { invalidateCache } from "../cache/invalidate";
-import { cacheClear } from "../cache/store";
 import CoverEditField from "../components/book/cover/CoverEditField.vue";
 import { getPendingCover, stagePendingCover } from "../components/book/cover/pendingCoverUploads";
 import { makeBook } from "../test/factories";
@@ -36,7 +36,10 @@ async function mountEditView() {
   await router.push("/books/42/edit");
 
   const wrapper = mount(RouterView, {
-    global: { plugins: [router], stubs: { NavigationBar: true, CoverModal: true } },
+    global: {
+      plugins: [router, [VueQueryPlugin, { queryClient: new QueryClient() }]],
+      stubs: { NavigationBar: true, CoverModal: true },
+    },
   });
   await vi.waitFor(() => expect(wrapper.find("form").exists()).toBe(true));
   return { wrapper, router };
@@ -56,9 +59,8 @@ function stageCover() {
 
 enableAutoUnmount(afterEach);
 
-beforeEach(async () => {
+beforeEach(() => {
   vi.resetAllMocks();
-  await cacheClear();
   vi.mocked(getBook).mockResolvedValue({ ...book });
   vi.mocked(updateBook).mockResolvedValue({ ...book });
   vi.mocked(uploadBookCover).mockResolvedValue({ ...book, cover_image_url: "/uploads/edited-cover.png" });
