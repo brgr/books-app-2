@@ -1,6 +1,7 @@
 import axios from "axios";
 import type { Router } from "vue-router";
 import { cacheClear } from "../cache/store";
+import { queryClient } from "../query/client";
 
 // The backend origin. Empty means same-origin.
 // In dev, the Vite proxy (vite.config.ts) forwards /api and /uploads to the backend, which keeps covers and cookies on
@@ -49,6 +50,7 @@ export function isAuthenticated(): boolean {
  */
 export async function endSession(): Promise<void> {
   setAuthenticated(false);
+  queryClient.clear();
   await cacheClear();
 }
 
