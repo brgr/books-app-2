@@ -15,11 +15,21 @@ export function useRouteBookId() {
   });
 }
 
-/**
- * @param initialData Synchronous data already on screen elsewhere. Shown until the book has been fetched, unless the
- *   book is already cached.
- */
-export function useBook(bookId: Ref<number>, initialData?: () => Book | undefined) {
+export function useSeedBook() {
+  const queryClient = useQueryClient();
+
+  return (book: Book) => {
+    const queryKey = queryKeys.book.detail(book.id);
+
+    // Keep a book that is already cached, since it can be newer than the shelf's copy: a rating saved on the detail
+    // page is in the cache at once, while the shelf only shows it after its next refetch.
+    if (queryClient.getQueryData(queryKey) === undefined) {
+      queryClient.setQueryData(queryKey, book);
+    }
+  };
+}
+
+export function useBook(bookId: Ref<number>) {
   const queryClient = useQueryClient();
 
   const { data: book, error: loadFailure } = useQuery({
@@ -27,7 +37,6 @@ export function useBook(bookId: Ref<number>, initialData?: () => Book | undefine
     queryFn: () => getBook(bookId.value),
     // An invalid id loads nothing
     enabled: () => bookId.value > 0,
-    initialData,
   });
 
   /** Replaces the cached book, e.g. with what a saved mutation answered. */

@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { enableAutoUnmount, flushPromises, mount } from "@vue/test-utils";
+import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
 import { h } from "vue";
 import { createMemoryHistory, createRouter, RouterView } from "vue-router";
-import { takeBookPreview } from "../../../router/bookPreview";
+import { type Book } from "../../../api/types";
+import { queryKeys } from "../../../query/keys";
 import { makeBook } from "../../../test/factories";
 import BookCard from "./BookCard.vue";
 
@@ -11,6 +13,8 @@ enableAutoUnmount(afterEach);
 const book = makeBook({ title: "Selected book" });
 
 async function mountCard() {
+  const queryClient = new QueryClient();
+  const seeded = () => queryClient.getQueryData<Book>(queryKeys.book.detail(1));
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -18,18 +22,13 @@ async function mountCard() {
       {
         path: "/books/:id",
         name: "book-detail",
-        component: {
-          setup() {
-            const preview = takeBookPreview(1);
-            return () => h("h1", preview?.title ?? "No preview");
-          },
-        },
+        component: { render: () => h("h1", seeded()?.title ?? "Nothing seeded") },
       },
     ],
   });
   await router.push("/");
-  const wrapper = mount(RouterView, { global: { plugins: [router] } });
-  return { wrapper, router };
+  const wrapper = mount(RouterView, { global: { plugins: [router, [VueQueryPlugin, { queryClient }]] } });
+  return { wrapper, router, seeded };
 }
 
 describe("BookCard navigation", () => {
@@ -40,17 +39,16 @@ describe("BookCard navigation", () => {
 
     expect(router.currentRoute.value.fullPath).toBe("/books/1?from=/");
     expect(wrapper.get("h1").text()).toBe("Selected book");
-    expect(takeBookPreview(1)).toBeNull();
   });
 
   it.each(["ctrlKey", "metaKey", "shiftKey", "altKey"])("keeps %s clicks as ordinary browser links", async (key) => {
-    const { wrapper, router } = await mountCard();
+    const { wrapper, router, seeded } = await mountCard();
     const link = wrapper.get(".book-title-link");
     expect(link.attributes("href")).toBe("/books/1?from=/");
     await link.trigger("click", { [key]: true });
     await flushPromises();
 
     expect(router.currentRoute.value.fullPath).toBe("/");
-    expect(takeBookPreview(1)).toBeNull();
+    expect(seeded()).toBeUndefined();
   });
 });

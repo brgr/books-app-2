@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { enableAutoUnmount, mount } from "@vue/test-utils";
+import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
 import { defineComponent, h, nextTick, ref } from "vue";
 import BookShelf from "./BookShelf.vue";
 import BookCard from "./BookCard/BookCard.vue";
@@ -9,7 +10,7 @@ import { reorderShelfItem } from "../../api/books";
 import { type Book, type PaginatedBooks, type ShelfRef } from "../../api/types";
 import { cacheClear } from "../../cache/store";
 import { provideLibraryPage } from "../../composables/useLibraryPage";
-import { takeBookPreview } from "../../router/bookPreview";
+import { queryKeys } from "../../query/keys";
 import { makeBook } from "../../test/factories";
 
 enableAutoUnmount(afterEach);
@@ -25,6 +26,8 @@ vi.mock("../../api/books", () => ({
   getShelfBooks: (...args: unknown[]) => getShelfBooks(...args),
   reorderShelfItem: vi.fn(async () => ({})),
 }));
+
+let queryClient: QueryClient;
 
 const books = [makeBook(), makeBook({ id: 2, title: "Europe", author: "Tim Flannery" })];
 
@@ -59,12 +62,16 @@ function mountShelf(
   });
 
   // BookCard links to the detail route, which needs a router the shelf itself never touches
-  return mount(Host, { attachTo: document.body, global: { stubs: { RouterLink: true } } });
+  return mount(Host, {
+    attachTo: document.body,
+    global: { stubs: { RouterLink: true }, plugins: [[VueQueryPlugin, { queryClient }]] },
+  });
 }
 
 describe("BookShelf", () => {
   beforeEach(async () => {
     await cacheClear();
+    queryClient = new QueryClient();
     localStorage.clear();
     push.mockReset();
     push.mockResolvedValue(undefined);
@@ -184,12 +191,11 @@ describe("BookShelf", () => {
   it("hands off the selected book when its cover is tapped", async () => {
     const wrapper = mountShelf({ defaultViewMode: "grid" });
     await flush();
-    expect(takeBookPreview(2)).toBeNull();
-    push.mockImplementationOnce(async () => {
-      expect(takeBookPreview(2)).toEqual(books[1]);
-    });
+    expect(queryClient.getQueryData(queryKeys.book.detail(2))).toBeUndefined();
 
     wrapper.findComponent(BookCoverTile).vm.$emit("click", 2);
+
+    expect(queryClient.getQueryData(queryKeys.book.detail(2))).toEqual(books[1]);
 
     expect(push).toHaveBeenCalledWith({ name: "book-detail", params: { id: 2 }, query: { from: "/" } });
   });
@@ -197,14 +203,11 @@ describe("BookShelf", () => {
   it("hands off the selected book when opened from the context menu", async () => {
     const wrapper = mountShelf();
     await flush();
-    push.mockImplementationOnce(async () => {
-      expect(takeBookPreview(2)).toEqual(books[1]);
-    });
-
     wrapper.findComponent(BookCard).vm.$emit("menu", { bookId: 2, x: 10, y: 20 });
     await nextTick();
     wrapper.findComponent(BookContextMenu).vm.$emit("view");
 
+    expect(queryClient.getQueryData(queryKeys.book.detail(2))).toEqual(books[1]);
     expect(push).toHaveBeenCalledWith({ name: "book-detail", params: { id: 2 }, query: { from: "/" } });
     await nextTick();
     expect(wrapper.findComponent(BookContextMenu).exists()).toBe(false);

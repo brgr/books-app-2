@@ -15,7 +15,7 @@ import { useShelfReorder } from "../../composables/useShelfReorder";
 import { useShelfViewMode, type ViewMode } from "../../composables/useShelfViewMode";
 import { removeBookFromShelf } from "../../api/books";
 import { invalidateCache } from "../../cache/invalidate";
-import { navigateWithBookPreview } from "../../router/bookPreview";
+import { useSeedBook } from "../../composables/useBook";
 
 const props = withDefaults(
   defineProps<{
@@ -37,6 +37,7 @@ const props = withDefaults(
 );
 
 const router = useRouter();
+const seedBook = useSeedBook();
 const route = useRoute();
 
 function detailRoute(bookId: number) {
@@ -139,7 +140,8 @@ function handleCoverClick(bookId: number) {
 function openBook(bookId: number) {
   const book = books.value.find((book) => book.id === bookId);
   if (book) {
-    void navigateWithBookPreview(book, () => router.push(detailRoute(bookId)));
+    seedBook(book);
+    void router.push(detailRoute(bookId));
   }
 }
 

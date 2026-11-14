@@ -6,7 +6,7 @@ import { getMediaUrl } from "../../../api/client";
 import KebabButton from "../../ui/KebabButton.vue";
 import BookCardMeta from "./BookCardMeta.vue";
 import BookCardShelf from "./BookCardShelf.vue";
-import { navigateWithBookPreview } from "../../../router/bookPreview";
+import { useSeedBook } from "../../../composables/useBook";
 import { isPlainLeftClick } from "../../../utils/click";
 
 const props = defineProps<{
@@ -23,6 +23,7 @@ function openMenu(e: MouseEvent) {
 }
 
 const route = useRoute();
+const seedBook = useSeedBook();
 const detailRoute = computed(() => ({
   name: "book-detail",
   params: { id: props.book.id },
@@ -35,7 +36,8 @@ function openBook(event: MouseEvent, navigate: (event: MouseEvent) => Promise<un
     return;
   }
 
-  void navigateWithBookPreview(props.book, () => navigate(event));
+  seedBook(props.book);
+  void navigate(event);
 }
 </script>
 

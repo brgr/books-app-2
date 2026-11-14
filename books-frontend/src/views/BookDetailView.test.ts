@@ -9,7 +9,6 @@ import { cacheClear, cacheGet, cacheSet } from "../cache/store";
 import { cacheKeys } from "../cache/keys";
 import { queryClient } from "../query/client";
 import { queryKeys } from "../query/keys";
-import { navigateWithBookPreview } from "../router/bookPreview";
 
 enableAutoUnmount(afterEach);
 
@@ -85,12 +84,9 @@ describe("book detail", () => {
   });
 
   function mountBookWithPreview(preview: Book) {
-    let wrapper!: ReturnType<typeof mountBook>;
-    void navigateWithBookPreview(preview, async () => {
-      wrapper = mountBook();
-    });
+    queryClient.setQueryData(queryKeys.book.detail(preview.id), preview);
 
-    return wrapper;
+    return mountBook();
   }
 
   it.each([

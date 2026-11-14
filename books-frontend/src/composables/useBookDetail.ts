@@ -10,13 +10,12 @@ import {
   type UserBook,
 } from "../api/types";
 import { invalidateCache } from "../cache/invalidate";
-import { takeBookPreview } from "../router/bookPreview";
 import { localDayValue } from "../utils/date";
 import { queryKeys } from "../query/keys";
 import { useBook } from "./useBook";
 
 export function useBookDetail(bookId: Ref<number>) {
-  const { book, error, setBook } = useBook(bookId, () => takeBookPreview(bookId.value) ?? undefined);
+  const { book, error, setBook } = useBook(bookId);
 
   const { data: events, refetch: refetchEvents } = useQuery({
     queryKey: computed(() => queryKeys.book.events(bookId.value)),
