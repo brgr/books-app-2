@@ -12,6 +12,7 @@ function invalidate(...keys: QueryKey[]) {
  * Cache invalidation, keyed by the change that was just performed.
  */
 export const invalidateAfter = {
+  bookAdded: () => invalidate(queryKeys.shelves.all()),
   bookUpdated: (bookId: number) => invalidate(queryKeys.shelves.all(), queryKeys.book.detail(bookId)),
   bookDeleted: (bookId: number) => {
     // There is nothing left to refetch for the book itself

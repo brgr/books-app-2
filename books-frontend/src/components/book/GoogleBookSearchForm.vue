@@ -3,7 +3,7 @@ import { isAxiosError } from "axios";
 import { onBeforeUnmount, ref } from "vue";
 import { useRouter } from "vue-router";
 import { createBook, searchGoogleBooks } from "../../api/books";
-import { invalidateCache } from "../../cache/invalidate";
+import { invalidateAfter } from "../../query/invalidate";
 import type { GoogleBookResult } from "../../api/types";
 
 const router = useRouter();
@@ -67,7 +67,7 @@ async function handleSelectBook(book: GoogleBookResult) {
       cover_image_url: book.thumbnail || undefined,
     });
 
-    await invalidateCache.bookAdded();
+    invalidateAfter.bookAdded();
 
     if (!isUnmounted) {
       await router.push({ name: "books" });

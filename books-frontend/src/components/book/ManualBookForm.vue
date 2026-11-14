@@ -3,7 +3,7 @@ import { isAxiosError } from "axios";
 import { computed, onBeforeUnmount, ref } from "vue";
 import { useRouter } from "vue-router";
 import { createBook } from "../../api/books";
-import { invalidateCache } from "../../cache/invalidate";
+import { invalidateAfter } from "../../query/invalidate";
 import BookFields from "./BookFields.vue";
 import { emptyBookForm, formToPayload } from "./bookForm";
 import { getPendingCover, isPendingCover } from "./cover/pendingCoverUploads";
@@ -50,7 +50,7 @@ async function handleSubmit() {
       createdBookId.value = book.id;
     }
     // The book is already in the library even if its subsequent cover upload fails.
-    await invalidateCache.bookAdded();
+    invalidateAfter.bookAdded();
 
     if (isPendingCover(cover)) {
       try {
@@ -60,7 +60,7 @@ async function handleSubmit() {
         error.value = "Your book was added, but its cover could not be uploaded. Retry or continue without the cover.";
         return;
       }
-      await invalidateCache.bookUpdated(createdBookId.value);
+      invalidateAfter.bookUpdated(createdBookId.value);
     }
 
     await openBook();

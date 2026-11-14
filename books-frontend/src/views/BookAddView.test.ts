@@ -5,16 +5,16 @@ import { createMemoryHistory, createRouter, RouterView } from "vue-router";
 import BookAddView from "./BookAddView.vue";
 import { createBook, searchGoogleBooks } from "../api/books";
 import { uploadBookCover } from "../api/covers";
-import { invalidateCache } from "../cache/invalidate";
 import CoverEditField from "../components/book/cover/CoverEditField.vue";
 import { getPendingCover, stagePendingCover } from "../components/book/cover/pendingCoverUploads";
+import { invalidateAfter } from "../query/invalidate";
 
 vi.mock("../api/books", () => ({ createBook: vi.fn(), searchGoogleBooks: vi.fn() }));
 vi.mock("../api/covers", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api/covers")>()),
   uploadBookCover: vi.fn(),
 }));
-vi.mock("../cache/invalidate", () => ({ invalidateCache: { bookAdded: vi.fn(), bookUpdated: vi.fn() } }));
+vi.mock("../query/invalidate", () => ({ invalidateAfter: { bookAdded: vi.fn(), bookUpdated: vi.fn() } }));
 
 async function mountAddView() {
   const router = createRouter({
@@ -121,7 +121,7 @@ describe("adding a book", () => {
     await wrapper.get(".btn-select").trigger("click");
 
     expect(router.currentRoute.value.name).toBe("book-add");
-    expect(invalidateCache.bookAdded).not.toHaveBeenCalled();
+    expect(invalidateAfter.bookAdded).not.toHaveBeenCalled();
 
     finishSave();
 
@@ -139,17 +139,18 @@ describe("adding a book", () => {
         cover_image_url: "https://example.com/cover.jpg",
       }),
     );
-    expect(invalidateCache.bookAdded).toHaveBeenCalledOnce();
+    expect(invalidateAfter.bookAdded).toHaveBeenCalledOnce();
     expect(router.currentRoute.value.name).toBe("books");
   });
 
-  it("does not redirect after leaving while cache invalidation is pending", async () => {
+  it("does not redirect after leaving while the selection is being saved", async () => {
     let finishPendingStep!: () => void;
-    const pending = new Promise<void>((resolve) => {
-      finishPendingStep = resolve;
-    });
-
-    vi.mocked(invalidateCache.bookAdded).mockReturnValue(pending);
+    vi.mocked(createBook).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishPendingStep = () => resolve({} as Awaited<ReturnType<typeof createBook>>);
+        }),
+    );
 
     const { wrapper, router } = await searchForBook();
     await wrapper.get(".btn-select").trigger("click");
@@ -167,17 +168,11 @@ describe("adding a book", () => {
     finishPendingStep();
     await flushPromises();
 
-    expect(invalidateCache.bookAdded).toHaveBeenCalledOnce();
+    expect(invalidateAfter.bookAdded).toHaveBeenCalledOnce();
     expect(router.currentRoute.value.name).toBe("other");
   });
 
   it("creates a book with only title and author, then opens its details after invalidating the library", async () => {
-    let finishInvalidation!: () => void;
-    vi.mocked(invalidateCache.bookAdded).mockReturnValue(
-      new Promise<void>((resolve) => {
-        finishInvalidation = resolve;
-      }),
-    );
     const { wrapper, router } = await enterBookManually();
     await wrapper.get("#book-add-manual-panel form").trigger("submit");
     await wrapper.get("#book-add-manual-panel form").trigger("submit");
@@ -192,10 +187,7 @@ describe("adding a book", () => {
       description: undefined,
       cover_image_url: undefined,
     });
-    expect(router.currentRoute.value.name).toBe("book-add");
-
-    finishInvalidation();
-    await flushPromises();
+    expect(invalidateAfter.bookAdded).toHaveBeenCalledOnce();
     expect(router.currentRoute.value.name).toBe("book-detail");
     expect(router.currentRoute.value.params.id).toBe("42");
   });
@@ -222,7 +214,7 @@ describe("adding a book", () => {
 
       expect(wrapper.get('#book-add-manual-panel [role="alert"]').text()).toContain("Your book was added");
       expect(getPendingCover(url)).toBe(file);
-      expect(invalidateCache.bookAdded).toHaveBeenCalledOnce();
+      expect(invalidateAfter.bookAdded).toHaveBeenCalledOnce();
       expect(router.currentRoute.value.name).toBe("book-add");
       if (action === "retry") {
         await wrapper.get("#book-add-manual-panel form").trigger("submit");
@@ -238,43 +230,35 @@ describe("adding a book", () => {
     },
   );
 
-  it.each(["book creation", "cache invalidation"])(
-    "uploads the submitted manual cover after navigating away during %s",
-    async (pendingStep) => {
-      let finishPendingStep!: () => void;
-      const pending = new Promise<void>((resolve) => {
-        finishPendingStep = resolve;
+  it("uploads the submitted manual cover after navigating away during book creation", async () => {
+    let finishCreation!: () => void;
+    vi.mocked(createBook).mockImplementationOnce(async () => {
+      await new Promise<void>((resolve) => {
+        finishCreation = resolve;
       });
-      if (pendingStep === "book creation") {
-        vi.mocked(createBook).mockImplementationOnce(async () => {
-          await pending;
-          return { id: 42 } as Awaited<ReturnType<typeof createBook>>;
-        });
-      } else {
-        vi.mocked(invalidateCache.bookAdded).mockReturnValueOnce(pending);
-      }
+      return { id: 42 } as Awaited<ReturnType<typeof createBook>>;
+    });
 
-      const { wrapper, router } = await enterBookManually();
-      const { file, url } = stageCover();
-      wrapper.getComponent(CoverEditField).vm.$emit("update:modelValue", url);
-      await wrapper.get("#book-add-manual-panel form").trigger("submit");
-      await flushPromises();
-      expect(createBook).toHaveBeenCalledOnce();
-      expect(uploadBookCover).not.toHaveBeenCalled();
+    const { wrapper, router } = await enterBookManually();
+    const { file, url } = stageCover();
+    wrapper.getComponent(CoverEditField).vm.$emit("update:modelValue", url);
+    await wrapper.get("#book-add-manual-panel form").trigger("submit");
+    await flushPromises();
+    expect(createBook).toHaveBeenCalledOnce();
+    expect(uploadBookCover).not.toHaveBeenCalled();
 
-      await router.push({ name: "other" });
-      expect(wrapper.findComponent(CoverEditField).exists()).toBe(false);
-      expect(getPendingCover(url)).toBeUndefined();
+    await router.push({ name: "other" });
+    expect(wrapper.findComponent(CoverEditField).exists()).toBe(false);
+    expect(getPendingCover(url)).toBeUndefined();
 
-      finishPendingStep();
-      await flushPromises();
+    finishCreation();
+    await flushPromises();
 
-      expect(uploadBookCover).toHaveBeenCalledExactlyOnceWith(42, file);
-      expect(invalidateCache.bookAdded).toHaveBeenCalledOnce();
-      expect(invalidateCache.bookUpdated).toHaveBeenCalledExactlyOnceWith(42);
-      expect(router.currentRoute.value.name).toBe("other");
-    },
-  );
+    expect(uploadBookCover).toHaveBeenCalledExactlyOnceWith(42, file);
+    expect(invalidateAfter.bookAdded).toHaveBeenCalledOnce();
+    expect(invalidateAfter.bookUpdated).toHaveBeenCalledExactlyOnceWith(42);
+    expect(router.currentRoute.value.name).toBe("other");
+  });
 
   it("does not redirect after leaving while a manual cover upload is pending", async () => {
     let finishUpload!: () => void;
@@ -296,7 +280,7 @@ describe("adding a book", () => {
     await flushPromises();
 
     expect(createBook).toHaveBeenCalledOnce();
-    expect(invalidateCache.bookAdded).toHaveBeenCalledOnce();
+    expect(invalidateAfter.bookAdded).toHaveBeenCalledOnce();
     expect(router.currentRoute.value.name).toBe("other");
   });
 });
