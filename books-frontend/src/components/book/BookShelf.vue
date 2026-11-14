@@ -14,7 +14,7 @@ import { useShelfBooks } from "../../composables/useShelfBooks";
 import { useShelfReorder } from "../../composables/useShelfReorder";
 import { useShelfViewMode, type ViewMode } from "../../composables/useShelfViewMode";
 import { removeBookFromShelf } from "../../api/books";
-import { invalidateCache } from "../../cache/invalidate";
+import { invalidateAfter } from "../../query/invalidate";
 import { useSeedBook } from "../../composables/useBook";
 
 const props = withDefaults(
@@ -182,7 +182,7 @@ async function handleContextRemove() {
 
   try {
     await removeBookFromShelf(props.shelf, bookId);
-    await invalidateCache.shelfChanged(bookId);
+    invalidateAfter.shelfChanged(bookId);
   } catch (error) {
     console.error("Failed to remove book from shelf:", error);
     alert("Failed to remove book from this shelf.");

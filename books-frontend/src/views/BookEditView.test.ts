@@ -5,9 +5,9 @@ import { createMemoryHistory, createRouter, RouterView } from "vue-router";
 import BookEditView from "./BookEditView.vue";
 import { getBook, updateBook } from "../api/books";
 import { uploadBookCover } from "../api/covers";
-import { invalidateCache } from "../cache/invalidate";
 import CoverEditField from "../components/book/cover/CoverEditField.vue";
 import { getPendingCover, stagePendingCover } from "../components/book/cover/pendingCoverUploads";
+import { invalidateAfter } from "../query/invalidate";
 import { makeBook } from "../test/factories";
 
 vi.mock("../api/books", () => ({ getBook: vi.fn(), updateBook: vi.fn(), deleteBook: vi.fn() }));
@@ -15,7 +15,7 @@ vi.mock("../api/covers", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api/covers")>()),
   uploadBookCover: vi.fn(),
 }));
-vi.mock("../cache/invalidate", () => ({ invalidateCache: { bookUpdated: vi.fn(), bookDeleted: vi.fn() } }));
+vi.mock("../query/invalidate", () => ({ invalidateAfter: { bookUpdated: vi.fn(), bookDeleted: vi.fn() } }));
 
 const book = makeBook({
   id: 42,
@@ -93,7 +93,7 @@ describe("editing a book", () => {
       cover_image_url: "/uploads/original.jpg",
     });
     expect(uploadBookCover).not.toHaveBeenCalled();
-    expect(invalidateCache.bookUpdated).toHaveBeenCalledWith(42);
+    expect(invalidateAfter.bookUpdated).toHaveBeenCalledWith(42);
     expect(router.currentRoute.value.name).toBe("book-detail");
   });
 
@@ -108,7 +108,7 @@ describe("editing a book", () => {
     expect(wrapper.get('[role="alert"]').text()).toBe("Failed to save book. Please try again.");
     expect(getPendingCover(url)).toBe(file);
     expect(updateBook).not.toHaveBeenCalled();
-    expect(invalidateCache.bookUpdated).not.toHaveBeenCalled();
+    expect(invalidateAfter.bookUpdated).not.toHaveBeenCalled();
 
     await wrapper.get("form").trigger("submit");
     await flushPromises();
@@ -117,7 +117,7 @@ describe("editing a book", () => {
     expect(uploadBookCover).toHaveBeenNthCalledWith(2, 42, file);
     expect(updateBook).toHaveBeenCalledExactlyOnceWith(42, expect.objectContaining({ cover_image_url: undefined }));
     expect(getPendingCover(url)).toBeUndefined();
-    expect(invalidateCache.bookUpdated).toHaveBeenCalledWith(42);
+    expect(invalidateAfter.bookUpdated).toHaveBeenCalledWith(42);
     expect(router.currentRoute.value.name).toBe("book-detail");
   });
 

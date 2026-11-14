@@ -5,8 +5,6 @@ import BookDetailView from "./BookDetailView.vue";
 import BookReadingCard from "../components/book/BookReadingCard/BookReadingCard.vue";
 import { clearRating, getBook, getBookEvents, setRating } from "../api/books";
 import { type Book, BookEventType, ReadingShelf, type UserBook } from "../api/types";
-import { cacheClear, cacheGet, cacheSet } from "../cache/store";
-import { cacheKeys } from "../cache/keys";
 import { queryClient } from "../query/client";
 import { queryKeys } from "../query/keys";
 
@@ -75,9 +73,8 @@ async function renderBook() {
 }
 
 describe("book detail", () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.resetAllMocks();
-    await cacheClear();
     queryClient.clear();
     vi.mocked(getBook).mockResolvedValue(book);
     vi.mocked(getBookEvents).mockResolvedValue([]);
@@ -202,8 +199,8 @@ describe("book detail", () => {
   });
 
   it("saves a half-star rating and refreshes cached shelves and activity", async () => {
-    const shelfKey = cacheKeys.shelfBooks("reading:finished", 1, 20);
-    await cacheSet(shelfKey, { items: [book] });
+    const shelfKey = queryKeys.shelves.books("reading:finished", 20);
+    queryClient.setQueryData(shelfKey, { pages: [{ items: [book] }], pageParams: [1] });
     const wrapper = await renderBook();
 
     expect(wrapper.get<HTMLInputElement>("input:checked").element.value).toBe("3.5");
@@ -225,7 +222,7 @@ describe("book detail", () => {
     await vi.waitFor(() => expect(wrapper.text()).toContain("Rated 4.5 / 5 stars"));
     expect(setRating).toHaveBeenCalledWith(1, 4.5);
     expect(queryClient.getQueryData<Book>(queryKeys.book.detail(1))?.user_book.rating).toBe(4.5);
-    expect(await cacheGet(shelfKey)).toBeUndefined();
+    expect(queryClient.getQueryState(shelfKey)?.isInvalidated).toBe(true);
     wrapper.unmount();
   });
 

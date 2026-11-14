@@ -4,8 +4,8 @@ import { computed, nextTick, ref } from "vue";
 import { RouterLink } from "vue-router";
 import { addBookToShelf, getBookShelves, removeBookFromShelf } from "../../api/books";
 import type { Shelf } from "../../api/types";
-import { invalidateCache } from "../../cache/invalidate";
 import { useShelves } from "../../composables/useShelves";
+import { invalidateAfter } from "../../query/invalidate";
 import { queryKeys } from "../../query/keys";
 
 const props = defineProps<{ bookId: number }>();
@@ -54,7 +54,7 @@ async function toggleShelf(shelf: Shelf) {
     }
 
     // This already starts refreshing the shelves and this book's memberships
-    await invalidateCache.shelfChanged(props.bookId);
+    invalidateAfter.shelfChanged(props.bookId);
     // Keep the editor locked until the checkboxes reflect the change, by waiting for that refresh
     await queryClient.invalidateQueries(
       { queryKey: queryKeys.book.customShelves(props.bookId) },

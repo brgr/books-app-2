@@ -8,7 +8,7 @@ import BookFields from "../components/book/BookFields.vue";
 import { bookToForm, emptyBookForm, formToPayload } from "../components/book/bookForm";
 import { savePendingCover } from "../components/book/cover/savePendingCover";
 import { useBook, useRouteBookId } from "../composables/useBook";
-import { invalidateCache } from "../cache/invalidate";
+import { invalidateAfter } from "../query/invalidate";
 
 const router = useRouter();
 const { book, error: loadError } = useBook(useRouteBookId());
@@ -45,7 +45,7 @@ async function handleSubmit() {
     formData.value.cover_image_url = await savePendingCover(book.value.id, formData.value.cover_image_url);
 
     await updateBook(book.value.id, bookData);
-    await invalidateCache.bookUpdated(book.value.id);
+    invalidateAfter.bookUpdated(book.value.id);
 
     router.push({ name: "book-detail", params: { id: book.value.id } });
   } catch (err) {
@@ -80,7 +80,7 @@ async function handleDelete() {
   loading.value = true;
   try {
     await deleteBook(book.value.id);
-    await invalidateCache.bookDeleted(book.value.id);
+    invalidateAfter.bookDeleted(book.value.id);
 
     router.push({ name: "books" });
   } catch (err) {

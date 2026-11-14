@@ -17,7 +17,7 @@ vi.mock("../../api/books", () => ({
   getShelves,
   getBookShelves,
 }));
-vi.mock("../../cache/invalidate", () => ({ invalidateCache: { shelfChanged } }));
+vi.mock("../../query/invalidate", () => ({ invalidateAfter: { shelfChanged } }));
 
 const shelves = [
   { ref: "custom:1", display_name: "A long custom shelf name", name: "A long custom shelf name" },

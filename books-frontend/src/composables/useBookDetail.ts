@@ -9,8 +9,8 @@ import {
   type ReadingShelf,
   type UserBook,
 } from "../api/types";
-import { invalidateCache } from "../cache/invalidate";
 import { localDayValue } from "../utils/date";
+import { invalidateAfter } from "../query/invalidate";
 import { queryKeys } from "../query/keys";
 import { useBook } from "./useBook";
 
@@ -32,7 +32,7 @@ export function useBookDetail(bookId: Ref<number>) {
   async function save(
     saving: Ref<boolean>,
     request: (book: Book) => Promise<UserBook>,
-    invalidate: (bookId: number) => Promise<void>,
+    invalidate: (bookId: number) => void,
   ) {
     const target = book.value;
     if (!target || saving.value) {
@@ -42,7 +42,7 @@ export function useBookDetail(bookId: Ref<number>) {
     saving.value = true;
     try {
       const userBook = await request(target);
-      await invalidate(target.id);
+      invalidate(target.id);
 
       // The user may have moved on to another book while the request was running
       if (bookId.value === target.id) {
@@ -62,7 +62,7 @@ export function useBookDetail(bookId: Ref<number>) {
       await save(
         savingShelf,
         (target) => setShelf(target.id, { shelf, reading_date: readingDate ?? today }),
-        invalidateCache.shelfChanged,
+        invalidateAfter.shelfChanged,
       );
     } catch (err) {
       console.error("Failed to update shelf:", err);
@@ -72,7 +72,7 @@ export function useBookDetail(bookId: Ref<number>) {
 
   async function saveProgress(progress: BookProgressUpdate) {
     try {
-      await save(savingProgress, (target) => addBookProgress(target.id, progress), invalidateCache.progressSaved);
+      await save(savingProgress, (target) => addBookProgress(target.id, progress), invalidateAfter.progressSaved);
     } catch (err) {
       console.error("Failed to save progress:", err);
       alert("Failed to save progress");
@@ -88,12 +88,12 @@ export function useBookDetail(bookId: Ref<number>) {
         await save(
           savingReview,
           (target) => setShelf(target.id, { shelf: target.user_book.shelf, notes }),
-          invalidateCache.notesSaved,
+          invalidateAfter.notesSaved,
         );
       }
 
       if (rating !== book.value?.user_book.rating) {
-        await save(savingReview, (target) => saveRating(target, rating), invalidateCache.ratingSaved);
+        await save(savingReview, (target) => saveRating(target, rating), invalidateAfter.ratingSaved);
       }
     } catch (err) {
       console.error("Failed to save rating and notes:", err);
