@@ -1,7 +1,7 @@
 import axios from "axios";
 import type { Router } from "vue-router";
 import { queryClient } from "../query/client";
-import { persister } from "../query/persister";
+import { cacheRestored, persister } from "../query/persister";
 
 // The backend origin. Empty means same-origin.
 // In dev, the Vite proxy (vite.config.ts) forwards /api and /uploads to the backend, which keeps covers and cookies on
@@ -58,6 +58,8 @@ export function isAuthenticated(): boolean {
  */
 export async function endSession(): Promise<void> {
   setAuthenticated(false);
+  // A restore that finished after the clear would bring back the ended session's data and save it again
+  await cacheRestored();
   queryClient.clear();
   await persister.removeClient();
 }
