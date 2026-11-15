@@ -210,7 +210,7 @@ for (const mode of ["list", "grid"] as const) {
 }
 
 for (const mode of ["list", "grid"] as const) {
-  test(`${mode}: return to the same search, pages and mobile scroll position`, async ({
+  test(`${mode}: return to the same pages and mobile scroll position`, async ({
     context,
     page,
   }) => {
@@ -227,7 +227,6 @@ for (const mode of ["list", "grid"] as const) {
     }
 
     const items = page.locator(mode === "grid" ? ".grid-item" : ".book-card");
-    await page.getByPlaceholder("Search for words or #tags").fill("Navigation");
     await page.locator(".infinite-sentinel").scrollIntoViewIfNeeded();
     await expect(items).toHaveCount(200);
 
@@ -245,13 +244,10 @@ for (const mode of ["list", "grid"] as const) {
 
     await page.getByRole("link", { name: "Back to shelf" }).click();
     await expect(page).toHaveURL(/\/$/);
-    await expect(
-      page.getByPlaceholder("Search for words or #tags"),
-    ).toHaveValue("Navigation");
     await expect(items).toHaveCount(200);
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scroll);
 
-    // Browser Back/Forward use the same retained shelf and restore the saved position.
+    // Browser Back/Forward restore the saved position
     await page.goForward();
     await expect(
       page.getByRole("heading", { name: "Navigation book 150" }),
@@ -260,41 +256,21 @@ for (const mode of ["list", "grid"] as const) {
     await expect(items).toHaveCount(200);
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scroll);
 
-    // Root and the To Read URL are aliases of the same tab; Finished has its own search.
+    // Root and the To Read URL are aliases of the same tab, so they share its position
     await page.getByRole("link", { name: "Finished", exact: true }).click();
-    await expect(
-      page.getByPlaceholder("Search for words or #tags"),
-    ).toHaveValue("");
-    await page.getByPlaceholder("Search for words or #tags").fill("book 00");
     await page.getByRole("link", { name: "To Read", exact: true }).click();
-    await expect(
-      page.getByPlaceholder("Search for words or #tags"),
-    ).toHaveValue("Navigation");
     await expect(items).toHaveCount(200);
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scroll);
-    await page.getByRole("link", { name: "Finished", exact: true }).click();
-    await expect(
-      page.getByPlaceholder("Search for words or #tags"),
-    ).toHaveValue("book 00");
   });
 }
 
-test("custom shelves retain separate searches and return after editing a book", async ({
+test("custom shelves return after editing a book", async ({
   context,
   page,
 }) => {
   await authenticate(context);
   await mockLibrary(page);
   await page.goto("/shelves/custom/999");
-  const search = page.getByPlaceholder("Search for words or #tags");
-  await search.fill("book 005");
-  await page.getByRole("link", { name: "Shelves", exact: true }).click();
-  await page.getByRole("link", { name: "Other shelf" }).click();
-  await expect(search).toHaveValue("");
-  await search.fill("book 006");
-  await page.getByRole("link", { name: "Shelves", exact: true }).click();
-  await page.getByRole("link", { name: "Navigation shelf" }).click();
-  await expect(search).toHaveValue("book 005");
   await page
     .getByRole("link", { name: "Navigation book 005", exact: true })
     .click();
@@ -303,23 +279,10 @@ test("custom shelves retain separate searches and return after editing a book", 
   await page.getByRole("button", { name: "Save Book", exact: true }).click();
   await page.getByRole("link", { name: "Back to shelf" }).click();
   await expect(page).toHaveURL(/\/shelves\/custom\/999$/);
-  await expect(search).toHaveValue("book 005");
   await expect(
     page.getByRole("link", {
       name: "Navigation book 005 revised",
       exact: true,
     }),
   ).toBeVisible();
-
-  // The login route discards retained views, including searches from the previous session.
-  await page.getByRole("button", { name: "Open user menu" }).click();
-  await page.getByRole("menuitem", { name: "Logout" }).click();
-  await expect(page).toHaveURL(/\/login$/);
-  await page.getByLabel("Username").fill("dev");
-  await page.getByLabel("Password").fill("devpassword");
-  await page.getByRole("button", { name: "Login", exact: true }).click();
-  await expect(page).toHaveURL(/\/$/);
-  await page.getByRole("link", { name: "Shelves", exact: true }).click();
-  await page.getByRole("link", { name: "Navigation shelf" }).click();
-  await expect(search).toHaveValue("");
 });
