@@ -1,91 +1,17 @@
 import { useQuery } from "@tanstack/vue-query";
-import { computed, ref, toRaw, type Ref } from "vue";
-import { clearRating, getBookEvents, setRating, setShelf } from "../api/books";
-import type { Book, UserBook } from "../api/types";
-import { invalidateAfter } from "../query/invalidate";
+import { computed, type Ref } from "vue";
+import { getBookEvents } from "../api/books";
 import { queryKeys } from "../query/keys";
 import { useBook } from "./useBook";
 
 export function useBookDetail(bookId: Ref<number>) {
-  const { book, error, setBook } = useBook(bookId);
+  const { book, error } = useBook(bookId);
 
-  const { data: events, refetch: refetchEvents } = useQuery({
+  const { data: events } = useQuery({
     queryKey: computed(() => queryKeys.book.events(bookId.value)),
     queryFn: () => getBookEvents(bookId.value),
     enabled: () => bookId.value > 0,
   });
 
-  const savingReview = ref(false);
-  const reviewError = ref("");
-
-  /** Rejects when the request fails, leaving it to the caller to tell the user. */
-  async function save(
-    saving: Ref<boolean>,
-    request: (book: Book) => Promise<UserBook>,
-    invalidate: (bookId: number) => void,
-  ) {
-    const target = book.value;
-    if (!target || saving.value) {
-      return;
-    }
-
-    saving.value = true;
-    try {
-      const userBook = await request(target);
-      invalidate(target.id);
-
-      // The user may have moved on to another book while the request was running
-      if (bookId.value === target.id) {
-        await setBook({ ...(book.value ?? target), user_book: userBook });
-        // The invalidation above already started refetching the timeline; wait for that rather than fetching again
-        await refetchEvents({ cancelRefetch: false });
-      }
-    } finally {
-      saving.value = false;
-    }
-  }
-
-  async function saveReview(notes: string, rating: number | null) {
-    const id = bookId.value;
-    reviewError.value = "";
-
-    try {
-      if (notes !== (book.value?.user_book.notes ?? "")) {
-        await save(
-          savingReview,
-          (target) => setShelf(target.id, { shelf: target.user_book.shelf, notes }),
-          invalidateAfter.notesSaved,
-        );
-      }
-
-      if (rating !== book.value?.user_book.rating) {
-        await save(savingReview, (target) => saveRating(target, rating), invalidateAfter.ratingSaved);
-      }
-    } catch (err) {
-      console.error("Failed to save rating and notes:", err);
-      if (bookId.value === id) {
-        reviewError.value = "Failed to save rating and notes. Please try again.";
-      }
-    }
-  }
-
-  return {
-    book,
-    events,
-    error,
-    savingReview,
-    reviewError,
-    saveReview,
-  };
-}
-
-async function saveRating(book: Book, rating: number | null): Promise<UserBook> {
-  if (rating !== null) {
-    return setRating(book.id, rating);
-  }
-
-  // Clearing answers with no content, and only the rating changes.
-  // Copy the underlying data so nested reading dates remain serializable in IndexedDB.
-  await clearRating(book.id);
-  return { ...toRaw(book.user_book), rating: null };
+  return { book, events, error };
 }

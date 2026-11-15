@@ -15,7 +15,7 @@ import { useBookDetail } from "../composables/useBookDetail";
 const router = useRouter();
 const bookId = useRouteBookId();
 
-const { book, events, error, savingReview, reviewError, saveReview } = useBookDetail(bookId);
+const { book, events, error } = useBookDetail(bookId);
 
 function handleEdit() {
   if (!book.value) {
@@ -61,22 +61,10 @@ function handleEdit() {
             <h2>Description</h2>
             <CollapsibleText :text="book.description" />
           </div>
-
-          <BookNotesAndRating
-            :key="book.id"
-            :notes="book.user_book.notes ?? ''"
-            :rating="book.user_book.rating"
-            :saving="savingReview"
-            :error="reviewError"
-            @save="saveReview"
-          />
-
+          <BookNotesAndRating :key="book.id" :user-book="book.user_book" />
           <BookCustomShelves :book-id="book.id" />
-
           <BookMetadata :book="book" />
-
           <EventTimeline :events="events ?? []" />
-
           <div class="book-actions">
             <button class="btn-primary" @click="handleEdit">Edit Book</button>
           </div>

@@ -1,35 +1,37 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import type { UserBook } from "../../api/types";
+import { useSaveBookNotes } from "../../composables/useSaveBookNotes";
+import { useSaveBookRating } from "../../composables/useSaveBookRating";
 import BookNotes from "./BookNotes.vue";
 import BookRating from "./BookRating.vue";
 
 const props = defineProps<{
-  notes: string;
-  rating: number | null;
-  saving: boolean;
-  error: string;
+  userBook: UserBook;
 }>();
 
-const emit = defineEmits<{
-  save: [notes: string, rating: number | null];
-}>();
+const { mutateAsync: saveNotes, isPending: savingNotes } = useSaveBookNotes();
+const { mutateAsync: saveRating, isPending: savingRating } = useSaveBookRating();
+const saving = computed(() => savingNotes.value || savingRating.value);
+const error = ref("");
+
+const notes = computed(() => props.userBook.notes ?? "");
+const rating = computed(() => props.userBook.rating);
 
 const editing = ref(false);
-const draftNotes = ref(props.notes);
-const draftRating = ref(props.rating);
-const dirty = computed(() => draftNotes.value !== props.notes || draftRating.value !== props.rating);
+const draftNotes = ref(notes.value);
+const draftRating = ref(rating.value);
+const dirty = computed(() => draftNotes.value !== notes.value || draftRating.value !== rating.value);
 
 function reset() {
-  draftNotes.value = props.notes;
-  draftRating.value = props.rating;
+  draftNotes.value = notes.value;
+  draftRating.value = rating.value;
 }
 
-// Follow fresh data while reading, and close the form once everything it changed is saved.
-watch([() => props.notes, () => props.rating, () => props.saving], () => {
+// Follow fresh data while reading
+watch([notes, rating], () => {
   if (!editing.value) {
     reset();
-  } else if (!props.saving && !dirty.value) {
-    editing.value = false;
   }
 });
 
@@ -38,9 +40,26 @@ function cancel() {
   editing.value = false;
 }
 
-function save() {
-  if (dirty.value && !props.saving) {
-    emit("save", draftNotes.value, draftRating.value);
+async function save() {
+  if (!dirty.value || saving.value) {
+    return;
+  }
+
+  const { book_id: bookId, shelf } = props.userBook;
+  error.value = "";
+
+  // Each part shows as saved once its request is done, so after a failure only the other one is still a draft
+  try {
+    if (draftNotes.value !== notes.value) {
+      await saveNotes({ bookId, shelf, notes: draftNotes.value });
+    }
+    if (draftRating.value !== rating.value) {
+      await saveRating({ bookId, rating: draftRating.value });
+    }
+    editing.value = false;
+  } catch (err) {
+    console.error("Failed to save rating and notes:", err);
+    error.value = "Failed to save rating and notes. Please try again.";
   }
 }
 </script>

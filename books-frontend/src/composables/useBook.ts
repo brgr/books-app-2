@@ -29,37 +29,29 @@ export function useSeedBook() {
   };
 }
 
-/** Puts the reading state a mutation answered with into the cached book. */
+/** Puts the reading state a mutation answered with into the cached book, or derives it from the cached one. */
 export function useSetUserBook() {
   const queryClient = useQueryClient();
 
-  return async (bookId: number, userBook: UserBook) => {
+  return async (bookId: number, update: UserBook | ((userBook: UserBook) => UserBook)) => {
     const queryKey = queryKeys.book.detail(bookId);
 
     // A read that started before the mutation must not overwrite its result
     await queryClient.cancelQueries({ queryKey });
-    queryClient.setQueryData<Book>(queryKey, (book) => book && { ...book, user_book: userBook });
+    queryClient.setQueryData<Book>(
+      queryKey,
+      (book) => book && { ...book, user_book: typeof update === "function" ? update(book.user_book) : update },
+    );
   };
 }
 
 export function useBook(bookId: Ref<number>) {
-  const queryClient = useQueryClient();
-
   const { data: book, error: loadFailure } = useQuery({
     queryKey: computed(() => queryKeys.book.detail(bookId.value)),
     queryFn: () => getBook(bookId.value),
     // An invalid id loads nothing
     enabled: () => bookId.value > 0,
   });
-
-  /** Replaces the cached book, e.g. with what a saved mutation answered. */
-  async function setBook(next: Book) {
-    const queryKey = queryKeys.book.detail(next.id);
-
-    // A read that started before the mutation must not overwrite its result
-    await queryClient.cancelQueries({ queryKey });
-    queryClient.setQueryData(queryKey, next);
-  }
 
   const error = computed(() => {
     const failure = loadFailure.value;
@@ -70,5 +62,5 @@ export function useBook(bookId: Ref<number>) {
     return failure instanceof Error ? failure.message : "Failed to load book. Please try again.";
   });
 
-  return { book, error, setBook };
+  return { book, error };
 }
