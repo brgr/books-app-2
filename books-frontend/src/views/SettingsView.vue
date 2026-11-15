@@ -10,6 +10,7 @@ import { invalidateAfter } from "../query/invalidate";
 const router = useRouter();
 const showConfirm = ref(false);
 const isDeleting = ref(false);
+const deleteError = ref<string | null>(null);
 
 const importFile = ref<File | null>(null);
 const isImporting = ref(false);
@@ -19,13 +20,18 @@ const importError = ref<string | null>(null);
 const imports = ref<ImportRecord[]>([]);
 const importsError = ref<string | null>(null);
 
+/** The server's error message, or the fallback when the response has none */
+function errorMessage(e: unknown, fallback: string): string {
+  const detail = isAxiosError<{ detail?: unknown }>(e) ? e.response?.data?.detail : undefined;
+  return typeof detail === "string" ? detail : fallback;
+}
+
 async function loadImports() {
   importsError.value = null;
   try {
     imports.value = await getImports();
   } catch (e) {
-    const detail = isAxiosError<{ detail?: unknown }>(e) ? e.response?.data?.detail : undefined;
-    importsError.value = typeof detail === "string" ? detail : "Failed to load imports";
+    importsError.value = errorMessage(e, "Failed to load imports");
   }
 }
 
@@ -37,6 +43,7 @@ function formatTimestamp(iso: string): string {
 }
 
 function handleDeleteAll() {
+  deleteError.value = null;
   showConfirm.value = true;
 }
 
@@ -46,13 +53,17 @@ function cancelDelete() {
 
 async function confirmDelete() {
   isDeleting.value = true;
+  deleteError.value = null;
   try {
     await deleteAllBooks();
     invalidateAfter.allBooksDeleted();
+    showConfirm.value = false;
     router.push("/");
+  } catch (e) {
+    // Keep the dialog open, so the user sees what failed and can try again
+    deleteError.value = errorMessage(e, "Failed to delete the books. Please try again.");
   } finally {
     isDeleting.value = false;
-    showConfirm.value = false;
   }
 }
 
@@ -77,8 +88,7 @@ async function handleImport() {
     invalidateAfter.readingListImported();
     await loadImports();
   } catch (e) {
-    const detail = isAxiosError<{ detail?: unknown }>(e) ? e.response?.data?.detail : undefined;
-    importError.value = typeof detail === "string" ? detail : "Import failed";
+    importError.value = errorMessage(e, "Import failed");
   } finally {
     isImporting.value = false;
   }
@@ -155,6 +165,7 @@ async function handleImport() {
             <p>
               This will permanently delete <strong>all books</strong> from your library. This action cannot be undone.
             </p>
+            <div v-if="deleteError" class="error" role="alert">{{ deleteError }}</div>
           </div>
           <div class="modal-footer">
             <button :disabled="isDeleting" @click="cancelDelete">Cancel</button>
