@@ -45,13 +45,13 @@ async function save() {
     return;
   }
 
-  const { book_id: bookId, shelf } = props.userBook;
+  const bookId = props.userBook.book_id;
   error.value = "";
 
   // Each part shows as saved once its request is done, so after a failure only the other one is still a draft
   try {
     if (draftNotes.value !== notes.value) {
-      await saveNotes({ bookId, shelf, notes: draftNotes.value });
+      await saveNotes({ bookId, notes: draftNotes.value });
     }
     if (draftRating.value !== rating.value) {
       await saveRating({ bookId, rating: draftRating.value });

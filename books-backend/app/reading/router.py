@@ -10,6 +10,7 @@ from app.reading.service import ReadingService
 from app.schemas import (
     BookEventResponse,
     BookProgressUpdate,
+    UserBookNotesUpdate,
     UserBookRatingUpdate,
     UserBookResponse,
     UserBookShelfUpdate,
@@ -36,6 +37,16 @@ def set_shelf(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
         ) from exc
+
+
+@router.put("/books/{book_id}/notes", response_model=UserBookResponse)
+def set_notes(
+    notes_data: UserBookNotesUpdate,
+    user_book: Annotated[UserBook, Depends(get_library_user_book)],
+    service: Annotated[ReadingService, Depends(get_reading_service)],
+):
+    """Set or clear the current user's notes for a book."""
+    return service.set_notes(user_book, notes_data)
 
 
 @router.put("/books/{book_id}/rating", response_model=UserBookResponse)

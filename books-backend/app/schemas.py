@@ -118,9 +118,16 @@ class ReadingDateValue(BaseModel):
 class UserBookShelfUpdate(BaseModel):
     """Schema for updating just the shelf via PUT endpoint."""
 
+    model_config = ConfigDict(extra="forbid")
+
     shelf: ReadingShelf
-    notes: str | None = None
     reading_date: ReadingDateValue | None = None
+
+
+class UserBookNotesUpdate(BaseModel):
+    """Set or clear a user's notes for a book; empty notes clear them."""
+
+    notes: str | None
 
 
 class UserBookRatingUpdate(BaseModel):

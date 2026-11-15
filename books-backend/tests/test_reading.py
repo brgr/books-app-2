@@ -21,14 +21,13 @@ def test_set_shelf(client, auth_headers, created_book):
 
     response = client.put(
         f"/api/books/{book_id}/shelf",
-        json={"shelf": "started", "notes": "Great book so far!"},
+        json={"shelf": "started"},
         headers=auth_headers,
     )
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     assert data["shelf"] == "started"
-    assert data["notes"] == "Great book so far!"
     assert data["book_id"] == book_id
     assert "started_at" in data
     assert data["started_at"] is not None
@@ -100,14 +99,12 @@ def test_update_shelf(client, auth_headers, created_book):
     # Update to started
     response = client.put(
         f"/api/books/{book_id}/shelf",
-        json={"shelf": "started", "notes": "Now reading"},
+        json={"shelf": "started"},
         headers=auth_headers,
     )
 
     assert response.status_code == status.HTTP_200_OK
-    data = response.json()
-    assert data["shelf"] == "started"
-    assert data["notes"] == "Now reading"
+    assert response.json()["shelf"] == "started"
 
 
 def test_set_finished_shelf(client, auth_headers, created_book):
@@ -180,8 +177,11 @@ def test_get_book_includes_user_book(client, auth_headers, created_book):
         f"/api/books/{book_id}/shelf", json={"shelf": "started"}, headers=auth_headers
     )
     client.put(
-        f"/api/books/{book_id}/shelf",
-        json={"shelf": "finished", "notes": "Excellent!"},
+        f"/api/books/{book_id}/shelf", json={"shelf": "finished"}, headers=auth_headers
+    )
+    client.put(
+        f"/api/books/{book_id}/notes",
+        json={"notes": "Excellent!"},
         headers=auth_headers,
     )
 
@@ -221,35 +221,27 @@ def test_shelf_endpoints_require_auth(client, created_book):
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
-def test_note_events_are_recorded(client, auth_headers, created_book):
+def test_set_and_clear_notes_without_touching_the_shelf(
+    client, auth_headers, created_book
+):
     book_id = created_book["id"]
-
-    response = client.put(
-        f"/api/books/{book_id}/shelf",
-        json={"shelf": "started", "notes": "First note"},
-        headers=auth_headers,
+    client.put(
+        f"/api/books/{book_id}/shelf", json={"shelf": "started"}, headers=auth_headers
     )
-    assert response.status_code == status.HTTP_200_OK
 
-    response = client.put(
-        f"/api/books/{book_id}/shelf",
-        json={"shelf": "started", "notes": "Updated note"},
-        headers=auth_headers,
-    )
-    assert response.status_code == status.HTTP_200_OK
+    for notes in ["First note", "Updated note", "Updated note", ""]:
+        response = client.put(
+            f"/api/books/{book_id}/notes", json={"notes": notes}, headers=auth_headers
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["notes"] == (notes or None)
+        assert response.json()["shelf"] == "started"
 
-    response = client.put(
-        f"/api/books/{book_id}/shelf",
-        json={"shelf": "started", "notes": ""},
-        headers=auth_headers,
-    )
-    assert response.status_code == status.HTTP_200_OK
-
-    events_response = client.get(f"/api/books/{book_id}/events", headers=auth_headers)
-    assert events_response.status_code == status.HTTP_200_OK
-    event_types = [event["event_type"] for event in events_response.json()]
-
-    assert "note_set" in event_types
+    events = client.get(f"/api/books/{book_id}/events", headers=auth_headers).json()
+    event_types = [event["event_type"] for event in events]
+    # Saving unchanged notes records nothing
+    assert event_types.count("note_set") == 3
+    assert event_types.count("started_reading") == 1
 
 
 def test_progress_requires_start(client, auth_headers, created_book):

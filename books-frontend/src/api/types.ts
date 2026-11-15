@@ -129,7 +129,6 @@ export interface BookUpdate {
 
 export interface UserBookShelfUpdate {
   shelf: ReadingShelf;
-  notes?: string;
   reading_date?: ReadingDateValue;
 }
 

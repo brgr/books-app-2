@@ -26,6 +26,7 @@ from app.models import (
 from app.schemas import (
     BookProgressUpdate,
     ReadingDateValue,
+    UserBookNotesUpdate,
     UserBookRatingUpdate,
     UserBookResponse,
     UserBookShelfUpdate,
@@ -45,12 +46,24 @@ class ReadingService:
         previous = current_reading_shelf(self.db, user_book.id)
         reading_date = self._reading_date_from_input(shelf_data.reading_date)
         self._apply_transition(user_book, previous, shelf_data.shelf, reading_date)
-        self._apply_notes(user_book, shelf_data)
 
         if shelf_data.shelf != previous:
             move_reading_shelf_placement(self.db, user_book, shelf_data.shelf)
 
         project_user_book_state(self.db, user_book)
+        self.db.commit()
+        self.db.refresh(user_book)
+
+        return build_user_book_response(self.db, user_book)
+
+    def set_notes(
+        self, user_book: UserBook, notes_data: UserBookNotesUpdate
+    ) -> UserBookResponse:
+        notes = notes_data.notes or None
+        if notes != user_book.notes:
+            record_note_event(self.db, user_book.id, BookEventCode.NOTE_SET, notes)
+            user_book.notes = notes
+
         self.db.commit()
         self.db.refresh(user_book)
 
@@ -164,11 +177,3 @@ class ReadingService:
             record_started_reading(self.db, user_book.id, reading_date)
         else:
             raise ValueError(f"Cannot move from '{source.value}' to '{target.value}'")
-
-    def _apply_notes(self, user_book: UserBook, data: UserBookShelfUpdate) -> None:
-        if "notes" not in data.model_fields_set:
-            return
-        note = data.notes or None
-        if note != user_book.notes:
-            record_note_event(self.db, user_book.id, BookEventCode.NOTE_SET, note)
-            user_book.notes = note

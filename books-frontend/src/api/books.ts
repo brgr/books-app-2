@@ -88,6 +88,11 @@ export async function setShelf(bookId: number, data: UserBookShelfUpdate): Promi
   return response.data;
 }
 
+export async function setNotes(bookId: number, notes: string): Promise<UserBook> {
+  const response = await apiClient.put<UserBook>(`/books/${bookId}/notes`, { notes });
+  return response.data;
+}
+
 export async function setRating(bookId: number, rating: number): Promise<UserBook> {
   const response = await apiClient.put<UserBook>(`/books/${bookId}/rating`, { rating });
   return response.data;

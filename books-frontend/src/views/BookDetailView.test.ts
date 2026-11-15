@@ -20,6 +20,7 @@ vi.mock("../api/books", () => ({
   setRating: vi.fn(),
   clearRating: vi.fn(),
   setShelf: vi.fn(),
+  setNotes: vi.fn(),
   addBookProgress: vi.fn(),
   createBook: vi.fn(),
 }));

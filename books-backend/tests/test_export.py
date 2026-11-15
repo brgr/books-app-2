@@ -30,19 +30,18 @@ def test_user_books_export_sorted_by_id(
             )
             assert start_response.status_code == status.HTTP_200_OK
 
-            response = client.put(
-                f"/api/books/{book['id']}/shelf",
-                json={"shelf": "finished", "notes": notes},
-                headers=auth_headers,
-            )
-            assert response.status_code == status.HTTP_200_OK
-        else:
-            response = client.put(
-                f"/api/books/{book['id']}/shelf",
-                json={"shelf": new_shelf, "notes": notes},
-                headers=auth_headers,
-            )
-            assert response.status_code == status.HTTP_200_OK
+        response = client.put(
+            f"/api/books/{book['id']}/shelf",
+            json={"shelf": new_shelf},
+            headers=auth_headers,
+        )
+        assert response.status_code == status.HTTP_200_OK
+        response = client.put(
+            f"/api/books/{book['id']}/notes",
+            json={"notes": notes},
+            headers=auth_headers,
+        )
+        assert response.status_code == status.HTTP_200_OK
         expected_shelf_by_id[book["id"]] = {"shelf": new_shelf, "notes": notes}
 
     response = client.get("/api/users/me/export", headers=auth_headers)
