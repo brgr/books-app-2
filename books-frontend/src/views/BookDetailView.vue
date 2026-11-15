@@ -9,13 +9,12 @@ import BookMetadata from "../components/book/BookMetadata.vue";
 import EventTimeline from "../components/book/EventTimeline.vue";
 import BookCustomShelves from "../components/book/BookCustomShelves.vue";
 import BookCover from "../components/book/cover/BookCover.vue";
-import { useRouteBookId } from "../composables/useBook";
-import { useBookDetail } from "../composables/useBookDetail";
+import { useBook, useRouteBookId } from "../composables/useBook";
 
 const router = useRouter();
 const bookId = useRouteBookId();
 
-const { book, events, error } = useBookDetail(bookId);
+const { book, error } = useBook(bookId);
 
 function handleEdit() {
   if (!book.value) {
@@ -64,7 +63,7 @@ function handleEdit() {
           <BookNotesAndRating :key="book.id" :user-book="book.user_book" />
           <BookCustomShelves :book-id="book.id" />
           <BookMetadata :book="book" />
-          <EventTimeline :events="events ?? []" />
+          <EventTimeline :book-id="book.id" />
           <div class="book-actions">
             <button class="btn-primary" @click="handleEdit">Edit Book</button>
           </div>

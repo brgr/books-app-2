@@ -1,9 +1,19 @@
 <script setup lang="ts">
+import { useQuery } from "@tanstack/vue-query";
+import { computed } from "vue";
+import { getBookEvents } from "../../api/books";
 import { BookEventType, type BookEvent } from "../../api/types";
+import { queryKeys } from "../../query/keys";
 
-defineProps<{
-  events: BookEvent[];
+const props = defineProps<{
+  bookId: number;
 }>();
+
+const { data } = useQuery({
+  queryKey: computed(() => queryKeys.book.events(props.bookId)),
+  queryFn: () => getBookEvents(props.bookId),
+});
+const events = computed(() => data.value ?? []);
 
 function formatEventType(event: BookEvent): string {
   switch (event.event_type) {
