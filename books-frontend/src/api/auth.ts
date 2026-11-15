@@ -41,9 +41,11 @@ export async function checkAuthStatus(): Promise<boolean> {
     return true;
   } catch (error) {
     // A rejected session was already ended by the auth interceptor. Any other failure, such as being offline, says
-    // nothing about the session, so it is kept along with the cached data until the server rejects it.
-    const valid = !isAuthError(error);
-    setAuthenticated(valid);
-    return valid;
+    // nothing about the session, so we keep whatever state the last check left, along with the cached data.
+    if (isAuthError(error)) {
+      setAuthenticated(false);
+    }
+
+    return isAuthenticated();
   }
 }

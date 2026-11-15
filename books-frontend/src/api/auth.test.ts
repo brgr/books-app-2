@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { AxiosError, type AxiosAdapter } from "axios";
 import { queryClient } from "../query/client";
 import { checkAuthStatus, isAuthenticated } from "./auth";
-import { apiClient } from "./client";
+import { apiClient, setAuthenticated } from "./client";
 
 const originalAdapter = apiClient.defaults.adapter;
 
@@ -16,15 +16,24 @@ describe("checkAuthStatus", () => {
   afterEach(() => {
     apiClient.defaults.adapter = originalAdapter;
     queryClient.clear();
+    setAuthenticated(false);
   });
 
   it("keeps the session and the cached data when the server can't be reached", async () => {
+    setAuthenticated(true);
     queryClient.setQueryData(["shelves", "list"], []);
     failWith((config) => new AxiosError("Network Error", AxiosError.ERR_NETWORK, config));
 
     expect(await checkAuthStatus()).toBe(true);
     expect(isAuthenticated()).toBe(true);
     expect(queryClient.getQueryData(["shelves", "list"])).toEqual([]);
+  });
+
+  it("stays logged out when the server can't be reached and the browser never logged in", async () => {
+    failWith((config) => new AxiosError("Network Error", AxiosError.ERR_NETWORK, config));
+
+    expect(await checkAuthStatus()).toBe(false);
+    expect(isAuthenticated()).toBe(false);
   });
 
   it("reports a session the server rejects as ended", async () => {

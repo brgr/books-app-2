@@ -35,10 +35,18 @@ export const apiClient = axios.create({
 });
 
 // Track authentication state (verified via /users/me endpoint)
-let authenticated = false;
+// We store it so a reload while offline can tell whether this browser had a session
+const AUTHENTICATED_KEY = "authenticated";
+let authenticated = localStorage.getItem(AUTHENTICATED_KEY) === "true";
 
 export function setAuthenticated(value: boolean) {
   authenticated = value;
+
+  if (value) {
+    localStorage.setItem(AUTHENTICATED_KEY, "true");
+  } else {
+    localStorage.removeItem(AUTHENTICATED_KEY);
+  }
 }
 
 export function isAuthenticated(): boolean {
