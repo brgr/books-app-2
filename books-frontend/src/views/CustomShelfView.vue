@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useQueryClient } from "@tanstack/vue-query";
-import { computed, onDeactivated, ref } from "vue";
+import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { deleteShelf, renameShelf } from "../api/books";
 import { parseShelfRef, type Shelf, type ShelfRef } from "../api/types";
@@ -42,8 +42,6 @@ function closeEditShelf() {
   showEditShelf.value = false;
   actionError.value = "";
 }
-
-onDeactivated(closeEditShelf);
 
 function clearActionError() {
   actionError.value = "";

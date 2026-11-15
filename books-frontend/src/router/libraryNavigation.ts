@@ -4,7 +4,7 @@ import type { RouteLocationNormalized, Router, RouterScrollBehavior } from "vue-
 /**
  * Returns an identifier for the library tab, such as "/shelves/finished".
  *
- * We use that identifier in App.vue to preserve the tab's view with KeepAlive and here to remember the tab's scroll position.
+ * We use that identifier in App.vue as the view's key and here to remember the tab's scroll position.
  * We give / and /shelves/to-read the same key because both URLs show the To Read tab.
  */
 export function libraryPageKey(
@@ -37,8 +37,8 @@ export function createLibraryNavigation() {
   const positions = new Map<string, { left: number; top: number }>();
 
   const scrollBehavior: RouterScrollBehavior = async (to, _from, savedPosition) => {
-    // We use KeepAlive in App.vue to preserve library views, including all the pages the user has loaded.
-    // We wait for Vue to put the returning view back in the document before restoring its scroll position.
+    // The returning view renders every page the user had loaded straight from the query cache.
+    // We wait for Vue to put it in the document before restoring its scroll position.
     await nextTick();
 
     const key = libraryPageKey(to);

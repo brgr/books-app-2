@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onDeactivated, ref, type Ref, useId, watch } from "vue";
+import { computed, nextTick, ref, type Ref, useId, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import draggable from "vuedraggable";
 import BookCard from "./BookCard/BookCard.vue";
@@ -129,7 +129,6 @@ watch([isDragging, isSaving, isCollapsed], () => void nextTick(reobserve));
 watch(filteredBooks, () => void nextTick(reobserve));
 
 const { contextMenu, openContextMenu, closeContextMenu } = useContextMenu();
-onDeactivated(closeContextMenu);
 
 function startDrag() {
   // Starting a drag dismisses any open long-press menu, revealing the book being

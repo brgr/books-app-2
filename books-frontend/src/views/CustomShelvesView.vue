@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useQueryClient } from "@tanstack/vue-query";
-import { computed, nextTick, onDeactivated, ref } from "vue";
+import { computed, nextTick, ref } from "vue";
 import { useRouter } from "vue-router";
 import { createShelf } from "../api/books";
 import NavigationBar from "../components/navigation/NavigationBar.vue";
@@ -37,10 +37,6 @@ function closeCreateShelf() {
   newShelfName.value = "";
   createError.value = "";
 }
-
-onDeactivated(() => {
-  showCreateShelf.value = false;
-});
 
 async function createNewShelf() {
   const name = newShelfName.value.trim();

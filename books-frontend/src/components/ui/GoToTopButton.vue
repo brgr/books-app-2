@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onActivated, onBeforeUnmount, onDeactivated, onMounted, ref } from "vue";
+import { onBeforeUnmount, onMounted, ref } from "vue";
 import { scrollToTop } from "../../utils/scrollToTop";
 
 const visible = ref(false);
@@ -20,8 +20,6 @@ function stop() {
 }
 
 onMounted(listen);
-onActivated(listen);
-onDeactivated(stop);
 onBeforeUnmount(stop);
 </script>
 
