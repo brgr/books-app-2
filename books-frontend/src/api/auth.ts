@@ -1,4 +1,4 @@
-import { apiClient, endSession, isAuthenticated, setAuthenticated } from "./client";
+import { apiClient, endSession, isAuthError, isAuthenticated, setAuthenticated } from "./client";
 import type { User } from "./types";
 
 export { isAuthenticated };
@@ -39,8 +39,11 @@ export async function checkAuthStatus(): Promise<boolean> {
     await apiClient.get("/users/me");
     setAuthenticated(true);
     return true;
-  } catch {
-    await endSession();
-    return false;
+  } catch (error) {
+    // A rejected session was already ended by the auth interceptor. Any other failure, such as being offline, says
+    // nothing about the session, so it is kept along with the cached data until the server rejects it.
+    const valid = !isAuthError(error);
+    setAuthenticated(valid);
+    return valid;
   }
 }
