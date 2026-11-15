@@ -1,27 +1,39 @@
-import { describe, expect, it } from "vitest";
-import { mount } from "@vue/test-utils";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { enableAutoUnmount, mount } from "@vue/test-utils";
+import { VueQueryPlugin } from "@tanstack/vue-query";
 import BookShelfButton from "./BookShelfButton.vue";
+import { setShelf } from "../../../api/books";
 import { ReadingDatePrecision, ReadingShelf } from "../../../api/types";
+import { queryClient } from "../../../query/client";
+import { localDayValue } from "../../../utils/date";
 
-function mountButton() {
+enableAutoUnmount(afterEach);
+
+vi.mock("../../../api/books", () => ({
+  setShelf: vi.fn(),
+}));
+
+function mountButton(shelf: ReadingShelf = ReadingShelf.WANT_TO_READ) {
   return mount(BookShelfButton, {
-    props: { shelf: ReadingShelf.WANT_TO_READ, updating: false },
+    props: { bookId: 1, shelf },
+    global: { plugins: [[VueQueryPlugin, { queryClient }]] },
   });
 }
 
-function mountStartedButton() {
-  return mount(BookShelfButton, {
-    props: { shelf: ReadingShelf.STARTED, updating: false },
-  });
-}
+const today = () => ({ value: localDayValue(new Date()), precision: ReadingDatePrecision.DAY });
 
 describe("BookShelfButton", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    queryClient.clear();
+  });
+
   it("offers pausing only while a book is currently being read", async () => {
-    const started = mountStartedButton();
+    const started = mountButton(ReadingShelf.STARTED);
     await started.find('[data-test="shelf-caret"]').trigger("click");
     await started.find('[data-test="pause-reading"]').trigger("click");
 
-    expect(started.emitted("change")?.[0]).toEqual([ReadingShelf.PAUSED]);
+    expect(setShelf).toHaveBeenCalledWith(1, { shelf: ReadingShelf.PAUSED, reading_date: today() });
 
     const notStarted = mountButton();
     await notStarted.find('[data-test="shelf-caret"]').trigger("click");
@@ -29,24 +41,22 @@ describe("BookShelfButton", () => {
     expect(notStarted.find('[data-test="abandon-reading"]').exists()).toBe(false);
   });
 
-  it("resumes a paused book", async () => {
-    const wrapper = mount(BookShelfButton, {
-      props: { shelf: ReadingShelf.PAUSED, updating: false },
-    });
+  it("resumes a paused book today", async () => {
+    const wrapper = mountButton(ReadingShelf.PAUSED);
 
     expect(wrapper.find('[data-test="shelf-button"]').text()).toBe("Resume Reading");
     await wrapper.find('[data-test="shelf-button"]').trigger("click");
-    expect(wrapper.emitted("change")?.[0]).toEqual([ReadingShelf.STARTED]);
+    expect(setShelf).toHaveBeenCalledWith(1, { shelf: ReadingShelf.STARTED, reading_date: today() });
   });
 
   it.each([ReadingShelf.STARTED, ReadingShelf.PAUSED])("allows abandoning a %s book", async (shelf) => {
-    const wrapper = mount(BookShelfButton, { props: { shelf, updating: false } });
+    const wrapper = mountButton(shelf);
 
     expect(wrapper.find('[data-test="shelf-caret"]').attributes("aria-label")).toBe("More reading actions");
     await wrapper.find('[data-test="shelf-caret"]').trigger("click");
     await wrapper.find('[data-test="abandon-reading"]').trigger("click");
 
-    expect(wrapper.emitted("change")?.[0]).toEqual([ReadingShelf.ABANDONED]);
+    expect(setShelf).toHaveBeenCalledWith(1, { shelf: ReadingShelf.ABANDONED, reading_date: today() });
   });
 
   it("sends an exact-day reading date", async () => {
@@ -55,10 +65,10 @@ describe("BookShelfButton", () => {
     await wrapper.find('[data-test="shelf-date-input"]').setValue("2026-04-15");
     await wrapper.find('[data-test="shelf-date-confirm"]').trigger("click");
 
-    expect(wrapper.emitted("change")?.[0]).toEqual([
-      ReadingShelf.STARTED,
-      { value: "2026-04-15T12:00:00.000Z", precision: ReadingDatePrecision.DAY },
-    ]);
+    expect(setShelf).toHaveBeenCalledWith(1, {
+      shelf: ReadingShelf.STARTED,
+      reading_date: { value: "2026-04-15T12:00:00.000Z", precision: ReadingDatePrecision.DAY },
+    });
   });
 
   it("sends a month-precision reading date", async () => {
@@ -69,10 +79,10 @@ describe("BookShelfButton", () => {
     await wrapper.find('[data-test="shelf-month-year-input"]').setValue("2026");
     await wrapper.find('[data-test="shelf-date-confirm"]').trigger("click");
 
-    expect(wrapper.emitted("change")?.[0]).toEqual([
-      ReadingShelf.STARTED,
-      { value: "2026-04-01T12:00:00.000Z", precision: ReadingDatePrecision.MONTH },
-    ]);
+    expect(setShelf).toHaveBeenCalledWith(1, {
+      shelf: ReadingShelf.STARTED,
+      reading_date: { value: "2026-04-01T12:00:00.000Z", precision: ReadingDatePrecision.MONTH },
+    });
   });
 
   it("sends a year-precision reading date", async () => {
@@ -82,10 +92,10 @@ describe("BookShelfButton", () => {
     await wrapper.find('[data-test="shelf-date-input"]').setValue("2025");
     await wrapper.find('[data-test="shelf-date-confirm"]').trigger("click");
 
-    expect(wrapper.emitted("change")?.[0]).toEqual([
-      ReadingShelf.STARTED,
-      { value: "2025-01-01T12:00:00.000Z", precision: ReadingDatePrecision.YEAR },
-    ]);
+    expect(setShelf).toHaveBeenCalledWith(1, {
+      shelf: ReadingShelf.STARTED,
+      reading_date: { value: "2025-01-01T12:00:00.000Z", precision: ReadingDatePrecision.YEAR },
+    });
   });
 
   it.each([
@@ -101,7 +111,7 @@ describe("BookShelfButton", () => {
     expect(confirmButton.element.disabled).toBe(true);
     expect(wrapper.find('[data-test="shelf-date-error"]').text()).toBe(message);
     await confirmButton.trigger("click");
-    expect(wrapper.emitted("change")).toBeUndefined();
+    expect(setShelf).not.toHaveBeenCalled();
   });
 
   it("sends an unknown reading date without a calendar value", async () => {
@@ -111,9 +121,9 @@ describe("BookShelfButton", () => {
 
     expect(wrapper.find('[data-test="shelf-date-input"]').exists()).toBe(false);
     await wrapper.find('[data-test="shelf-date-confirm"]').trigger("click");
-    expect(wrapper.emitted("change")?.[0]).toEqual([
-      ReadingShelf.STARTED,
-      { value: null, precision: ReadingDatePrecision.UNKNOWN },
-    ]);
+    expect(setShelf).toHaveBeenCalledWith(1, {
+      shelf: ReadingShelf.STARTED,
+      reading_date: { value: null, precision: ReadingDatePrecision.UNKNOWN },
+    });
   });
 });

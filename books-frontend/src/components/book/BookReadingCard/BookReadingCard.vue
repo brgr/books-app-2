@@ -9,15 +9,10 @@ import { formatReadingDate } from "../../../utils/date";
 const props = defineProps<{
   bookId: number;
   shelf: ReadingShelf;
-  updating: boolean;
   progress: ReadingProgress;
   pageCount: number | null;
   startedAt: ReadingDateValue | null;
   finishedAt: ReadingDateValue | null;
-}>();
-
-const emit = defineEmits<{
-  change: [shelf: ReadingShelf, readingDate?: ReadingDateValue];
 }>();
 
 // A percentage to show alongside the page: taken directly when the user tracks
@@ -91,11 +86,7 @@ watch([() => props.progress.unit, () => props.progress.value], () => {
       >
         Update progress
       </button>
-      <BookShelfButton
-        :shelf="shelf"
-        :updating="updating"
-        @change="(shelf, readingDate) => emit('change', shelf, readingDate)"
-      />
+      <BookShelfButton :book-id="bookId" :shelf="shelf" />
     </div>
   </div>
 </template>

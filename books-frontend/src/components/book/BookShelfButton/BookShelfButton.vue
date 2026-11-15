@@ -1,16 +1,15 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { type ReadingDateValue, ReadingShelf } from "../../../api/types";
+import { useChangeBookShelf } from "../../../composables/useChangeBookShelf";
 import ReadingDateMenu from "./ReadingDateMenu.vue";
 
 const props = defineProps<{
+  bookId: number;
   shelf: ReadingShelf;
-  updating: boolean;
 }>();
 
-const emit = defineEmits<{
-  change: [shelf: ReadingShelf, readingDate?: ReadingDateValue];
-}>();
+const { mutate: changeShelf, isPending: saving } = useChangeBookShelf();
 
 type Action = { label: string; target: ReadingShelf };
 
@@ -34,14 +33,18 @@ const dateLabel = computed(() =>
 const menuOpen = ref(false);
 const rootEl = ref<HTMLElement | null>(null);
 
+function change(shelf: ReadingShelf, readingDate?: ReadingDateValue) {
+  changeShelf({ bookId: props.bookId, shelf, readingDate });
+}
+
 function activate() {
-  if (!props.updating) {
-    emit("change", action.value.target);
+  if (!saving.value) {
+    change(action.value.target);
   }
 }
 
 function toggleMenu() {
-  if (!props.updating) {
+  if (!saving.value) {
     menuOpen.value = !menuOpen.value;
   }
 }
@@ -51,29 +54,29 @@ function closeMenu() {
 }
 
 function confirmDate(readingDate: ReadingDateValue) {
-  if (props.updating) {
+  if (saving.value) {
     return;
   }
 
-  emit("change", action.value.target, readingDate);
+  change(action.value.target, readingDate);
   closeMenu();
 }
 
 function pauseReading() {
-  if (props.updating || props.shelf !== ReadingShelf.STARTED) {
+  if (saving.value || props.shelf !== ReadingShelf.STARTED) {
     return;
   }
 
-  emit("change", ReadingShelf.PAUSED);
+  change(ReadingShelf.PAUSED);
   closeMenu();
 }
 
 function abandonReading() {
-  if (props.updating || (props.shelf !== ReadingShelf.STARTED && props.shelf !== ReadingShelf.PAUSED)) {
+  if (saving.value || (props.shelf !== ReadingShelf.STARTED && props.shelf !== ReadingShelf.PAUSED)) {
     return;
   }
 
-  emit("change", ReadingShelf.ABANDONED);
+  change(ReadingShelf.ABANDONED);
   closeMenu();
 }
 
@@ -103,13 +106,13 @@ onBeforeUnmount(() => {
 <template>
   <div ref="rootEl" class="shelf-control">
     <div class="shelf-split">
-      <button type="button" class="shelf-button" :disabled="updating" data-test="shelf-button" @click="activate">
-        {{ updating ? "Saving…" : action.label }}
+      <button type="button" class="shelf-button" :disabled="saving" data-test="shelf-button" @click="activate">
+        {{ saving ? "Saving…" : action.label }}
       </button>
       <button
         type="button"
         class="shelf-caret"
-        :disabled="updating"
+        :disabled="saving"
         :aria-expanded="menuOpen"
         :aria-label="
           shelf === ReadingShelf.STARTED || shelf === ReadingShelf.PAUSED ? 'More reading actions' : 'Choose a date'

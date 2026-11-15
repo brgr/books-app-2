@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { type ReadingDateValue, ReadingShelf, type UserBook } from "../../api/types";
+import { ReadingShelf, type UserBook } from "../../api/types";
 import { formatReadingDate } from "../../utils/date";
 import BookReadingCard from "./BookReadingCard/BookReadingCard.vue";
 import type { ReadingProgress } from "./BookReadingCard/types";
@@ -13,11 +13,6 @@ import BookShelfButton from "./BookShelfButton/BookShelfButton.vue";
 const props = defineProps<{
   userBook: UserBook;
   pageCount: number | null;
-  savingShelf: boolean;
-}>();
-
-const emit = defineEmits<{
-  change: [shelf: ReadingShelf, readingDate?: ReadingDateValue];
 }>();
 
 const reading = computed(() => props.userBook.shelf === ReadingShelf.STARTED);
@@ -34,20 +29,13 @@ const progress = computed<ReadingProgress>(
       v-if="reading"
       :book-id="userBook.book_id"
       :shelf="userBook.shelf"
-      :updating="savingShelf"
       :progress="progress"
       :page-count="pageCount"
       :started-at="userBook.started_at"
       :finished-at="userBook.finished_at"
-      @change="(shelf, readingDate) => emit('change', shelf, readingDate)"
     />
 
-    <BookShelfButton
-      v-else
-      :shelf="userBook.shelf"
-      :updating="savingShelf"
-      @change="(shelf, readingDate) => emit('change', shelf, readingDate)"
-    />
+    <BookShelfButton v-else :book-id="userBook.book_id" :shelf="userBook.shelf" />
   </div>
 
   <div v-if="!reading" class="book-dates">

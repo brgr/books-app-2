@@ -15,7 +15,7 @@ import { useBookDetail } from "../composables/useBookDetail";
 const router = useRouter();
 const bookId = useRouteBookId();
 
-const { book, events, error, savingShelf, savingReview, reviewError, changeShelf, saveReview } = useBookDetail(bookId);
+const { book, events, error, savingReview, reviewError, saveReview } = useBookDetail(bookId);
 
 function handleEdit() {
   if (!book.value) {
@@ -52,12 +52,7 @@ function handleEdit() {
             <h1>{{ book.title }}</h1>
             <p v-if="book.author" class="book-author">by {{ book.author }}</p>
 
-            <BookReadingStatus
-              :user-book="book.user_book"
-              :page-count="book.page_count"
-              :saving-shelf="savingShelf"
-              @change="changeShelf"
-            />
+            <BookReadingStatus :user-book="book.user_book" :page-count="book.page_count" />
           </div>
         </div>
 

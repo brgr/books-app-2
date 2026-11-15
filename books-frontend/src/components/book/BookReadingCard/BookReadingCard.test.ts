@@ -29,7 +29,6 @@ function makeProps(
   overrides: Partial<{
     bookId: number;
     shelf: ReadingShelf;
-    updating: boolean;
     progress: ReadingProgress;
     pageCount: number | null;
     startedAt: ReadingDateValue | null;
@@ -39,7 +38,6 @@ function makeProps(
   return {
     bookId: 1,
     shelf: ReadingShelf.STARTED,
-    updating: false,
     progress: { unit: "page", value: 10 } satisfies ReadingProgress,
     pageCount: 200,
     startedAt: null,
@@ -150,12 +148,6 @@ describe("BookReadingCard", () => {
 
     await wrapper.get('[data-test="edit-progress"]').trigger("click");
     expect(wrapper.get<HTMLInputElement>('[data-test="progress-input"]').element.value).toBe("10");
-  });
-
-  it('re-emits "change" from the shelf button', () => {
-    const wrapper = mountCard();
-    wrapper.findComponent({ name: "BookShelfButton" }).vm.$emit("change", ReadingShelf.FINISHED);
-    expect(wrapper.emitted("change")?.[0]?.[0]).toBe(ReadingShelf.FINISHED);
   });
 
   it('shows a "Finish" action while reading', () => {

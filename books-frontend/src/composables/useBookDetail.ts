@@ -1,8 +1,7 @@
 import { useQuery } from "@tanstack/vue-query";
 import { computed, ref, toRaw, type Ref } from "vue";
 import { clearRating, getBookEvents, setRating, setShelf } from "../api/books";
-import { type Book, ReadingDatePrecision, type ReadingDateValue, type ReadingShelf, type UserBook } from "../api/types";
-import { localDayValue } from "../utils/date";
+import type { Book, UserBook } from "../api/types";
 import { invalidateAfter } from "../query/invalidate";
 import { queryKeys } from "../query/keys";
 import { useBook } from "./useBook";
@@ -16,7 +15,6 @@ export function useBookDetail(bookId: Ref<number>) {
     enabled: () => bookId.value > 0,
   });
 
-  const savingShelf = ref(false);
   const savingReview = ref(false);
   const reviewError = ref("");
 
@@ -44,21 +42,6 @@ export function useBookDetail(bookId: Ref<number>) {
       }
     } finally {
       saving.value = false;
-    }
-  }
-
-  async function changeShelf(shelf: ReadingShelf, readingDate?: ReadingDateValue) {
-    const today = { value: localDayValue(new Date()), precision: ReadingDatePrecision.DAY };
-
-    try {
-      await save(
-        savingShelf,
-        (target) => setShelf(target.id, { shelf, reading_date: readingDate ?? today }),
-        invalidateAfter.shelfChanged,
-      );
-    } catch (err) {
-      console.error("Failed to update shelf:", err);
-      alert("Failed to update shelf");
     }
   }
 
@@ -90,10 +73,8 @@ export function useBookDetail(bookId: Ref<number>) {
     book,
     events,
     error,
-    savingShelf,
     savingReview,
     reviewError,
-    changeShelf,
     saveReview,
   };
 }
