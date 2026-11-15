@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import { useQueryClient } from "@tanstack/vue-query";
 import { isAxiosError } from "axios";
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import NavigationBar from "../components/navigation/NavigationBar.vue";
 import { deleteAllBooks, getImports, importReadingList } from "../api/books";
 import type { ImportRecord, ImportResult } from "../api/types";
+import { invalidateAfter } from "../query/invalidate";
 
 const router = useRouter();
-const queryClient = useQueryClient();
 const showConfirm = ref(false);
 const isDeleting = ref(false);
 
@@ -49,6 +48,7 @@ async function confirmDelete() {
   isDeleting.value = true;
   try {
     await deleteAllBooks();
+    invalidateAfter.allBooksDeleted();
     router.push("/");
   } finally {
     isDeleting.value = false;
@@ -74,8 +74,7 @@ async function handleImport() {
 
   try {
     importResult.value = await importReadingList(importFile.value);
-    // An import can touch any book and shelf
-    void queryClient.invalidateQueries();
+    invalidateAfter.readingListImported();
     await loadImports();
   } catch (e) {
     const detail = isAxiosError<{ detail?: unknown }>(e) ? e.response?.data?.detail : undefined;

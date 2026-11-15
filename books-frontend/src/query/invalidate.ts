@@ -19,6 +19,12 @@ export const invalidateAfter = {
     queryClient.removeQueries({ queryKey: queryKeys.book.all(bookId) });
     invalidate(queryKeys.shelves.all());
   },
+  allBooksDeleted: () => {
+    queryClient.removeQueries({ queryKey: queryKeys.book.root() });
+    invalidate(queryKeys.shelves.all());
+  },
+  // An import can potentially touch any book and shelf
+  readingListImported: () => invalidate(queryKeys.shelves.all(), queryKeys.book.root()),
   shelfChanged: (bookId: number) => invalidate(queryKeys.shelves.all(), queryKeys.book.all(bookId)),
   notesSaved: (bookId: number) => invalidate(queryKeys.book.events(bookId)),
   // Shelf tiles render the reading progress, so the shelves go stale along with the timeline
