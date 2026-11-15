@@ -125,8 +125,10 @@ const { reobserve } = useInfiniteScroll(
 );
 watch([isDragging, isSaving, isCollapsed], () => void nextTick(reobserve));
 
-// Re-observe once a fresh page has rendered, so the sentinel keeps triggering.
-watch(filteredBooks, () => void nextTick(reobserve));
+// The observer only fires when the sentinel enters or leaves the view, so we re-observe to check a sentinel that stayed in view:
+// - after a new page renders, since the sentinel may still be in view
+// - after any fetch ends, since loadMore skips while one runs, and a background refetch that changes nothing renders nothing
+watch([filteredBooks, isLoadingMore], () => void nextTick(reobserve));
 
 const { contextMenu, openContextMenu, closeContextMenu } = useContextMenu();
 
