@@ -3,22 +3,21 @@ import { computed, ref, watch } from "vue";
 import BookShelfButton from "../BookShelfButton/BookShelfButton.vue";
 import BookProgressEditor from "./BookProgressEditor.vue";
 import type { ReadingProgress } from "./types";
-import { type BookProgressUpdate, type ReadingDateValue, ReadingShelf } from "../../../api/types";
+import { type ReadingDateValue, ReadingShelf } from "../../../api/types";
 import { formatReadingDate } from "../../../utils/date";
 
 const props = defineProps<{
+  bookId: number;
   shelf: ReadingShelf;
   updating: boolean;
   progress: ReadingProgress;
   pageCount: number | null;
   startedAt: ReadingDateValue | null;
   finishedAt: ReadingDateValue | null;
-  progressSaving: boolean;
 }>();
 
 const emit = defineEmits<{
   change: [shelf: ReadingShelf, readingDate?: ReadingDateValue];
-  "update-progress": [progress: BookProgressUpdate];
 }>();
 
 // A percentage to show alongside the page: taken directly when the user tracks
@@ -36,6 +35,7 @@ const displayPercent = computed<number | null>(() => {
 
 const editingProgress = ref(false);
 
+// Progress that changes elsewhere, e.g. in a refresh, replaces the draft
 watch([() => props.progress.unit, () => props.progress.value], () => {
   editingProgress.value = false;
 });
@@ -70,10 +70,10 @@ watch([() => props.progress.unit, () => props.progress.value], () => {
 
     <BookProgressEditor
       v-if="editingProgress"
+      :book-id="bookId"
       :progress="progress"
       :page-count="pageCount"
-      :is-currently-saving="progressSaving"
-      @save="(progress) => emit('update-progress', progress)"
+      @saved="editingProgress = false"
       @cancel="editingProgress = false"
     />
 

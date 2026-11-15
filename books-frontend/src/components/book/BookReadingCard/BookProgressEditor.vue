@@ -1,19 +1,22 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import { useSaveBookProgress } from "../../../composables/useSaveBookProgress";
 import type { ReadingProgress } from "./types";
 
 type ProgressUnit = ReadingProgress["unit"];
 
 const props = defineProps<{
+  bookId: number;
   progress: ReadingProgress;
   pageCount?: number | null;
-  isCurrentlySaving?: boolean;
 }>();
 
 const emit = defineEmits<{
-  save: [progress: ReadingProgress];
+  saved: [];
   cancel: [];
 }>();
+
+const { mutate: saveProgress, isPending: saving } = useSaveBookProgress();
 
 const progressUnit = ref<ProgressUnit>(props.progress.unit);
 const progressDraft = ref<string>(currentValueFor(progressUnit.value));
@@ -32,7 +35,7 @@ function selectUnit(unit: ProgressUnit) {
 }
 
 function handleSaveProgress() {
-  if (props.isCurrentlySaving) {
+  if (saving.value) {
     return;
   }
 
@@ -47,7 +50,7 @@ function handleSaveProgress() {
       alert("Please enter a percentage between 0 and 100.");
       return;
     }
-    emit("save", { unit: "percent", value: percent });
+    save({ unit: "percent", value: percent });
     return;
   }
   const page = Number.parseInt(trimmed, 10);
@@ -55,7 +58,11 @@ function handleSaveProgress() {
     alert("Please enter a valid page number.");
     return;
   }
-  emit("save", { unit: "page", value: page });
+  save({ unit: "page", value: page });
+}
+
+function save(progress: ReadingProgress) {
+  saveProgress({ bookId: props.bookId, progress }, { onSuccess: () => emit("saved") });
 }
 
 function handleProgressFocus(event: FocusEvent) {
@@ -73,7 +80,7 @@ function handleProgressFocus(event: FocusEvent) {
           class="unit-btn"
           :class="{ active: progressUnit === 'page' }"
           data-test="unit-page"
-          :disabled="isCurrentlySaving"
+          :disabled="saving"
           @click="selectUnit('page')"
         >
           Page
@@ -83,7 +90,7 @@ function handleProgressFocus(event: FocusEvent) {
           class="unit-btn"
           :class="{ active: progressUnit === 'percent' }"
           data-test="unit-percent"
-          :disabled="isCurrentlySaving"
+          :disabled="saving"
           @click="selectUnit('percent')"
         >
           %
@@ -99,7 +106,7 @@ function handleProgressFocus(event: FocusEvent) {
         class="progress-input"
         data-test="progress-input"
         :aria-label="progressUnit === 'percent' ? 'Percentage read' : 'Current page'"
-        :disabled="isCurrentlySaving"
+        :disabled="saving"
         :placeholder="progressUnit === 'percent' ? '%' : 'Page'"
         @focus="handleProgressFocus"
       />
@@ -107,20 +114,14 @@ function handleProgressFocus(event: FocusEvent) {
         <template v-if="progressUnit === 'page' && pageCount">of {{ pageCount }}</template>
         <template v-else-if="progressUnit === 'percent'">%</template>
       </span>
-      <button
-        class="btn-link"
-        type="button"
-        data-test="save-progress"
-        :disabled="isCurrentlySaving"
-        @click="handleSaveProgress"
-      >
-        {{ isCurrentlySaving ? "Saving…" : "Save" }}
+      <button class="btn-link" type="button" data-test="save-progress" :disabled="saving" @click="handleSaveProgress">
+        {{ saving ? "Saving…" : "Save" }}
       </button>
       <button
         class="btn-link btn-link-cancel"
         type="button"
         data-test="cancel-progress"
-        :disabled="isCurrentlySaving"
+        :disabled="saving"
         @click="emit('cancel')"
       >
         Cancel

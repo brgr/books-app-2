@@ -1,85 +1,101 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { enableAutoUnmount, mount } from "@vue/test-utils";
+import { VueQueryPlugin } from "@tanstack/vue-query";
 import BookReadingCard from "./BookReadingCard.vue";
 import type { ReadingProgress } from "./types";
-import { ReadingDatePrecision, type ReadingDateValue, ReadingShelf } from "../../../api/types";
+import { addBookProgress } from "../../../api/books";
+import { ReadingDatePrecision, type ReadingDateValue, ReadingShelf, type UserBook } from "../../../api/types";
+import { queryClient } from "../../../query/client";
 
 enableAutoUnmount(afterEach);
 
+vi.mock("../../../api/books", () => ({
+  addBookProgress: vi.fn(),
+}));
+
+const userBook: UserBook = {
+  id: 1,
+  user_id: 1,
+  book_id: 1,
+  shelf: ReadingShelf.STARTED,
+  started_at: null,
+  finished_at: null,
+  notes: null,
+  progress: { unit: "page", value: 42 },
+  rating: null,
+};
+
 function makeProps(
   overrides: Partial<{
+    bookId: number;
     shelf: ReadingShelf;
     updating: boolean;
     progress: ReadingProgress;
     pageCount: number | null;
     startedAt: ReadingDateValue | null;
     finishedAt: ReadingDateValue | null;
-    progressSaving: boolean;
   }> = {},
 ) {
   return {
+    bookId: 1,
     shelf: ReadingShelf.STARTED,
     updating: false,
     progress: { unit: "page", value: 10 } satisfies ReadingProgress,
     pageCount: 200,
     startedAt: null,
     finishedAt: null,
-    progressSaving: false,
     ...overrides,
   };
 }
 
+function mountCard(overrides: Parameters<typeof makeProps>[0] = {}) {
+  return mount(BookReadingCard, {
+    props: makeProps(overrides),
+    global: { plugins: [[VueQueryPlugin, { queryClient }]] },
+  });
+}
+
 describe("BookReadingCard", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    queryClient.clear();
+  });
+
   it("shows current progress summary", () => {
-    const wrapper = mount(BookReadingCard, {
-      props: makeProps({ progress: { unit: "page", value: 50 }, pageCount: 200 }),
-    });
+    const wrapper = mountCard({ progress: { unit: "page", value: 50 }, pageCount: 200 });
     expect(wrapper.text()).toContain("Page 50");
     expect(wrapper.text()).toContain("of 200");
   });
 
   it("shows zero progress for a newly started book", () => {
-    const wrapper = mount(BookReadingCard, { props: makeProps({ progress: { unit: "page", value: 0 } }) });
+    const wrapper = mountCard({ progress: { unit: "page", value: 0 } });
     expect(wrapper.text()).toContain("Page 0 of 200");
     expect(wrapper.text()).toContain("0%");
   });
 
   it("shows the percentage summary when progress was last set as a percent", () => {
-    const wrapper = mount(BookReadingCard, {
-      props: makeProps({ progress: { unit: "percent", value: 42 } }),
-    });
+    const wrapper = mountCard({ progress: { unit: "percent", value: 42 } });
     expect(wrapper.text()).toContain("42%");
     expect(wrapper.text()).not.toContain("Page");
   });
 
   it("shows the page alongside a percentage derived from page count", () => {
-    const wrapper = mount(BookReadingCard, {
-      props: makeProps({ progress: { unit: "page", value: 50 }, pageCount: 200 }),
-    });
+    const wrapper = mountCard({ progress: { unit: "page", value: 50 }, pageCount: 200 });
     expect(wrapper.text()).toContain("Page 50 of 200");
     expect(wrapper.text()).toContain("25%");
   });
 
   it("omits the percentage when page count is missing", () => {
-    const wrapper = mount(BookReadingCard, {
-      props: makeProps({ progress: { unit: "page", value: 50 }, pageCount: null }),
-    });
+    const wrapper = mountCard({ progress: { unit: "page", value: 50 }, pageCount: null });
     expect(wrapper.text()).toContain("Page 50");
     expect(wrapper.text()).not.toContain("%");
   });
 
   it("hides progress input until Update is clicked", async () => {
-    const wrapper = mount(BookReadingCard, { props: makeProps() });
+    const wrapper = mountCard();
     expect(wrapper.find('[data-test="progress-input"]').exists()).toBe(false);
     await wrapper.find('[data-test="edit-progress"]').trigger("click");
     expect(wrapper.find('[data-test="progress-input"]').exists()).toBe(true);
-  });
-
-  it('emits "update-progress" with the current page when Save is clicked', async () => {
-    const wrapper = mount(BookReadingCard, { props: makeProps() });
-    await wrapper.find('[data-test="edit-progress"]').trigger("click");
-    await wrapper.find('[data-test="save-progress"]').trigger("click");
-    expect(wrapper.emitted("update-progress")?.[0]?.[0]).toEqual({ unit: "page", value: 10 });
   });
 
   it.each<ReadingProgress>([
@@ -88,7 +104,7 @@ describe("BookReadingCard", () => {
     { unit: "page", value: 0 },
     { unit: "percent", value: 0 },
   ])("edits the recorded $unit value $value", async (progress) => {
-    const wrapper = mount(BookReadingCard, { props: makeProps({ progress }) });
+    const wrapper = mountCard({ progress });
     const { unit } = progress;
     const value = String(progress.value);
     const otherUnit = unit === "page" ? "percent" : "page";
@@ -102,28 +118,20 @@ describe("BookReadingCard", () => {
     expect(wrapper.get<HTMLInputElement>('[data-test="progress-input"]').element.value).toBe(value);
     await wrapper.get('[data-test="save-progress"]').trigger("click");
 
-    expect(wrapper.emitted("update-progress")).toEqual([[progress]]);
+    expect(vi.mocked(addBookProgress).mock.calls).toEqual([[1, progress]]);
   });
 
-  it("forwards the saving state and closes the editor when saved progress changes", async () => {
-    const wrapper = mount(BookReadingCard, { props: makeProps() });
+  it("closes the editor once saved, even when the progress didn't change", async () => {
+    vi.mocked(addBookProgress).mockResolvedValue(userBook);
+    const wrapper = mountCard();
     await wrapper.get('[data-test="edit-progress"]').trigger("click");
-    await wrapper.get('[data-test="progress-input"]').setValue("42");
     await wrapper.get('[data-test="save-progress"]').trigger("click");
 
-    expect(wrapper.emitted("update-progress")?.[0]?.[0]).toEqual({ unit: "page", value: 42 });
-    expect(wrapper.find('[data-test="progress-input"]').exists()).toBe(true);
-    await wrapper.setProps({ progressSaving: true });
-    expect(wrapper.get('[data-test="save-progress"]').text()).toBe("Saving…");
-    expect(wrapper.get<HTMLInputElement>('[data-test="progress-input"]').element.disabled).toBe(true);
-
-    await wrapper.setProps({ progress: { unit: "page", value: 42 }, progressSaving: false });
-    expect(wrapper.find('[data-test="progress-input"]').exists()).toBe(false);
-    expect(wrapper.text()).toContain("Page 42 of 200");
+    await vi.waitFor(() => expect(wrapper.find('[data-test="progress-input"]').exists()).toBe(false));
   });
 
   it("preserves the draft when a refresh returns the same progress", async () => {
-    const wrapper = mount(BookReadingCard, { props: makeProps() });
+    const wrapper = mountCard();
     await wrapper.get('[data-test="edit-progress"]').trigger("click");
     await wrapper.get('[data-test="progress-input"]').setValue("42");
 
@@ -132,12 +140,12 @@ describe("BookReadingCard", () => {
     expect(wrapper.get<HTMLInputElement>('[data-test="progress-input"]').element.value).toBe("42");
   });
 
-  it("Cancel exits edit mode without emitting", async () => {
-    const wrapper = mount(BookReadingCard, { props: makeProps() });
+  it("Cancel exits edit mode without saving", async () => {
+    const wrapper = mountCard();
     await wrapper.find('[data-test="edit-progress"]').trigger("click");
     await wrapper.find('[data-test="progress-input"]').setValue("99");
     await wrapper.find('[data-test="cancel-progress"]').trigger("click");
-    expect(wrapper.emitted("update-progress")).toBeFalsy();
+    expect(addBookProgress).not.toHaveBeenCalled();
     expect(wrapper.find('[data-test="progress-input"]').exists()).toBe(false);
 
     await wrapper.get('[data-test="edit-progress"]').trigger("click");
@@ -145,22 +153,20 @@ describe("BookReadingCard", () => {
   });
 
   it('re-emits "change" from the shelf button', () => {
-    const wrapper = mount(BookReadingCard, { props: makeProps() });
+    const wrapper = mountCard();
     wrapper.findComponent({ name: "BookShelfButton" }).vm.$emit("change", ReadingShelf.FINISHED);
     expect(wrapper.emitted("change")?.[0]?.[0]).toBe(ReadingShelf.FINISHED);
   });
 
   it('shows a "Finish" action while reading', () => {
-    const wrapper = mount(BookReadingCard, { props: makeProps({ shelf: ReadingShelf.STARTED }) });
+    const wrapper = mountCard({ shelf: ReadingShelf.STARTED });
     expect(wrapper.find('[data-test="shelf-button"]').text()).toBe("Finish");
   });
 
   it("shows started and finished dates when provided", () => {
-    const wrapper = mount(BookReadingCard, {
-      props: makeProps({
-        startedAt: { value: "2026-01-02", precision: ReadingDatePrecision.DAY },
-        finishedAt: { value: "2026-02-03", precision: ReadingDatePrecision.DAY },
-      }),
+    const wrapper = mountCard({
+      startedAt: { value: "2026-01-02", precision: ReadingDatePrecision.DAY },
+      finishedAt: { value: "2026-02-03", precision: ReadingDatePrecision.DAY },
     });
     expect(wrapper.text()).toContain("since");
     expect(wrapper.find(".dates").exists()).toBe(true);
@@ -168,9 +174,7 @@ describe("BookReadingCard", () => {
   });
 
   it("hides the dates block when no dates are set", () => {
-    const wrapper = mount(BookReadingCard, {
-      props: makeProps({ startedAt: null, finishedAt: null }),
-    });
+    const wrapper = mountCard({ startedAt: null, finishedAt: null });
     expect(wrapper.find(".dates").exists()).toBe(false);
   });
 
@@ -183,10 +187,8 @@ describe("BookReadingCard", () => {
     } as typeof Intl.DateTimeFormat);
 
     try {
-      const wrapper = mount(BookReadingCard, {
-        props: makeProps({
-          startedAt: { value: "2026-01-01T12:00:00Z", precision: ReadingDatePrecision.MONTH },
-        }),
+      const wrapper = mountCard({
+        startedAt: { value: "2026-01-01T12:00:00Z", precision: ReadingDatePrecision.MONTH },
       });
       expect(wrapper.text()).toContain("Jan 2026");
       expect(wrapper.text()).not.toContain("Jan 1, 2026");

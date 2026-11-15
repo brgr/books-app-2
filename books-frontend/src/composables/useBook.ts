@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, type Ref } from "vue";
 import { useRoute } from "vue-router";
 import { getBook } from "../api/books";
-import type { Book } from "../api/types";
+import type { Book, UserBook } from "../api/types";
 import { queryKeys } from "../query/keys";
 
 /** The book id in the current route's `id` parameter, or 0 when it isn't a number. */
@@ -26,6 +26,19 @@ export function useSeedBook() {
     if (queryClient.getQueryData(queryKey) === undefined) {
       queryClient.setQueryData(queryKey, book);
     }
+  };
+}
+
+/** Puts the reading state a mutation answered with into the cached book. */
+export function useSetUserBook() {
+  const queryClient = useQueryClient();
+
+  return async (bookId: number, userBook: UserBook) => {
+    const queryKey = queryKeys.book.detail(bookId);
+
+    // A read that started before the mutation must not overwrite its result
+    await queryClient.cancelQueries({ queryKey });
+    queryClient.setQueryData<Book>(queryKey, (book) => book && { ...book, user_book: userBook });
   };
 }
 

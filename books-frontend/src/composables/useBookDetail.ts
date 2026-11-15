@@ -1,14 +1,7 @@
 import { useQuery } from "@tanstack/vue-query";
 import { computed, ref, toRaw, type Ref } from "vue";
-import { addBookProgress, clearRating, getBookEvents, setRating, setShelf } from "../api/books";
-import {
-  type Book,
-  type BookProgressUpdate,
-  ReadingDatePrecision,
-  type ReadingDateValue,
-  type ReadingShelf,
-  type UserBook,
-} from "../api/types";
+import { clearRating, getBookEvents, setRating, setShelf } from "../api/books";
+import { type Book, ReadingDatePrecision, type ReadingDateValue, type ReadingShelf, type UserBook } from "../api/types";
 import { localDayValue } from "../utils/date";
 import { invalidateAfter } from "../query/invalidate";
 import { queryKeys } from "../query/keys";
@@ -25,7 +18,6 @@ export function useBookDetail(bookId: Ref<number>) {
 
   const savingShelf = ref(false);
   const savingReview = ref(false);
-  const savingProgress = ref(false);
   const reviewError = ref("");
 
   /** Rejects when the request fails, leaving it to the caller to tell the user. */
@@ -70,15 +62,6 @@ export function useBookDetail(bookId: Ref<number>) {
     }
   }
 
-  async function saveProgress(progress: BookProgressUpdate) {
-    try {
-      await save(savingProgress, (target) => addBookProgress(target.id, progress), invalidateAfter.progressSaved);
-    } catch (err) {
-      console.error("Failed to save progress:", err);
-      alert("Failed to save progress");
-    }
-  }
-
   async function saveReview(notes: string, rating: number | null) {
     const id = bookId.value;
     reviewError.value = "";
@@ -109,10 +92,8 @@ export function useBookDetail(bookId: Ref<number>) {
     error,
     savingShelf,
     savingReview,
-    savingProgress,
     reviewError,
     changeShelf,
-    saveProgress,
     saveReview,
   };
 }

@@ -3,9 +3,7 @@ import { queryClient } from "./client";
 import { queryKeys } from "./keys";
 
 function invalidate(...keys: QueryKey[]) {
-  for (const queryKey of keys) {
-    void queryClient.invalidateQueries({ queryKey });
-  }
+  return Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
 }
 
 /**

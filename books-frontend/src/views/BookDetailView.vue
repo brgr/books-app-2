@@ -15,18 +15,7 @@ import { useBookDetail } from "../composables/useBookDetail";
 const router = useRouter();
 const bookId = useRouteBookId();
 
-const {
-  book,
-  events,
-  error,
-  savingShelf,
-  savingReview,
-  savingProgress,
-  reviewError,
-  changeShelf,
-  saveProgress,
-  saveReview,
-} = useBookDetail(bookId);
+const { book, events, error, savingShelf, savingReview, reviewError, changeShelf, saveReview } = useBookDetail(bookId);
 
 function handleEdit() {
   if (!book.value) {
@@ -67,9 +56,7 @@ function handleEdit() {
               :user-book="book.user_book"
               :page-count="book.page_count"
               :saving-shelf="savingShelf"
-              :saving-progress="savingProgress"
               @change="changeShelf"
-              @update-progress="saveProgress"
             />
           </div>
         </div>
