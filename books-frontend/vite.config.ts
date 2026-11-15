@@ -41,10 +41,14 @@ export default defineConfig({
       workbox: {
         runtimeCaching: [
           {
-            urlPattern: ({ request }) => request.destination === "image",
-            handler: "StaleWhileRevalidate",
+            // Cover URLs never change their content (a new cover gets a new file name), so a cached one is never
+            // revalidated. Only our own covers are cached: remote images are search results, seen once.
+            urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith("/uploads/covers/"),
+            handler: "CacheFirst",
             options: {
-              cacheName: "images",
+              cacheName: "covers",
+              // Covers and their thumbnails of about a thousand books, least recently used dropped first
+              expiration: { maxEntries: 2000, purgeOnQuotaError: true },
             },
           },
         ],

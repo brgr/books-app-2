@@ -16,3 +16,9 @@ app.use(VueQueryPlugin, {
 });
 
 app.mount("#app");
+
+// The service worker used to cache every image here without a limit; it now uses the "covers" cache.
+// Temporary: we can remove this once this code was executed on every device
+if ("caches" in window) {
+  void caches.delete("images");
+}
