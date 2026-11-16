@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount } from "vue";
 import { type Book, ReadingShelf } from "../../api/types";
 import { getMediaUrl } from "../../api/client";
 import { isPlainLeftClick } from "../../utils/click";
+import { LONG_PRESS_MS } from "../../composables/useContextMenu";
 
 const props = withDefaults(
   defineProps<{
@@ -18,7 +19,6 @@ const emit = defineEmits<{
   (e: "menu", payload: { bookId: number; x: number; y: number }): void;
 }>();
 
-const LONG_PRESS_MS = 500;
 const MOVE_THRESHOLD = 10;
 let pressTimer: ReturnType<typeof setTimeout> | null = null;
 let startX = 0;
@@ -57,8 +57,6 @@ function onTouchStart(e: TouchEvent) {
 
   clearPressTimer();
 
-  // Show the menu on a long press. If the user then starts dragging, BooksView closes it on the drag's @start;
-  // the book stays draggable underneath either way.
   pressTimer = setTimeout(() => {
     menuShown = true;
     emit("menu", { bookId: props.book.id, x: startX, y: startY });

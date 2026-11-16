@@ -1,5 +1,11 @@
 import { ref } from "vue";
 
+/**
+ * How long a finger must rest on a book before the touch stops being a tap or a scroll. After this, releasing without
+ * moving opens the context menu and moving drags the book.
+ */
+export const LONG_PRESS_MS = 500;
+
 interface ContextMenuState {
   visible: boolean;
   x: number;
