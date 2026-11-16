@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount } from "vue";
 import { type Book, ReadingShelf } from "../../api/types";
 import { getMediaUrl } from "../../api/client";
 import { isPlainLeftClick } from "../../utils/click";
-import { LONG_PRESS_MS } from "../../composables/useContextMenu";
+import { LONG_PRESS_MOVE_THRESHOLD, LONG_PRESS_MS } from "../../composables/useContextMenu";
 
 const props = withDefaults(
   defineProps<{
@@ -19,7 +19,6 @@ const emit = defineEmits<{
   (e: "menu", payload: { bookId: number; x: number; y: number }): void;
 }>();
 
-const MOVE_THRESHOLD = 10;
 let pressTimer: ReturnType<typeof setTimeout> | null = null;
 let startX = 0;
 let startY = 0;
@@ -71,7 +70,10 @@ function onTouchMove(e: TouchEvent) {
   }
 
   // Movement before the long press = a drag/scroll, so don't pop the menu.
-  if (Math.abs(touch.clientX - startX) > MOVE_THRESHOLD || Math.abs(touch.clientY - startY) > MOVE_THRESHOLD) {
+  if (
+    Math.abs(touch.clientX - startX) > LONG_PRESS_MOVE_THRESHOLD ||
+    Math.abs(touch.clientY - startY) > LONG_PRESS_MOVE_THRESHOLD
+  ) {
     clearPressTimer();
   }
 }

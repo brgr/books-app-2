@@ -1,7 +1,7 @@
 import { ref, type Ref } from "vue";
 import { reorderShelfItem } from "../api/books";
 import type { Book, ShelfRef, ShelfReorderRequest } from "../api/types";
-import { LONG_PRESS_MS } from "./useContextMenu";
+import { LONG_PRESS_MOVE_THRESHOLD, LONG_PRESS_MS } from "./useContextMenu";
 
 export interface ShelfReorderOptions {
   /**
@@ -36,6 +36,7 @@ export function useShelfReorder(options: ShelfReorderOptions) {
     animation: 150,
     delay: LONG_PRESS_MS,
     "delay-on-touch-only": true,
+    "touch-start-threshold": LONG_PRESS_MOVE_THRESHOLD,
     "ghost-class": "grid-ghost",
     "drag-class": "grid-drag",
     "chosen-class": "grid-chosen",

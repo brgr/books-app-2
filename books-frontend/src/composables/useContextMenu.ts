@@ -6,6 +6,11 @@ import { ref } from "vue";
  */
 export const LONG_PRESS_MS = 500;
 
+/**
+ * How far, in CSS pixels, a resting finger may wander during the hold and still count as a long press.
+ */
+export const LONG_PRESS_MOVE_THRESHOLD = 10;
+
 interface ContextMenuState {
   visible: boolean;
   x: number;
