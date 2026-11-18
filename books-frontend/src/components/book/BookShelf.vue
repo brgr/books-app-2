@@ -93,14 +93,25 @@ watch(
 // Reordering is also disabled while more books are loading, or if the shelf has an error.
 const isReorderable = computed(() => !searchQuery.value.trim() && !isLoadingMore.value && !error.value);
 
-const { isDragging, isSaving, dragOptions, ignoresClick, handleDragStart, handleDragEnd, moveBookToEdge } =
-  useShelfReorder({
-    books,
-    hasMore,
-    shelf: props.shelf,
-    enabled: isReorderable,
-    refresh: reconcileOrder,
-  });
+const { contextMenu, openContextMenu, closeContextMenu } = useContextMenu();
+
+const {
+  isDragging,
+  isSaving,
+  dragOptions,
+  ignoresClick,
+  handleChoose,
+  handleDragStart,
+  handleDragEnd,
+  moveBookToEdge,
+} = useShelfReorder({
+  books,
+  hasMore,
+  shelf: props.shelf,
+  enabled: isReorderable,
+  refresh: reconcileOrder,
+  onHold: (bookId, rect) => openContextMenu({ bookId, x: rect.left, y: rect.bottom }),
+});
 
 /**
  * Brings the shelf back in line with the server after a reorder. A refresh that finds the order unchanged (the
@@ -129,8 +140,6 @@ watch([isDragging, isSaving, isCollapsed], () => void nextTick(reobserve));
 // - after a new page renders, since the sentinel may still be in view
 // - after any fetch ends, since loadMore skips while one runs, and a background refetch that changes nothing renders nothing
 watch([filteredBooks, isLoadingMore], () => void nextTick(reobserve));
-
-const { contextMenu, openContextMenu, closeContextMenu } = useContextMenu();
 
 function startDrag() {
   // Starting a drag dismisses any open long-press menu, revealing the book being
@@ -238,8 +247,8 @@ async function handleContextRemove() {
         class="books-container books-grid"
         :list="books"
         item-key="id"
-        :disabled="!isReorderable || isSaving"
         v-bind="dragOptions"
+        @choose="handleChoose"
         @start="startDrag"
         @end="handleDragEnd"
       >

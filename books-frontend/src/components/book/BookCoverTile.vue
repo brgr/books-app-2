@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount } from "vue";
+import { computed } from "vue";
 import { type Book, ReadingShelf } from "../../api/types";
 import { getMediaUrl } from "../../api/client";
 import { isPlainLeftClick } from "../../utils/click";
-import { LONG_PRESS_MOVE_THRESHOLD, LONG_PRESS_MS } from "../../composables/useContextMenu";
 
 const props = withDefaults(
   defineProps<{
@@ -19,17 +18,12 @@ const emit = defineEmits<{
   (e: "menu", payload: { bookId: number; x: number; y: number }): void;
 }>();
 
-let pressTimer: ReturnType<typeof setTimeout> | null = null;
-let startX = 0;
-let startY = 0;
+// Open the menu here only on a right-click: a long press on touch belongs to the shelf, which also starts the drag
+// from it. Android fires `contextmenu` on a long press too; `touchActive` tells the two apart
 let touchActive = false;
-let menuShown = false;
 
-function clearPressTimer() {
-  if (pressTimer !== null) {
-    clearTimeout(pressTimer);
-    pressTimer = null;
-  }
+function setTouchActive(active: boolean) {
+  touchActive = active;
 }
 
 function onContextMenu(e: MouseEvent) {
@@ -38,70 +32,10 @@ function onContextMenu(e: MouseEvent) {
     return;
   }
 
-  // Real mouse right-click (no active touch) opens the menu immediately
   emit("menu", { bookId: props.book.id, x: e.clientX, y: e.clientY });
 }
 
-function onTouchStart(e: TouchEvent) {
-  const touch = e.touches[0];
-
-  if (!touch) {
-    return;
-  }
-
-  touchActive = true;
-  menuShown = false;
-  startX = touch.clientX;
-  startY = touch.clientY;
-
-  clearPressTimer();
-
-  pressTimer = setTimeout(() => {
-    menuShown = true;
-    emit("menu", { bookId: props.book.id, x: startX, y: startY });
-  }, LONG_PRESS_MS);
-}
-
-function onTouchMove(e: TouchEvent) {
-  const touch = e.touches[0];
-
-  if (!touch) {
-    return;
-  }
-
-  // Movement before the long press = a drag/scroll, so don't pop the menu.
-  if (
-    Math.abs(touch.clientX - startX) > LONG_PRESS_MOVE_THRESHOLD ||
-    Math.abs(touch.clientY - startY) > LONG_PRESS_MOVE_THRESHOLD
-  ) {
-    clearPressTimer();
-  }
-}
-
-function onTouchEnd(e: TouchEvent) {
-  clearPressTimer();
-
-  // Keep the long-press menu open on release; block the compatibility click it would otherwise spawn
-  // (which would close the menu or open the book)
-  if (menuShown && e.cancelable) {
-    e.preventDefault();
-  }
-
-  touchActive = false;
-}
-
-function onTouchCancel() {
-  clearPressTimer();
-  touchActive = false;
-}
-
 function onClick(event: MouseEvent) {
-  if (menuShown) {
-    event.preventDefault();
-    menuShown = false;
-    return;
-  }
-
   // Ordinary clicks are handled by ourselves; for clicks with special keys, keep the browser's usual (link) behavior
   if (!isPlainLeftClick(event)) {
     return;
@@ -110,8 +44,6 @@ function onClick(event: MouseEvent) {
   event.preventDefault();
   emit("click", props.book.id);
 }
-
-onBeforeUnmount(clearPressTimer);
 
 const coverUrl = computed(() => getMediaUrl(props.book.cover_thumbnail_url || props.book.cover_image_url));
 
@@ -145,10 +77,9 @@ const showBadge = computed(
       class="grid-cover-link"
       @click="onClick"
       @contextmenu="onContextMenu"
-      @touchstart.passive="onTouchStart"
-      @touchmove.passive="onTouchMove"
-      @touchend="onTouchEnd"
-      @touchcancel.passive="onTouchCancel"
+      @touchstart.passive="setTouchActive(true)"
+      @touchend.passive="setTouchActive(false)"
+      @touchcancel.passive="setTouchActive(false)"
     >
       <span v-if="showBadge" class="grid-progress-badge"> {{ progressPercent }}% </span>
       <span

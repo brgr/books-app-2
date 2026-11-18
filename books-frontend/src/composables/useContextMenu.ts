@@ -1,8 +1,8 @@
 import { ref } from "vue";
 
 /**
- * How long a finger must rest on a book before the touch stops being a tap or a scroll. After this, releasing without
- * moving opens the context menu and moving drags the book.
+ * How long a finger must rest on a book before the touch stops being a tap or a scroll. After this, the book is picked up:
+ * its context menu opens, and moving on drags the book.
  */
 export const LONG_PRESS_MS = 350;
 

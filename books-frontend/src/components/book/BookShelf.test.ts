@@ -230,6 +230,37 @@ describe("BookShelf", () => {
     expect(wrapper.findComponent({ name: "BookContextMenu" }).exists()).toBe(true);
   });
 
+  it("opens a book's menu when a touch holds it, without opening the book on release", async () => {
+    const wrapper = mountShelf({ defaultViewMode: "grid" });
+    await flush();
+
+    wrapper.findComponent({ name: "draggable" }).vm.$emit("choose", {
+      item: wrapper.findAll(".grid-item")[1]!.element,
+      oldIndex: 1,
+      originalEvent: { pointerType: "touch" },
+    });
+    await nextTick();
+    expect(wrapper.findComponent(BookContextMenu).exists()).toBe(true);
+
+    document.dispatchEvent(new TouchEvent("touchend", { cancelable: true }));
+    await wrapper.findAll("a.grid-cover-link")[1]!.trigger("click");
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("leaves the menu closed when the mouse presses a book", async () => {
+    const wrapper = mountShelf({ defaultViewMode: "grid" });
+    await flush();
+
+    wrapper.findComponent({ name: "draggable" }).vm.$emit("choose", {
+      item: wrapper.findAll(".grid-item")[1]!.element,
+      oldIndex: 1,
+      originalEvent: { pointerType: "mouse" },
+    });
+    await nextTick();
+
+    expect(wrapper.findComponent(BookContextMenu).exists()).toBe(false);
+  });
+
   it.each([
     { view: "list", edge: "top", bookId: 2, hasMore: false, expected: [2, 1] },
     { view: "grid", edge: "top", bookId: 2, hasMore: false, expected: [2, 1] },

@@ -1,4 +1,4 @@
-import { ref, type Ref } from "vue";
+import { computed, onBeforeUnmount, ref, type Ref } from "vue";
 import { reorderShelfItem } from "../api/books";
 import type { Book, ShelfRef, ShelfReorderRequest } from "../api/types";
 import { LONG_PRESS_MOVE_THRESHOLD, LONG_PRESS_MS } from "./useContextMenu";
@@ -16,38 +16,108 @@ export interface ShelfReorderOptions {
   enabled: Ref<boolean>;
   /** Reconcile loaded pages with the server's order. */
   refresh: () => Promise<void>;
+  /** A finger rested on a book long enough to pick it up; `rect` is where the book sits on screen. */
+  onHold: (bookId: number, rect: DOMRect) => void;
 }
 
-/** How long after a drag a stray click from the same gesture can still land. */
+/** The parts of a SortableJS `choose` event used here. */
+interface ChooseEvent {
+  item: HTMLElement;
+  oldIndex?: number;
+  originalEvent?: Event;
+}
+
+/**
+ * How long clicks are ignored after a drag or a long press ends. Letting go sends a click of its own, which would
+ * otherwise open the book.
+ */
 const clickGraceMs = 200;
+
+function isTouch(event: Event | undefined) {
+  if (!event) {
+    return false;
+  }
+  return "pointerType" in event ? event.pointerType === "touch" : "touches" in event;
+}
 
 /**
  * Drag-to-reorder for one shelf: tracks the gesture, persists the new position, and reports when a
  * click is really the tail of a drag rather than a tap on a book.
+ *
+ * On touch, holding a book opens its menu and lets it be dragged. SortableJS's drag delay decides when the hold has
+ * lasted long enough, for both.
  */
 export function useShelfReorder(options: ShelfReorderOptions) {
-  const { books, hasMore, shelf, enabled, refresh } = options;
+  const { books, hasMore, shelf, enabled, refresh, onHold } = options;
 
   const isDragging = ref(false);
-  const lastDragTime = ref(0);
+  const lastGestureEnd = ref(0);
   const isSaving = ref(false);
 
-  const dragOptions = {
+  const canDrag = computed(() => enabled.value && !isSaving.value);
+
+  const dragOptions = computed(() => ({
     animation: 150,
     delay: LONG_PRESS_MS,
     "delay-on-touch-only": true,
     "touch-start-threshold": LONG_PRESS_MOVE_THRESHOLD,
+    // SortableJS's own pointer-driven drag everywhere (phones get it anyway), as the browser's drag and drop would
+    // ignore the tolerance below
+    "force-fallback": true,
+    // On a shelf that can't be reordered, a held book never starts dragging. Disabling SortableJS instead would also
+    // take away the long press that opens the book's menu
+    "fallback-tolerance": canDrag.value ? 0 : Infinity,
     "ghost-class": "grid-ghost",
     "drag-class": "grid-drag",
-  };
+  }));
 
   /**
-   * True while a drag is in flight or has only just ended, when the click closing the gesture would
-   * otherwise open the book that was moved.
+   * True while a drag is in flight or a drag or long press has only just ended, when the click closing the gesture
+   * would otherwise open the book.
    */
   function ignoresClick() {
-    return isDragging.value || Date.now() - lastDragTime.value < clickGraceMs;
+    return isDragging.value || Date.now() - lastGestureEnd.value < clickGraceMs;
   }
+
+  /**
+   * SortableJS chose a book. With a touch, that means the long press completed: the book is picked up until the finger
+   * lifts. With the mouse, it happens on every button press, which is no hold at all.
+   */
+  function handleChoose(event: ChooseEvent) {
+    if (!isTouch(event.originalEvent)) {
+      return;
+    }
+
+    const book = event.oldIndex === undefined ? undefined : books.value[event.oldIndex];
+    if (!book) {
+      return;
+    }
+
+    document.addEventListener("touchend", endHold, { passive: false });
+    document.addEventListener("touchcancel", endHold);
+
+    onHold(book.id, event.item.getBoundingClientRect());
+  }
+
+  function endHold(event: TouchEvent) {
+    if (event.touches.length > 0) {
+      return;
+    }
+
+    // Lifting the finger would otherwise click whatever is under it now: the menu's backdrop, or the book
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+    lastGestureEnd.value = Date.now();
+    stopHoldListeners();
+  }
+
+  function stopHoldListeners() {
+    document.removeEventListener("touchend", endHold);
+    document.removeEventListener("touchcancel", endHold);
+  }
+
+  onBeforeUnmount(stopHoldListeners);
 
   /**
    * Persists changes to the shelf and updates the order of books based on the provided payload.
@@ -81,7 +151,7 @@ export function useShelfReorder(options: ShelfReorderOptions) {
 
   async function handleDragEnd(event: { newIndex?: number; oldIndex?: number } | null) {
     isDragging.value = false;
-    lastDragTime.value = Date.now();
+    lastGestureEnd.value = Date.now();
 
     if (!event || event.newIndex === undefined || event.oldIndex === undefined) {
       return;
@@ -143,6 +213,7 @@ export function useShelfReorder(options: ShelfReorderOptions) {
     isSaving,
     dragOptions,
     ignoresClick,
+    handleChoose,
     handleDragStart,
     handleDragEnd,
     moveBookToEdge,
