@@ -110,7 +110,7 @@ const {
   shelf: props.shelf,
   enabled: isReorderable,
   refresh: reconcileOrder,
-  onHold: (bookId, rect) => openContextMenu({ bookId, x: rect.left, y: rect.bottom }),
+  onHold: (bookId, rect) => openContextMenu({ bookId, x: rect.left, y: rect.bottom, anchor: rect }),
 });
 
 /**
@@ -278,6 +278,7 @@ async function handleContextRemove() {
       v-if="contextMenu.visible && contextMenu.bookId !== null"
       :x="contextMenu.x"
       :y="contextMenu.y"
+      :anchor="contextMenu.anchor"
       :can-remove-from-shelf="canRemoveFromShelf"
       :can-reorder="isReorderable && !isSaving"
       @view="handleContextView"

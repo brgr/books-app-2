@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import type { MenuAnchor } from "../../composables/useContextMenu";
 
 const props = defineProps<{
   x: number;
   y: number;
+  /**
+   * The book a long press picked up. The menu then sits below the book, or above it when there's no room below,
+   * instead of at `x`/`y`, where the finger would cover it.
+   */
+  anchor?: MenuAnchor | null;
   canRemoveFromShelf?: boolean;
   canReorder?: boolean;
 }>();
@@ -20,25 +26,32 @@ const emit = defineEmits<{
 const menuEl = ref<HTMLElement | null>(null);
 const pos = ref({ top: props.y, left: props.x });
 
-function clamp() {
+/** Space between the menu and the viewport's edges. */
+const margin = 8;
+/** Space between the menu and the book it belongs to. */
+const anchorGap = 12;
+
+function place() {
   const el = menuEl.value;
   if (!el) {
     return;
   }
 
-  const rect = el.getBoundingClientRect();
-  const margin = 8;
+  const { width, height } = el.getBoundingClientRect();
+  const maxLeft = window.innerWidth - width - margin;
+  const maxTop = window.innerHeight - height - margin;
   let left = props.x;
   let top = props.y;
 
-  if (left + rect.width + margin > window.innerWidth) {
-    left = window.innerWidth - rect.width - margin;
-  }
-  if (top + rect.height + margin > window.innerHeight) {
-    top = window.innerHeight - rect.height - margin;
+  if (props.anchor) {
+    const below = props.anchor.top + props.anchor.height + anchorGap;
+    const above = props.anchor.top - anchorGap - height;
+    left = props.anchor.left;
+    // Below the book, unless there is room only above it
+    top = below <= maxTop || above < margin ? below : above;
   }
 
-  pos.value = { top: Math.max(margin, top), left: Math.max(margin, left) };
+  pos.value = { top: Math.max(margin, Math.min(top, maxTop)), left: Math.max(margin, Math.min(left, maxLeft)) };
 }
 
 function onKey(e: KeyboardEvent) {
@@ -48,12 +61,12 @@ function onKey(e: KeyboardEvent) {
 }
 
 watch(
-  () => [props.x, props.y],
-  () => nextTick(clamp),
+  () => [props.x, props.y, props.anchor],
+  () => nextTick(place),
 );
 
 onMounted(() => {
-  nextTick(clamp);
+  nextTick(place);
   document.addEventListener("keydown", onKey);
 });
 

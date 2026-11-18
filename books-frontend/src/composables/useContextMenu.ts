@@ -11,11 +11,21 @@ export const LONG_PRESS_MS = 350;
  */
 export const LONG_PRESS_MOVE_THRESHOLD = 10;
 
+/** What a menu is attached to. Its value is the position on screen of the book the menu belongs to. */
+export interface MenuAnchor {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}
+
 interface ContextMenuState {
   visible: boolean;
   x: number;
   y: number;
   bookId: number | null;
+  /** Set when a long press picked the book up: the menu then sits beside the book instead of at `x`/`y`. */
+  anchor: MenuAnchor | null;
 }
 
 /**
@@ -24,15 +34,22 @@ interface ContextMenuState {
  * hides it and clears the target.
  */
 export function useContextMenu() {
-  const contextMenu = ref<ContextMenuState>({ visible: false, x: 0, y: 0, bookId: null });
+  const contextMenu = ref<ContextMenuState>({ visible: false, x: 0, y: 0, bookId: null, anchor: null });
 
-  function openContextMenu(payload: { bookId: number; x: number; y: number }) {
-    contextMenu.value = { visible: true, x: payload.x, y: payload.y, bookId: payload.bookId };
+  function openContextMenu(payload: { bookId: number; x: number; y: number; anchor?: MenuAnchor }) {
+    contextMenu.value = {
+      visible: true,
+      x: payload.x,
+      y: payload.y,
+      bookId: payload.bookId,
+      anchor: payload.anchor ?? null,
+    };
   }
 
   function closeContextMenu() {
     contextMenu.value.visible = false;
     contextMenu.value.bookId = null;
+    contextMenu.value.anchor = null;
   }
 
   return { contextMenu, openContextMenu, closeContextMenu };

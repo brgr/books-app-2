@@ -230,17 +230,18 @@ describe("BookShelf", () => {
     expect(wrapper.findComponent({ name: "BookContextMenu" }).exists()).toBe(true);
   });
 
-  it("opens a book's menu when a touch holds it, without opening the book on release", async () => {
+  it("opens a book's menu beside it when a touch holds it, without opening the book on release", async () => {
     const wrapper = mountShelf({ defaultViewMode: "grid" });
     await flush();
 
+    const item = wrapper.findAll(".grid-item")[1]!.element;
     wrapper.findComponent({ name: "draggable" }).vm.$emit("choose", {
-      item: wrapper.findAll(".grid-item")[1]!.element,
+      item,
       oldIndex: 1,
       originalEvent: { pointerType: "touch" },
     });
     await nextTick();
-    expect(wrapper.findComponent(BookContextMenu).exists()).toBe(true);
+    expect(wrapper.findComponent(BookContextMenu).props("anchor")).toEqual(item.getBoundingClientRect());
 
     document.dispatchEvent(new TouchEvent("touchend", { cancelable: true }));
     await wrapper.findAll("a.grid-cover-link")[1]!.trigger("click");
