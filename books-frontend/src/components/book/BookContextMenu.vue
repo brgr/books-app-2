@@ -7,9 +7,9 @@ const props = defineProps<{
   x: number;
   y: number;
   /**
-   * The book a long press picked up. The page then dims, the `preview` slot shows the book lifted in place, and the
-   * menu pops up below the book, or above it when there's no room below, instead of at `x`/`y`, where the finger would
-   * cover it.
+   * The book a long press picked up. The page then dims, the `preview` slot shows the book lifted in place (tapping it
+   * views the book), and the menu pops up below the book, or above it when there's no room below, instead of at
+   * `x`/`y`, where the finger would cover it.
    */
   anchor?: MenuAnchor | null;
   canRemoveFromShelf?: boolean;
@@ -118,9 +118,12 @@ onBeforeUnmount(() => {
           height: anchor.height + 'px',
         }"
         aria-hidden="true"
-        inert
+        @click="emit('view')"
       >
-        <slot name="preview" />
+        <!-- Only a picture of the book: its own link and handlers stay out of reach -->
+        <div inert>
+          <slot name="preview" />
+        </div>
       </div>
       <div
         ref="menuEl"
@@ -179,7 +182,7 @@ onBeforeUnmount(() => {
 /* A copy of that book, lifted above the dimmed page where the book itself sits */
 .ctx-preview {
   position: fixed;
-  pointer-events: none;
+  cursor: pointer;
   transform: scale(1.06);
   filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.35));
   animation: ctx-lift 0.18s ease;

@@ -29,7 +29,7 @@ export function swallowNextClick() {
 
   // Only a safety net, for a click that is neither sent nor followed by another press, e.g. a keyboard's
   const timer = setTimeout(stop, 1500);
-  
+
   document.addEventListener("click", swallow, true);
   // Added while the current press is past its capture phase, so only the next one ends this
   document.addEventListener("pointerdown", stop, true);

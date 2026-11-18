@@ -167,6 +167,11 @@ function openBook(bookId: number) {
 }
 
 function handleContextView() {
+  // The lifted book sits right under the finger that picked it up: lifting that finger must not view it
+  if (ignoresClick()) {
+    return;
+  }
+
   const bookId = contextMenu.value.bookId;
   closeContextMenu();
 

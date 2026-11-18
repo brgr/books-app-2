@@ -246,7 +246,23 @@ describe("BookShelf", () => {
 
     document.dispatchEvent(new TouchEvent("touchend", { cancelable: true }));
     await wrapper.findAll("a.grid-cover-link")[1]!.trigger("click");
+    (document.querySelector(".ctx-preview") as HTMLElement).click();
     expect(push).not.toHaveBeenCalled();
+  });
+
+  it("views a picked-up book when it is tapped", async () => {
+    const wrapper = mountShelf({ defaultViewMode: "grid" });
+    await flush();
+
+    wrapper.findComponent({ name: "draggable" }).vm.$emit("choose", {
+      item: wrapper.findAll(".grid-item")[1]!.element,
+      oldIndex: 1,
+      originalEvent: { pointerType: "touch" },
+    });
+    await nextTick();
+    (document.querySelector(".ctx-preview") as HTMLElement).click();
+
+    expect(push).toHaveBeenCalledWith({ name: "book-detail", params: { id: 2 }, query: { from: "/" } });
   });
 
   it("leaves the menu closed when the mouse presses a book", async () => {
