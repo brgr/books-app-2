@@ -355,17 +355,6 @@ async function handleContextRemove() {
   overflow: visible;
 }
 
-/*noinspection CssUnusedSymbol*/
-.books-grid :deep(.sortable-ghost .grid-cover),
-.books-grid :deep(.sortable-ghost .grid-cover-placeholder),
-.books-grid :deep(.sortable-chosen .grid-cover),
-.books-grid :deep(.sortable-chosen .grid-cover-placeholder),
-.books-grid :deep(.sortable-drag .grid-cover),
-.books-grid :deep(.sortable-drag .grid-cover-placeholder) {
-  transform: none;
-  box-shadow: var(--shadow);
-}
-
 @media (max-width: 480px) {
   .books-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -373,16 +362,24 @@ async function handleContextRemove() {
   }
 }
 
+/* The book's place in the grid while it is dragged: where it will drop */
 /* vuedraggable applies these classes at runtime to slot content during drag. */
 /*noinspection CssUnusedSymbol*/
 .grid-ghost {
-  opacity: 0;
+  opacity: 0.2;
+}
+
+/* The copy following the finger or pointer (SortableJS makes it translucent inline) */
+/*noinspection CssUnusedSymbol*/
+.grid-drag {
+  opacity: 1 !important;
 }
 
 /*noinspection CssUnusedSymbol*/
-.grid-drag,
-.grid-chosen {
-  opacity: 1 !important;
+.books-grid :deep(.grid-drag .grid-cover),
+.books-grid :deep(.grid-drag .grid-cover-placeholder) {
+  transform: scale(1.06);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
 }
 
 .infinite-sentinel {

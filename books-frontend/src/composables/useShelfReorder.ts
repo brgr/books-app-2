@@ -39,7 +39,6 @@ export function useShelfReorder(options: ShelfReorderOptions) {
     "touch-start-threshold": LONG_PRESS_MOVE_THRESHOLD,
     "ghost-class": "grid-ghost",
     "drag-class": "grid-drag",
-    "chosen-class": "grid-chosen",
   };
 
   /**
