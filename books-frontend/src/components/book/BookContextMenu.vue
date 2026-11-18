@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { MenuAnchor } from "../../composables/useContextMenu";
+import { swallowNextClick } from "../../utils/click";
 
 const props = defineProps<{
   x: number;
@@ -68,6 +69,16 @@ function place() {
   pos.value = { top: Math.max(margin, Math.min(top, maxTop)), left: Math.max(margin, Math.min(left, maxLeft)) };
 }
 
+function onBackdropPointerDown(e: PointerEvent) {
+  // A right-click closes the menu through `contextmenu`
+  if (e.button !== 0) {
+    return;
+  }
+
+  emit("close");
+  swallowNextClick();
+}
+
 function onKey(e: KeyboardEvent) {
   if (e.key === "Escape") {
     emit("close");
@@ -96,7 +107,7 @@ onBeforeUnmount(() => {
 <template>
   <teleport to="body">
     <div v-if="anchor" class="ctx-dim" :style="{ top: dim.top + 'px', height: dim.height + 'px' }" />
-    <div class="ctx-backdrop" @click="emit('close')" @contextmenu.prevent="emit('close')">
+    <div class="ctx-backdrop" @pointerdown.self="onBackdropPointerDown" @contextmenu.prevent="emit('close')">
       <div
         v-if="anchor"
         class="ctx-preview"
@@ -117,7 +128,6 @@ onBeforeUnmount(() => {
         :class="{ 'ctx-menu-popped': anchor, 'ctx-menu-above': placement === 'above' }"
         role="menu"
         :style="{ top: pos.top + 'px', left: pos.left + 'px' }"
-        @click.stop
       >
         <button type="button" class="ctx-item" role="menuitem" @click="emit('view')">View Book</button>
         <button type="button" class="ctx-item" role="menuitem" :disabled="!canReorder" @click="emit('move', 'top')">
@@ -145,6 +155,8 @@ onBeforeUnmount(() => {
   position: fixed;
   inset: 0;
   z-index: 1000;
+  /* A touch outside the menu only closes it: no scrolling or zooming the page behind, and no waiting for a double-tap */
+  touch-action: none;
   /* The long press that opened the menu would otherwise go on to select its text */
   user-select: none;
   -webkit-user-select: none;
