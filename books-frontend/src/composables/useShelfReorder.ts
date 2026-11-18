@@ -33,11 +33,23 @@ interface ChooseEvent {
  */
 const clickGraceMs = 200;
 
+/**
+ * How far, in CSS pixels, a finger holding a book must move from where it first touched before the book starts to
+ * drag. It is more than the hold itself allows: a finger that crept a little during the hold still has room to wobble.
+ */
+const dragStartDistance = LONG_PRESS_MOVE_THRESHOLD + 6;
+
 function isTouch(event: Event | undefined) {
   if (!event) {
     return false;
   }
   return "pointerType" in event ? event.pointerType === "touch" : "touches" in event;
+}
+
+function preventDefault(event: Event) {
+  if (event.cancelable) {
+    event.preventDefault();
+  }
 }
 
 /**
@@ -66,7 +78,7 @@ export function useShelfReorder(options: ShelfReorderOptions) {
     "force-fallback": true,
     // On a shelf that can't be reordered, a held book never starts dragging. Disabling SortableJS instead would also
     // take away the long press that opens the book's menu
-    "fallback-tolerance": canDrag.value ? 0 : Infinity,
+    "fallback-tolerance": canDrag.value ? dragStartDistance : Infinity,
     "ghost-class": "grid-ghost",
     "drag-class": "grid-drag",
   }));
@@ -93,6 +105,8 @@ export function useShelfReorder(options: ShelfReorderOptions) {
       return;
     }
 
+    // While the book is picked up, the finger moves the book (but not the page)
+    document.addEventListener("touchmove", preventDefault, { passive: false });
     document.addEventListener("touchend", endHold, { passive: false });
     document.addEventListener("touchcancel", endHold);
 
@@ -105,14 +119,13 @@ export function useShelfReorder(options: ShelfReorderOptions) {
     }
 
     // Lifting the finger would otherwise click whatever is under it now: the menu's backdrop, or the book
-    if (event.cancelable) {
-      event.preventDefault();
-    }
+    preventDefault(event);
     lastGestureEnd.value = Date.now();
     stopHoldListeners();
   }
 
   function stopHoldListeners() {
+    document.removeEventListener("touchmove", preventDefault);
     document.removeEventListener("touchend", endHold);
     document.removeEventListener("touchcancel", endHold);
   }
