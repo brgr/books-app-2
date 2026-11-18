@@ -95,6 +95,8 @@ const isReorderable = computed(() => !searchQuery.value.trim() && !isLoadingMore
 
 const { contextMenu, openContextMenu, closeContextMenu } = useContextMenu();
 
+const contextMenuBook = computed(() => books.value.find((book) => book.id === contextMenu.value.bookId) ?? null);
+
 const {
   isDragging,
   isSaving,
@@ -285,7 +287,15 @@ async function handleContextRemove() {
       @move="handleContextMove"
       @remove-from-shelf="handleContextRemove"
       @close="closeContextMenu"
-    />
+    >
+      <template v-if="contextMenuBook" #preview>
+        <BookCoverTile
+          :book="contextMenuBook"
+          :href="router.resolve(detailRoute(contextMenuBook.id)).href"
+          :show-progress="showProgress"
+        />
+      </template>
+    </BookContextMenu>
   </section>
 </template>
 

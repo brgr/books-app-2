@@ -242,6 +242,7 @@ describe("BookShelf", () => {
     });
     await nextTick();
     expect(wrapper.findComponent(BookContextMenu).props("anchor")).toEqual(item.getBoundingClientRect());
+    expect(document.querySelector(".ctx-preview")?.textContent).toContain("Europe");
 
     document.dispatchEvent(new TouchEvent("touchend", { cancelable: true }));
     await wrapper.findAll("a.grid-cover-link")[1]!.trigger("click");
