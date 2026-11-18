@@ -219,11 +219,6 @@ const showBadge = computed(
   touch-action: manipulation;
 }
 
-.grid-cover:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-}
-
 .grid-cover-placeholder {
   width: 100%;
   max-width: 100%;
@@ -245,11 +240,6 @@ const showBadge = computed(
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   touch-action: manipulation;
-}
-
-.grid-cover-placeholder:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
 }
 
 .grid-no-cover-text {
@@ -293,8 +283,18 @@ const showBadge = computed(
   top: 6px;
 }
 
-.grid-cover-link:hover .grid-progress-badge {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
+/* Lift a book on hover only with a mouse or trackpad. Touch screens keep :hover on whatever was last touched, which
+   would leave a tapped or dragged book lifted */
+@media (hover: hover) {
+  .grid-cover:hover,
+  .grid-cover-placeholder:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  }
+
+  .grid-cover-link:hover .grid-progress-badge {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
+  }
 }
 </style>
