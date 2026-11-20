@@ -9,10 +9,8 @@ import ShelfViewModeToggle from "./ShelfViewModeToggle.vue";
 import type { ShelfRef } from "../../api/types";
 import { useContextMenu } from "../../composables/useContextMenu";
 import { useInfiniteScroll } from "../../composables/useInfiniteScroll";
-import { useLibraryPage } from "../../composables/useLibraryPage";
 import { useShelfBooks } from "../../composables/useShelfBooks";
 import { useShelfDrag } from "../../composables/useShelfDrag";
-import { useShelfOrder } from "../../composables/useShelfOrder";
 import { useShelfViewMode, type ViewMode } from "../../composables/useShelfViewMode";
 import { removeBookFromShelf } from "../../api/books";
 import { invalidateAfter } from "../../query/invalidate";
@@ -44,7 +42,6 @@ const route = useRoute();
 function detailRoute(bookId: number) {
   return { name: "book-detail", params: { id: bookId }, query: { from: route.fullPath } };
 }
-const { searchQuery } = useLibraryPage();
 
 // Deliberately this shelf's own, not the page's: shelves on one page can be laid out differently.
 const viewMode = useShelfViewMode(props.shelf, props.defaultViewMode);
@@ -74,21 +71,12 @@ function toggleCollapsed() {
   }
 }
 
-const { books, error, hasMore, isLoadingMore, loadMore, refresh } = useShelfBooks(props);
+const { books, error, hasMore, isLoadingMore, loadMore, isSaving, canReorder, saveBookAt, moveBookToEdge } =
+  useShelfBooks(props);
 
 const { contextMenu, openContextMenu, closeContextMenu } = useContextMenu();
 
 const contextMenuBook = computed(() => books.value.find((book) => book.id === contextMenu.value.bookId) ?? null);
-
-const { isSaving, canReorder, saveBookAt, moveBookToEdge } = useShelfOrder({
-  books,
-  hasMore,
-  shelf: props.shelf,
-  isFiltered: computed(() => !!searchQuery.value.trim()),
-  isLoadingMore,
-  hasError: computed(() => !!error.value),
-  refresh,
-});
 
 const { isDragging, dragOptions, ignoresClick, handleChoose, handleDragStart, handleDragEnd } = useShelfDrag({
   books,

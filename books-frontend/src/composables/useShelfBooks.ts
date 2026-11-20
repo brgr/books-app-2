@@ -4,6 +4,7 @@ import { getShelfBooks } from "../api/books";
 import type { Book, ShelfRef } from "../api/types";
 import { queryKeys } from "../query/keys";
 import { useLibraryPage } from "./useLibraryPage.ts";
+import { useShelfOrder } from "./useShelfOrder";
 
 export interface ShelfBooksOptions {
   shelf: ShelfRef;
@@ -104,7 +105,17 @@ export function useShelfBooks(options: ShelfBooksOptions) {
     { immediate: true },
   );
 
+  const { isSaving, canReorder, saveBookAt, moveBookToEdge } = useShelfOrder({
+    books,
+    hasMore,
+    shelf: options.shelf,
+    isFiltered: computed(() => !!searchQuery.value.trim()),
+    isLoadingMore,
+    hasError: computed(() => !!error.value),
+    refresh,
+  });
+
   registerShelf(computed(() => ({ loaded: loaded.value, count: filteredBooks.value.length })));
 
-  return { books, error, hasMore, isLoadingMore, loadMore, refresh };
+  return { books, error, hasMore, isLoadingMore, loadMore, isSaving, canReorder, saveBookAt, moveBookToEdge };
 }
