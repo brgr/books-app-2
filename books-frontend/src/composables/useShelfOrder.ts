@@ -59,6 +59,27 @@ export function useShelfOrder(options: ShelfOrderOptions) {
     }
   }
 
+  /** Saves the place of the book at `index` of `books`, where it was just moved, between its new neighbors. */
+  async function saveBookAt(index: number) {
+    if (!canReorder.value) {
+      return;
+    }
+
+    const list = books.value;
+    const movedBook = list[index];
+    if (!movedBook) {
+      return;
+    }
+    const beforeBook = index > 0 ? list[index - 1] : null;
+    const afterBook = index < list.length - 1 ? list[index + 1] : null;
+
+    await persist({
+      moved_book_id: movedBook.id,
+      book_id_before: beforeBook?.id ?? null,
+      book_id_after: afterBook?.id ?? null,
+    });
+  }
+
   /** Moves a book to the top or bottom of the shelf. */
   async function moveBookToEdge(bookId: number, edge: "top" | "bottom") {
     if (!canReorder.value) {
@@ -89,5 +110,5 @@ export function useShelfOrder(options: ShelfOrderOptions) {
     await persist({ moved_book_id: bookId, edge }, previousBooks);
   }
 
-  return { isSaving, canReorder, persist, moveBookToEdge };
+  return { isSaving, canReorder, saveBookAt, moveBookToEdge };
 }

@@ -74,7 +74,13 @@ export function useShelfDrag(options: ShelfDragOptions) {
 
   const isDragging = ref(false);
   const lastGestureEnd = ref(0);
-  const { isSaving, canReorder, persist, moveBookToEdge } = useShelfOrder({ books, hasMore, shelf, enabled, refresh });
+  const { isSaving, canReorder, saveBookAt, moveBookToEdge } = useShelfOrder({
+    books,
+    hasMore,
+    shelf,
+    enabled,
+    refresh,
+  });
 
   const dragOptions = computed(() => ({
     animation: 150,
@@ -156,27 +162,6 @@ export function useShelfDrag(options: ShelfDragOptions) {
     }
 
     void saveBookAt(event.newIndex);
-  }
-
-  /** Saves the place of the book at `index`, where vuedraggable just dropped it, between its new neighbors. */
-  async function saveBookAt(index: number) {
-    if (!canReorder.value) {
-      return;
-    }
-
-    const list = books.value;
-    const movedBook = list[index];
-    if (!movedBook) {
-      return;
-    }
-    const beforeBook = index > 0 ? list[index - 1] : null;
-    const afterBook = index < list.length - 1 ? list[index + 1] : null;
-
-    await persist({
-      moved_book_id: movedBook.id,
-      book_id_before: beforeBook?.id ?? null,
-      book_id_after: afterBook?.id ?? null,
-    });
   }
 
   return {
