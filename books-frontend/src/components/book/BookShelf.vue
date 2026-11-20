@@ -283,7 +283,7 @@ async function handleContextRemove() {
     </div>
 
     <BookContextMenu
-      v-if="contextMenu.visible && contextMenu.bookId !== null"
+      v-if="contextMenu.bookId !== null"
       :x="contextMenu.x"
       :y="contextMenu.y"
       :anchor="contextMenu.anchor"

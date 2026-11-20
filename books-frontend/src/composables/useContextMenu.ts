@@ -9,9 +9,9 @@ export interface MenuAnchor {
 }
 
 interface ContextMenuState {
-  visible: boolean;
   x: number;
   y: number;
+  /** The book the menu is open for; null while the menu is closed. */
   bookId: number | null;
   /** Set when a long press picked the book up: the menu then sits beside the book instead of at `x`/`y`. */
   anchor: MenuAnchor | null;
@@ -20,14 +20,13 @@ interface ContextMenuState {
 /**
  * Tracks the position and target of a right-click / long-press context menu.
  * `open` records where the menu was invoked and which book it targets; `close`
- * hides it and clears the target.
+ * hides it by clearing the target.
  */
 export function useContextMenu() {
-  const contextMenu = ref<ContextMenuState>({ visible: false, x: 0, y: 0, bookId: null, anchor: null });
+  const contextMenu = ref<ContextMenuState>({ x: 0, y: 0, bookId: null, anchor: null });
 
   function openContextMenu(payload: { bookId: number; x: number; y: number; anchor?: MenuAnchor }) {
     contextMenu.value = {
-      visible: true,
       x: payload.x,
       y: payload.y,
       bookId: payload.bookId,
@@ -36,7 +35,6 @@ export function useContextMenu() {
   }
 
   function closeContextMenu() {
-    contextMenu.value.visible = false;
     contextMenu.value.bookId = null;
     contextMenu.value.anchor = null;
   }
