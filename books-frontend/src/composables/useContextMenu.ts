@@ -1,16 +1,5 @@
 import { ref } from "vue";
 
-/**
- * How long a finger must rest on a book before the touch stops being a tap or a scroll. After this, the book is picked up:
- * its context menu opens, and moving on drags the book.
- */
-export const LONG_PRESS_MS = 350;
-
-/**
- * How far, in CSS pixels, a resting finger may wander during the hold and still count as a long press.
- */
-export const LONG_PRESS_MOVE_THRESHOLD = 10;
-
 /** What a menu is attached to. Its value is the position on screen of the book the menu belongs to. */
 export interface MenuAnchor {
   top: number;

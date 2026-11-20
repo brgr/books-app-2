@@ -1,7 +1,6 @@
 import { computed, onBeforeUnmount, ref, type Ref } from "vue";
 import { reorderShelfItem } from "../api/books";
 import type { Book, ShelfRef, ShelfReorderRequest } from "../api/types";
-import { LONG_PRESS_MOVE_THRESHOLD, LONG_PRESS_MS } from "./useContextMenu";
 
 export interface ShelfReorderOptions {
   /**
@@ -28,6 +27,17 @@ interface ChooseEvent {
 }
 
 /**
+ * How long a finger must rest on a book before the touch stops being a tap or a scroll. After this, the book is picked up:
+ * its context menu opens, and moving on drags the book.
+ */
+const longPressMs = 350;
+
+/**
+ * How far, in CSS pixels, a resting finger may wander during the hold and still count as a long press.
+ */
+const longPressMoveThreshold = 10;
+
+/**
  * How long clicks are ignored after a drag or a long press ends. Letting go sends a click of its own, which would
  * otherwise open the book.
  */
@@ -37,7 +47,7 @@ const clickGraceMs = 200;
  * How far, in CSS pixels, a finger holding a book must move from where it first touched before the book starts to
  * drag. It is more than the hold itself allows: a finger that crept a little during the hold still has room to wobble.
  */
-const dragStartDistance = LONG_PRESS_MOVE_THRESHOLD + 6;
+const dragStartDistance = longPressMoveThreshold + 6;
 
 function isTouch(event: Event | undefined) {
   if (!event) {
@@ -78,9 +88,9 @@ export function useShelfReorder(options: ShelfReorderOptions) {
 
   const dragOptions = computed(() => ({
     animation: 150,
-    delay: LONG_PRESS_MS,
+    delay: longPressMs,
     "delay-on-touch-only": true,
-    "touch-start-threshold": LONG_PRESS_MOVE_THRESHOLD,
+    "touch-start-threshold": longPressMoveThreshold,
     // SortableJS's own pointer-driven drag everywhere (phones get it anyway), as the browser's drag and drop would
     // ignore the tolerance below
     "force-fallback": true,
