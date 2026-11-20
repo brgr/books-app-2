@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from "@tanstack/vue-query";
-import { computed } from "vue";
+import { computed, ref, type Ref, watch } from "vue";
 import { getShelfBooks } from "../api/books";
 import type { Book, ShelfRef } from "../api/types";
 import { queryKeys } from "../query/keys";
@@ -54,9 +54,14 @@ export function useShelfBooks(options: ShelfBooksOptions) {
     }
   }
 
-  /** Refetches every loaded page, keeping the books visible meanwhile. Rejects when that fails. */
+  /**
+   * Refetches every loaded page, keeping the books visible meanwhile, then shows the server's order again. Rejects when
+   * that fails.
+   */
   async function refresh() {
     await refetch({ throwOnError: true });
+    // The watcher below doesn't run when the refetch changed nothing, e.g. when the server rejected a move
+    books.value = [...filteredBooks.value];
   }
 
   const error = computed(() => {
@@ -73,7 +78,7 @@ export function useShelfBooks(options: ShelfBooksOptions) {
     return "Failed to load books. Please try again.";
   });
 
-  const books = computed(() => {
+  const filteredBooks = computed(() => {
     const query = searchQuery.value.toLowerCase().trim();
 
     if (!query) {
@@ -85,7 +90,21 @@ export function useShelfBooks(options: ShelfBooksOptions) {
     );
   });
 
-  registerShelf(computed(() => ({ loaded: loaded.value, count: books.value.length })));
+  /**
+   * The shelf's books as shown: a copy of the loaded books that a move changes right away, before it is saved. Dragging
+   * a book reorders this very array.
+   */
+  const books = ref<Book[]>([]) as Ref<Book[]>;
+
+  watch(
+    filteredBooks,
+    (next) => {
+      books.value = [...next];
+    },
+    { immediate: true },
+  );
+
+  registerShelf(computed(() => ({ loaded: loaded.value, count: filteredBooks.value.length })));
 
   return { books, error, hasMore, isLoadingMore, loadMore, refresh };
 }

@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, type Ref, useId, watch } from "vue";
+import { computed, nextTick, ref, useId, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import draggable from "vuedraggable";
 import BookCard from "./BookCard/BookCard.vue";
 import BookContextMenu from "./BookContextMenu.vue";
 import BookCoverTile from "./BookCoverTile.vue";
 import ShelfViewModeToggle from "./ShelfViewModeToggle.vue";
-import type { Book, ShelfRef } from "../../api/types";
+import type { ShelfRef } from "../../api/types";
 import { useContextMenu } from "../../composables/useContextMenu";
 import { useInfiniteScroll } from "../../composables/useInfiniteScroll";
 import { useLibraryPage } from "../../composables/useLibraryPage";
@@ -74,21 +74,7 @@ function toggleCollapsed() {
   }
 }
 
-const { books: filteredBooks, error, hasMore, isLoadingMore, loadMore, refresh } = useShelfBooks(props);
-
-/**
- * vuedraggable reorders the array it renders from in place, so the shelf draws from a mutable
- * copy that re-syncs whenever the filtered list changes.
- */
-const books = ref<Book[]>([]) as Ref<Book[]>;
-
-watch(
-  filteredBooks,
-  (next) => {
-    books.value = [...next];
-  },
-  { immediate: true },
-);
+const { books, error, hasMore, isLoadingMore, loadMore, refresh } = useShelfBooks(props);
 
 const { contextMenu, openContextMenu, closeContextMenu } = useContextMenu();
 
@@ -101,7 +87,7 @@ const { isSaving, canReorder, saveBookAt, moveBookToEdge } = useShelfOrder({
   isFiltered: computed(() => !!searchQuery.value.trim()),
   isLoadingMore,
   hasError: computed(() => !!error.value),
-  refresh: reconcileOrder,
+  refresh,
 });
 
 const { isDragging, dragOptions, ignoresClick, handleChoose, handleDragStart, handleDragEnd } = useShelfDrag({
@@ -110,15 +96,6 @@ const { isDragging, dragOptions, ignoresClick, handleChoose, handleDragStart, ha
   onPickUp: (bookId, rect) => openContextMenu({ bookId, x: rect.left, y: rect.bottom, anchor: rect }),
   onDrop: (index) => void saveBookAt(index),
 });
-
-/**
- * Brings the shelf back in line with the server after a reorder. A refresh that finds the order unchanged (the
- * reorder was rejected) leaves `filteredBooks` as it was, so the dragged copy is reset here rather than by the watcher.
- */
-async function reconcileOrder() {
-  await refresh();
-  books.value = [...filteredBooks.value];
-}
 
 const showSentinel = computed(() => props.paginated && (hasMore.value || isLoadingMore.value));
 
@@ -137,7 +114,7 @@ watch([isDragging, isSaving, isCollapsed], () => void nextTick(reobserve));
 // The observer only fires when the sentinel enters or leaves the view, so we re-observe to check a sentinel that stayed in view:
 // - after a new page renders, since the sentinel may still be in view
 // - after any fetch ends, since loadMore skips while one runs, and a background refetch that changes nothing renders nothing
-watch([filteredBooks, isLoadingMore], () => void nextTick(reobserve));
+watch([books, isLoadingMore], () => void nextTick(reobserve));
 
 function startDrag() {
   // Starting a drag dismisses any open long-press menu, revealing the book being
