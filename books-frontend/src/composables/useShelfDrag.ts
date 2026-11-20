@@ -1,5 +1,6 @@
 import { computed, onBeforeUnmount, ref, type Ref } from "vue";
 import type { Book } from "../api/types";
+import { swallowNextClick } from "../utils/click";
 
 export interface ShelfDragOptions {
   /**
@@ -35,12 +36,6 @@ const longPressMs = 350;
 const longPressMoveThreshold = 10;
 
 /**
- * How long clicks are ignored after a drag or a long press ends. Letting go sends a click of its own, which would
- * otherwise open the book.
- */
-const clickGraceMs = 200;
-
-/**
  * How far, in CSS pixels, a finger holding a book must move from where it first touched before the book starts to
  * drag. It is more than the hold itself allows: a finger that crept a little during the hold still has room to wobble.
  */
@@ -61,7 +56,7 @@ function preventDefault(event: Event) {
 
 /**
  * Reports when a book is picked up and where it is dropped.
- * It also tells when a click only comes from letting go of such a book. Such a click must not open the book.
+ * It also swallows the click that letting go of such a book sends. Such a click must not open the book.
  *
  * On touch, holding a book picks it up, and moving drags it.
  * For both, SortableJS's drag delay decides when the hold has lasted long enough.
@@ -70,7 +65,6 @@ export function useShelfDrag(options: ShelfDragOptions) {
   const { books, canDrag, onPickUp, onDragStart, onDrop } = options;
 
   const isDragging = ref(false);
-  const lastGestureEnd = ref(0);
 
   const dragOptions = computed(() => ({
     animation: 150,
@@ -86,14 +80,6 @@ export function useShelfDrag(options: ShelfDragOptions) {
     "ghost-class": "grid-ghost",
     "drag-class": "grid-drag",
   }));
-
-  /**
-   * True while a drag is in flight or a drag or long press has only just ended, when the click closing the gesture
-   * would otherwise open the book.
-   */
-  function ignoresClick() {
-    return isDragging.value || Date.now() - lastGestureEnd.value < clickGraceMs;
-  }
 
   /**
    * SortableJS chose a book. With a touch, that means the long press completed: the book is picked up until the finger
@@ -124,7 +110,7 @@ export function useShelfDrag(options: ShelfDragOptions) {
 
     // Lifting the finger would otherwise click whatever is under it now: the menu's backdrop, or the book
     preventDefault(event);
-    lastGestureEnd.value = Date.now();
+    swallowNextClick();
     stopHoldListeners();
   }
 
@@ -143,7 +129,7 @@ export function useShelfDrag(options: ShelfDragOptions) {
 
   function handleDragEnd(event: { newIndex?: number; oldIndex?: number } | null) {
     isDragging.value = false;
-    lastGestureEnd.value = Date.now();
+    swallowNextClick();
 
     if (!event || event.newIndex === undefined || event.oldIndex === undefined) {
       return;
@@ -155,5 +141,5 @@ export function useShelfDrag(options: ShelfDragOptions) {
     onDrop(event.newIndex);
   }
 
-  return { isDragging, dragOptions, ignoresClick, handleChoose, handleDragStart, handleDragEnd };
+  return { isDragging, dragOptions, handleChoose, handleDragStart, handleDragEnd };
 }

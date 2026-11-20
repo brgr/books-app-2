@@ -230,25 +230,30 @@ describe("BookShelf", () => {
     expect(wrapper.findComponent({ name: "BookContextMenu" }).exists()).toBe(true);
   });
 
-  it("opens a book's menu beside it when a touch holds it, without opening the book on release", async () => {
-    const wrapper = mountShelf({ defaultViewMode: "grid" });
-    await flush();
+  it.each([
+    { under: "the book", selector: ".grid-item:nth-child(2) a.grid-cover-link" },
+    { under: "its lifted copy", selector: ".ctx-preview" },
+  ])(
+    "opens a book's menu beside it when a touch holds it, without opening the book on release over $under",
+    async ({ selector }) => {
+      const wrapper = mountShelf({ defaultViewMode: "grid" });
+      await flush();
 
-    const item = wrapper.findAll(".grid-item")[1]!.element;
-    wrapper.findComponent({ name: "draggable" }).vm.$emit("choose", {
-      item,
-      oldIndex: 1,
-      originalEvent: { pointerType: "touch" },
-    });
-    await nextTick();
-    expect(wrapper.findComponent(BookContextMenu).props("anchor")).toEqual(item.getBoundingClientRect());
-    expect(document.querySelector(".ctx-preview")?.textContent).toContain("Europe");
+      const item = wrapper.findAll(".grid-item")[1]!.element;
+      wrapper.findComponent({ name: "draggable" }).vm.$emit("choose", {
+        item,
+        oldIndex: 1,
+        originalEvent: { pointerType: "touch" },
+      });
+      await nextTick();
+      expect(wrapper.findComponent(BookContextMenu).props("anchor")).toEqual(item.getBoundingClientRect());
+      expect(document.querySelector(".ctx-preview")?.textContent).toContain("Europe");
 
-    document.dispatchEvent(new TouchEvent("touchend", { cancelable: true }));
-    await wrapper.findAll("a.grid-cover-link")[1]!.trigger("click");
-    (document.querySelector(".ctx-preview") as HTMLElement).click();
-    expect(push).not.toHaveBeenCalled();
-  });
+      document.dispatchEvent(new TouchEvent("touchend", { cancelable: true }));
+      (document.querySelector(selector) as HTMLElement).click();
+      expect(push).not.toHaveBeenCalled();
+    },
+  );
 
   it("views a picked-up book when it is tapped", async () => {
     const wrapper = mountShelf({ defaultViewMode: "grid" });

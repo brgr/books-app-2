@@ -78,7 +78,7 @@ const { contextMenu, openContextMenu, closeContextMenu } = useContextMenu();
 
 const contextMenuBook = computed(() => books.value.find((book) => book.id === contextMenu.value.bookId) ?? null);
 
-const { isDragging, dragOptions, ignoresClick, handleChoose, handleDragStart, handleDragEnd } = useShelfDrag({
+const { isDragging, dragOptions, handleChoose, handleDragStart, handleDragEnd } = useShelfDrag({
   books,
   canDrag: canReorder,
   onPickUp: (bookId, rect) => openContextMenu({ bookId, x: rect.left, y: rect.bottom, anchor: rect }),
@@ -105,14 +105,6 @@ watch([isDragging, isSaving, isCollapsed], () => void nextTick(reobserve));
 // - after any fetch ends, since loadMore skips while one runs, and a background refetch that changes nothing renders nothing
 watch([books, isLoadingMore], () => void nextTick(reobserve));
 
-function handleCoverClick(bookId: number) {
-  if (ignoresClick()) {
-    return;
-  }
-
-  openBook(bookId);
-}
-
 function openBook(bookId: number) {
   const book = books.value.find((book) => book.id === bookId);
   if (book) {
@@ -122,11 +114,6 @@ function openBook(bookId: number) {
 }
 
 function handleContextView() {
-  // The lifted book sits right under the finger that picked it up: lifting that finger must not view it
-  if (ignoresClick()) {
-    return;
-  }
-
   const bookId = closeContextMenu();
   if (bookId !== null) {
     openBook(bookId);
@@ -213,7 +200,7 @@ async function handleContextRemove() {
             :book="book"
             :href="router.resolve(detailRoute(book.id)).href"
             :show-progress="showProgress"
-            @click="handleCoverClick"
+            @click="openBook"
             @menu="openContextMenu"
           />
         </template>
