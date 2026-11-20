@@ -79,15 +79,18 @@ export function useShelfBooks(options: ShelfBooksOptions) {
     return "Failed to load books. Please try again.";
   });
 
-  const filteredBooks = computed(() => {
-    const query = searchQuery.value.toLowerCase().trim();
+  const query = computed(() => searchQuery.value.toLowerCase().trim());
 
-    if (!query) {
+  const isFiltered = computed(() => query.value !== "");
+
+  const filteredBooks = computed(() => {
+    if (!isFiltered.value) {
       return items.value;
     }
 
     return items.value.filter(
-      (book) => book.title.toLowerCase().includes(query) || (book.author ?? "").toLowerCase().includes(query),
+      (book) =>
+        book.title.toLowerCase().includes(query.value) || (book.author ?? "").toLowerCase().includes(query.value),
     );
   });
 
@@ -109,7 +112,7 @@ export function useShelfBooks(options: ShelfBooksOptions) {
     books,
     hasMore,
     shelf: options.shelf,
-    isFiltered: computed(() => !!searchQuery.value.trim()),
+    isFiltered,
     isLoadingMore,
     hasError: computed(() => !!error.value),
     refresh,
