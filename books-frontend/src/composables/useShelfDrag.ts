@@ -74,17 +74,7 @@ export function useShelfDrag(options: ShelfDragOptions) {
 
   const isDragging = ref(false);
   const lastGestureEnd = ref(0);
-  const { isSaving, persist } = useShelfOrder({ books, shelf, refresh });
-
-  /**
-   * Whether a book may be moved (reordered)right now.
-   * A book cannot be moved while:
-   * - a search filter is active on the shelf,
-   * - more books are loading,
-   * - the shelf shows an error, or
-   * - an earlier move is still being saved.
-   */
-  const canReorder = computed(() => enabled.value && !isSaving.value);
+  const { isSaving, canReorder, persist, moveBookToEdge } = useShelfOrder({ books, hasMore, shelf, enabled, refresh });
 
   const dragOptions = computed(() => ({
     animation: 150,
@@ -187,36 +177,6 @@ export function useShelfDrag(options: ShelfDragOptions) {
       book_id_before: beforeBook?.id ?? null,
       book_id_after: afterBook?.id ?? null,
     });
-  }
-
-  /** Moves a book to the top or bottom of the shelf. */
-  async function moveBookToEdge(bookId: number, edge: "top" | "bottom") {
-    if (!canReorder.value) {
-      return;
-    }
-
-    const previousBooks = [...books.value];
-    const bookToMove = previousBooks.find((book) => book.id === bookId);
-
-    if (!bookToMove) {
-      return;
-    }
-
-    const updatedBooks = previousBooks.filter((book) => book.id !== bookId);
-
-    if (edge === "top") {
-      updatedBooks.unshift(bookToMove);
-    }
-
-    // When hasMore is true, the bottom of the shelf is not actually the last book in the list.
-    // In that case, we don't actually move the book as it wouldn't be loaded yet
-    // (we just remove it from the list, as done above).
-    else if (!hasMore.value) {
-      updatedBooks.push(bookToMove);
-    }
-    books.value = updatedBooks;
-
-    await persist({ moved_book_id: bookId, edge }, previousBooks);
   }
 
   return {
