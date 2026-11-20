@@ -114,7 +114,7 @@ export function useShelfBooks(options: ShelfBooksOptions) {
     shelf: options.shelf,
     isFiltered,
     isLoadingMore,
-    hasError: computed(() => !!error.value),
+    hasError: computed(() => loadError.value !== null),
     refresh,
   });
 
