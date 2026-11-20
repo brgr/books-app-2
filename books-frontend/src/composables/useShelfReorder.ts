@@ -150,6 +150,24 @@ export function useShelfReorder(options: ShelfReorderOptions) {
 
   onBeforeUnmount(stopHoldListeners);
 
+  function handleDragStart() {
+    isDragging.value = true;
+  }
+
+  function handleDragEnd(event: { newIndex?: number; oldIndex?: number } | null) {
+    isDragging.value = false;
+    lastGestureEnd.value = Date.now();
+
+    if (!event || event.newIndex === undefined || event.oldIndex === undefined) {
+      return;
+    }
+    if (event.newIndex === event.oldIndex) {
+      return;
+    }
+
+    void saveBookAt(event.newIndex);
+  }
+
   /**
    * Persists changes to the shelf and updates the order of books based on the provided payload.
    * On failure, it restores the previous order of books if provided.
@@ -174,24 +192,6 @@ export function useShelfReorder(options: ShelfReorderOptions) {
     } finally {
       isSaving.value = false;
     }
-  }
-
-  function handleDragStart() {
-    isDragging.value = true;
-  }
-
-  function handleDragEnd(event: { newIndex?: number; oldIndex?: number } | null) {
-    isDragging.value = false;
-    lastGestureEnd.value = Date.now();
-
-    if (!event || event.newIndex === undefined || event.oldIndex === undefined) {
-      return;
-    }
-    if (event.newIndex === event.oldIndex) {
-      return;
-    }
-
-    void saveBookAt(event.newIndex);
   }
 
   /** Saves the place of the book at `index`, where vuedraggable just dropped it, between its new neighbors. */
