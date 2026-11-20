@@ -127,27 +127,21 @@ function handleContextView() {
     return;
   }
 
-  const bookId = contextMenu.value.bookId;
-  closeContextMenu();
-
+  const bookId = closeContextMenu();
   if (bookId !== null) {
     openBook(bookId);
   }
 }
 
 function handleContextMove(edge: "top" | "bottom") {
-  const bookId = contextMenu.value.bookId;
-  closeContextMenu();
-
+  const bookId = closeContextMenu();
   if (bookId !== null) {
     void moveBookToEdge(bookId, edge);
   }
 }
 
 async function handleContextRemove() {
-  const bookId = contextMenu.value.bookId;
-  closeContextMenu();
-
+  const bookId = closeContextMenu();
   if (bookId === null || !props.canRemoveFromShelf) {
     return;
   }

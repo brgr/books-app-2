@@ -35,8 +35,10 @@ export function useContextMenu() {
   }
 
   function closeContextMenu() {
+    const { bookId } = contextMenu.value;
     contextMenu.value.bookId = null;
     contextMenu.value.anchor = null;
+    return bookId;
   }
 
   return { contextMenu, openContextMenu, closeContextMenu };
