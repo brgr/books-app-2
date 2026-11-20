@@ -12,6 +12,7 @@ import { useInfiniteScroll } from "../../composables/useInfiniteScroll";
 import { useLibraryPage } from "../../composables/useLibraryPage";
 import { useShelfBooks } from "../../composables/useShelfBooks";
 import { useShelfDrag } from "../../composables/useShelfDrag";
+import { useShelfOrder } from "../../composables/useShelfOrder";
 import { useShelfViewMode, type ViewMode } from "../../composables/useShelfViewMode";
 import { removeBookFromShelf } from "../../api/books";
 import { invalidateAfter } from "../../query/invalidate";
@@ -97,23 +98,19 @@ const { contextMenu, openContextMenu, closeContextMenu } = useContextMenu();
 
 const contextMenuBook = computed(() => books.value.find((book) => book.id === contextMenu.value.bookId) ?? null);
 
-const {
-  isDragging,
-  isSaving,
-  canReorder,
-  dragOptions,
-  ignoresClick,
-  handleChoose,
-  handleDragStart,
-  handleDragEnd,
-  moveBookToEdge,
-} = useShelfDrag({
+const { isSaving, canReorder, saveBookAt, moveBookToEdge } = useShelfOrder({
   books,
   hasMore,
   shelf: props.shelf,
   enabled: isReorderable,
   refresh: reconcileOrder,
+});
+
+const { isDragging, dragOptions, ignoresClick, handleChoose, handleDragStart, handleDragEnd } = useShelfDrag({
+  books,
+  canDrag: canReorder,
   onPickUp: (bookId, rect) => openContextMenu({ bookId, x: rect.left, y: rect.bottom, anchor: rect }),
+  onDrop: (index) => void saveBookAt(index),
 });
 
 /**

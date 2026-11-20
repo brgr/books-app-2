@@ -1,22 +1,17 @@
 import { computed, onBeforeUnmount, ref, type Ref } from "vue";
-import type { Book, ShelfRef } from "../api/types";
-import { useShelfOrder } from "./useShelfOrder";
+import type { Book } from "../api/types";
 
 export interface ShelfDragOptions {
   /**
    * The very array being rendered: vuedraggable reorders it in place.
    */
   books: Ref<Book[]>;
-  /** Whether there are more books that are not yet loaded. */
-  hasMore: Ref<boolean>;
-  /** Positions are persisted against this shelf. */
-  shelf: ShelfRef;
-  /** Whether reordering is allowed (no search filter or page load in progress). */
-  enabled: Ref<boolean>;
-  /** Reconcile loaded pages with the server's order. */
-  refresh: () => Promise<void>;
+  /** Whether a picked-up book may be dragged. It can still be picked up when not. */
+  canDrag: Ref<boolean>;
   /** A finger rested on a book long enough to pick it up; `rect` is where the book sits on screen. */
   onPickUp: (bookId: number, rect: DOMRect) => void;
+  /** A book was dropped at `index` of `books`, away from where it was. */
+  onDrop: (index: number) => void;
 }
 
 /** The parts of a SortableJS `choose` event used here. */
@@ -63,24 +58,17 @@ function preventDefault(event: Event) {
 }
 
 /**
- * Drag-to-reorder for one shelf: tracks the gesture, persists the new position, and reports when a
- * click is really the tail of a drag rather than a tap on a book.
+ * Drag-to-reorder for one shelf: tracks the gesture, and reports when a click is really the tail of a drag rather than
+ * a tap on a book.
  *
  * On touch, holding a book opens its menu and lets it be dragged. SortableJS's drag delay decides when the hold has
  * lasted long enough, for both.
  */
 export function useShelfDrag(options: ShelfDragOptions) {
-  const { books, hasMore, shelf, enabled, refresh, onPickUp } = options;
+  const { books, canDrag, onPickUp, onDrop } = options;
 
   const isDragging = ref(false);
   const lastGestureEnd = ref(0);
-  const { isSaving, canReorder, saveBookAt, moveBookToEdge } = useShelfOrder({
-    books,
-    hasMore,
-    shelf,
-    enabled,
-    refresh,
-  });
 
   const dragOptions = computed(() => ({
     animation: 150,
@@ -92,7 +80,7 @@ export function useShelfDrag(options: ShelfDragOptions) {
     "force-fallback": true,
     // On a shelf that can't be reordered, a held book never starts dragging. Disabling SortableJS instead would also
     // take away the long press that opens the book's menu
-    "fallback-tolerance": canReorder.value ? dragStartDistance : Infinity,
+    "fallback-tolerance": canDrag.value ? dragStartDistance : Infinity,
     "ghost-class": "grid-ghost",
     "drag-class": "grid-drag",
   }));
@@ -161,18 +149,8 @@ export function useShelfDrag(options: ShelfDragOptions) {
       return;
     }
 
-    void saveBookAt(event.newIndex);
+    onDrop(event.newIndex);
   }
 
-  return {
-    isDragging,
-    isSaving,
-    canReorder,
-    dragOptions,
-    ignoresClick,
-    handleChoose,
-    handleDragStart,
-    handleDragEnd,
-    moveBookToEdge,
-  };
+  return { isDragging, dragOptions, ignoresClick, handleChoose, handleDragStart, handleDragEnd };
 }
