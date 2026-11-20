@@ -90,10 +90,6 @@ watch(
   { immediate: true },
 );
 
-// A filtered list hides potential neighbors, so it cannot be reordered.
-// Reordering is also disabled while more books are loading, or if the shelf has an error.
-const isReorderable = computed(() => !searchQuery.value.trim() && !isLoadingMore.value && !error.value);
-
 const { contextMenu, openContextMenu, closeContextMenu } = useContextMenu();
 
 const contextMenuBook = computed(() => books.value.find((book) => book.id === contextMenu.value.bookId) ?? null);
@@ -102,7 +98,9 @@ const { isSaving, canReorder, saveBookAt, moveBookToEdge } = useShelfOrder({
   books,
   hasMore,
   shelf: props.shelf,
-  enabled: isReorderable,
+  isFiltered: computed(() => !!searchQuery.value.trim()),
+  isLoadingMore,
+  hasError: computed(() => !!error.value),
   refresh: reconcileOrder,
 });
 

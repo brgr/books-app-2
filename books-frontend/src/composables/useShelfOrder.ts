@@ -9,8 +9,12 @@ export interface ShelfOrderOptions {
   hasMore: Ref<boolean>;
   /** Positions are persisted against this shelf. */
   shelf: ShelfRef;
-  /** Whether reordering is allowed (no search filter or page load in progress). */
-  enabled: Ref<boolean>;
+  /** Whether a filter (search) is currently applied or not. */
+  isFiltered: Ref<boolean>;
+  /** Whether more books are currently being loaded. */
+  isLoadingMore: Ref<boolean>;
+  /** Whether loading the shelf failed. */
+  hasError: Ref<boolean>;
   /** Reconcile loaded pages with the server's order. */
   refresh: () => Promise<void>;
 }
@@ -19,7 +23,7 @@ export interface ShelfOrderOptions {
  * Saves the order of books on one shelf, then reloads the shelf to match the server.
  */
 export function useShelfOrder(options: ShelfOrderOptions) {
-  const { books, hasMore, shelf, enabled, refresh } = options;
+  const { books, hasMore, shelf, isFiltered, isLoadingMore, hasError, refresh } = options;
 
   const isSaving = ref(false);
 
@@ -31,7 +35,7 @@ export function useShelfOrder(options: ShelfOrderOptions) {
    * - the shelf shows an error, or
    * - an earlier move is still being saved.
    */
-  const canReorder = computed(() => enabled.value && !isSaving.value);
+  const canReorder = computed(() => !isFiltered.value && !isLoadingMore.value && !hasError.value && !isSaving.value);
 
   /**
    * Persists changes to the shelf and updates the order of books based on the provided payload.
