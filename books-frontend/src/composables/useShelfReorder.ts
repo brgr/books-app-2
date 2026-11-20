@@ -1,6 +1,6 @@
 import { computed, onBeforeUnmount, ref, type Ref } from "vue";
-import { reorderShelfItem } from "../api/books";
-import type { Book, ShelfRef, ShelfReorderRequest } from "../api/types";
+import type { Book, ShelfRef } from "../api/types";
+import { useShelfOrder } from "./useShelfOrder";
 
 export interface ShelfReorderOptions {
   /**
@@ -74,7 +74,7 @@ export function useShelfReorder(options: ShelfReorderOptions) {
 
   const isDragging = ref(false);
   const lastGestureEnd = ref(0);
-  const isSaving = ref(false);
+  const { isSaving, persist } = useShelfOrder({ books, shelf, refresh });
 
   /**
    * Whether a book may be moved (reordered)right now.
@@ -166,32 +166,6 @@ export function useShelfReorder(options: ShelfReorderOptions) {
     }
 
     void saveBookAt(event.newIndex);
-  }
-
-  /**
-   * Persists changes to the shelf and updates the order of books based on the provided payload.
-   * On failure, it restores the previous order of books if provided.
-   */
-  async function persist(payload: ShelfReorderRequest, booksToRestoreOnFailure?: Book[]) {
-    isSaving.value = true;
-
-    try {
-      await reorderShelfItem(shelf, payload);
-    } catch (err) {
-      if (booksToRestoreOnFailure) {
-        books.value = booksToRestoreOnFailure;
-      }
-
-      console.error("Failed to reorder books:", err);
-    }
-
-    try {
-      await refresh();
-    } catch (err) {
-      console.error("Failed to refresh shelf:", err);
-    } finally {
-      isSaving.value = false;
-    }
   }
 
   /** Saves the place of the book at `index`, where vuedraggable just dropped it, between its new neighbors. */
