@@ -2,7 +2,7 @@ import { computed, onBeforeUnmount, ref, type Ref } from "vue";
 import type { Book, ShelfRef } from "../api/types";
 import { useShelfOrder } from "./useShelfOrder";
 
-export interface ShelfReorderOptions {
+export interface ShelfDragOptions {
   /**
    * The very array being rendered: vuedraggable reorders it in place.
    */
@@ -16,7 +16,7 @@ export interface ShelfReorderOptions {
   /** Reconcile loaded pages with the server's order. */
   refresh: () => Promise<void>;
   /** A finger rested on a book long enough to pick it up; `rect` is where the book sits on screen. */
-  onHold: (bookId: number, rect: DOMRect) => void;
+  onPickUp: (bookId: number, rect: DOMRect) => void;
 }
 
 /** The parts of a SortableJS `choose` event used here. */
@@ -69,8 +69,8 @@ function preventDefault(event: Event) {
  * On touch, holding a book opens its menu and lets it be dragged. SortableJS's drag delay decides when the hold has
  * lasted long enough, for both.
  */
-export function useShelfReorder(options: ShelfReorderOptions) {
-  const { books, hasMore, shelf, enabled, refresh, onHold } = options;
+export function useShelfDrag(options: ShelfDragOptions) {
+  const { books, hasMore, shelf, enabled, refresh, onPickUp } = options;
 
   const isDragging = ref(false);
   const lastGestureEnd = ref(0);
@@ -128,7 +128,7 @@ export function useShelfReorder(options: ShelfReorderOptions) {
     document.addEventListener("touchend", endHold, { passive: false });
     document.addEventListener("touchcancel", endHold);
 
-    onHold(book.id, event.item.getBoundingClientRect());
+    onPickUp(book.id, event.item.getBoundingClientRect());
   }
 
   function endHold(event: TouchEvent) {

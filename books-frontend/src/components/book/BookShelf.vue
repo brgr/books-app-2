@@ -11,7 +11,7 @@ import { useContextMenu } from "../../composables/useContextMenu";
 import { useInfiniteScroll } from "../../composables/useInfiniteScroll";
 import { useLibraryPage } from "../../composables/useLibraryPage";
 import { useShelfBooks } from "../../composables/useShelfBooks";
-import { useShelfReorder } from "../../composables/useShelfReorder";
+import { useShelfDrag } from "../../composables/useShelfDrag";
 import { useShelfViewMode, type ViewMode } from "../../composables/useShelfViewMode";
 import { removeBookFromShelf } from "../../api/books";
 import { invalidateAfter } from "../../query/invalidate";
@@ -107,13 +107,13 @@ const {
   handleDragStart,
   handleDragEnd,
   moveBookToEdge,
-} = useShelfReorder({
+} = useShelfDrag({
   books,
   hasMore,
   shelf: props.shelf,
   enabled: isReorderable,
   refresh: reconcileOrder,
-  onHold: (bookId, rect) => openContextMenu({ bookId, x: rect.left, y: rect.bottom, anchor: rect }),
+  onPickUp: (bookId, rect) => openContextMenu({ bookId, x: rect.left, y: rect.bottom, anchor: rect }),
 });
 
 /**
