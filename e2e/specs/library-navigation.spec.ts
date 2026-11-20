@@ -16,6 +16,13 @@ function userBook(bookId: number) {
   };
 }
 
+// Pages scroll inside the page scroller rather than the window
+function pageScrollTop(page: Page) {
+  return page.evaluate(
+    () => document.querySelector(".page-scroller")?.scrollTop ?? 0,
+  );
+}
+
 // A deterministic, multi-page library exercises navigation without importing hundreds of books.
 async function mockLibrary(page: Page, covers = false) {
   const books = Array.from({ length: 205 }, (_, index) => ({
@@ -95,7 +102,7 @@ for (const mode of ["list", "grid"] as const) {
   }) => {
     await authenticate(context);
     await mockLibrary(page, true);
-    
+
     const image =
       '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="449"><rect width="300" height="449" fill="teal"/></svg>';
     // Real thumbnails have rounded dimensions; the full image's ratio can differ slightly.
@@ -104,7 +111,7 @@ for (const mode of ["list", "grid"] as const) {
     await page.route("**/preview-thumbnail.svg", (route) =>
       route.fulfill({ contentType: "image/svg+xml", body: image }),
     );
-    
+
     let finishBook!: () => void;
     let finishCover!: () => void;
     let finishEvents!: () => void;
@@ -113,7 +120,7 @@ for (const mode of ["list", "grid"] as const) {
     const eventsReady = new Promise<void>(
       (resolve) => (finishEvents = resolve),
     );
-    
+
     await page.route("**/api/books/1", async (route) => {
       await bookReady;
       await route.fulfill({
@@ -139,7 +146,7 @@ for (const mode of ["list", "grid"] as const) {
     try {
       await page.setViewportSize({ width: 390, height: 844 });
       await page.goto(mode === "list" ? "/" : "/shelves/custom/999");
-      
+
       if (mode === "grid") {
         await page.getByRole("button", { name: "Grid view" }).click();
       } else {
@@ -234,18 +241,18 @@ for (const mode of ["list", "grid"] as const) {
       .locator(mode === "grid" ? ".grid-cover-link" : ".book-title-link")
       .nth(149);
     await link.scrollIntoViewIfNeeded();
-    const scroll = await page.evaluate(() => window.scrollY);
+    const scroll = await pageScrollTop(page);
     await link.click();
 
     await expect(
       page.getByRole("heading", { name: "Navigation book 150" }),
     ).toBeVisible();
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+    await expect.poll(() => pageScrollTop(page)).toBe(0);
 
     await page.getByRole("link", { name: "Back to shelf" }).click();
     await expect(page).toHaveURL(/\/$/);
     await expect(items).toHaveCount(200);
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scroll);
+    await expect.poll(() => pageScrollTop(page)).toBe(scroll);
 
     // Browser Back/Forward restore the saved position
     await page.goForward();
@@ -254,13 +261,13 @@ for (const mode of ["list", "grid"] as const) {
     ).toBeVisible();
     await page.goBack();
     await expect(items).toHaveCount(200);
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scroll);
+    await expect.poll(() => pageScrollTop(page)).toBe(scroll);
 
     // Root and the To Read URL are aliases of the same tab, so they share its position
     await page.getByRole("link", { name: "Finished", exact: true }).click();
     await page.getByRole("link", { name: "To Read", exact: true }).click();
     await expect(items).toHaveCount(200);
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scroll);
+    await expect.poll(() => pageScrollTop(page)).toBe(scroll);
   });
 }
 

@@ -44,8 +44,21 @@
   box-sizing: border-box;
 }
 
-html {
+/* The window never scrolls; each page scrolls inside its own .page-scroller instead (see App.vue).
+   When this web app is used in iOS as a home-screen app, a scrolling window has a bug: once the keyboard has been
+   open, fixed elements at the bottom of the screen, such as the nav bar, jump up and back down whenever the scroll
+   direction changes */
+html,
+body,
+#app {
+  height: 100%;
+  overflow: hidden;
+}
+
+.page-scroller {
+  height: 100%;
   overflow-x: hidden;
+  overflow-y: auto;
 }
 
 body {
@@ -56,13 +69,7 @@ body {
   line-height: 1.5;
   color: var(--color-text);
   background-color: var(--color-bg);
-  overflow-x: hidden;
   max-width: 100vw;
-}
-
-#app {
-  min-height: 100vh;
-  overflow-x: hidden;
 }
 
 /* Typography */

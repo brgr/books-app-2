@@ -1,4 +1,5 @@
 import { watch, nextTick, onMounted, onBeforeUnmount, type Ref } from "vue";
+import { pageScroller } from "../utils/pageScroller";
 
 /**
  * Wires an IntersectionObserver to `sentinelEl` so `onIntersect` fires as that
@@ -27,7 +28,8 @@ export function useInfiniteScroll(
           }
         }
       },
-      { rootMargin },
+      // The page scroller as root, so `rootMargin` reaches past the part of the page on screen
+      { root: pageScroller(), rootMargin },
     );
 
     observer.observe(sentinelEl.value);

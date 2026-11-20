@@ -1,21 +1,24 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from "vue";
+import { pageScroller } from "../../utils/pageScroller";
 import { scrollToTop } from "../../utils/scrollToTop";
 
 const visible = ref(false);
+let scroller: HTMLElement | null = null;
 
 function updateVisibility() {
-  visible.value = window.scrollY > window.innerHeight;
+  visible.value = scroller !== null && scroller.scrollTop > scroller.clientHeight;
 }
 
 function listen() {
+  scroller = pageScroller();
   updateVisibility();
-  window.addEventListener("scroll", updateVisibility, { passive: true });
+  scroller?.addEventListener("scroll", updateVisibility, { passive: true });
   window.addEventListener("resize", updateVisibility);
 }
 
 function stop() {
-  window.removeEventListener("scroll", updateVisibility);
+  scroller?.removeEventListener("scroll", updateVisibility);
   window.removeEventListener("resize", updateVisibility);
 }
 

@@ -1,5 +1,6 @@
 import { nextTick } from "vue";
 import type { RouteLocationNormalized, Router, RouterScrollBehavior } from "vue-router";
+import { pageScroller } from "../utils/pageScroller";
 
 /**
  * Returns an identifier for the library tab, such as "/shelves/finished".
@@ -33,8 +34,15 @@ export function libraryOrigin(router: Router, value: unknown): string {
   return "/";
 }
 
+/** Identifies the history entry the browser is on, so Back and Forward can return to its scroll position. */
+function historyEntryKey(route: RouteLocationNormalized): string {
+  return `${window.history.state?.position ?? ""}:${route.fullPath}`;
+}
+
 export function createLibraryNavigation() {
-  const positions = new Map<string, { left: number; top: number }>();
+  const tabPositions = new Map<string, number>();
+  const entryPositions = new Map<string, number>();
+  let currentEntry: string | null = null;
 
   const scrollBehavior: RouterScrollBehavior = async (to, _from, savedPosition) => {
     // The returning view renders every page the user had loaded straight from the query cache.
@@ -42,9 +50,14 @@ export function createLibraryNavigation() {
     await nextTick();
 
     const key = libraryPageKey(to);
+    // vue-router passes a saved position only for Back/Forward, but measures the window, which never scrolls.
+    // So we use the position we saved for the history entry, or the tab's last position for other visits.
+    const top =
+      (savedPosition ? entryPositions.get(historyEntryKey(to)) : undefined) ??
+      (key ? tabPositions.get(key) : undefined) ??
+      0;
 
-    // Use the browser's saved position for Back/Forward, or the tab's last position for other visits.
-    return savedPosition ?? (key ? positions.get(key) : undefined) ?? { left: 0, top: 0 };
+    pageScroller()?.scrollTo({ top });
   };
 
   function install(router: Router) {
@@ -68,18 +81,25 @@ export function createLibraryNavigation() {
       if (failure) {
         return;
       }
+
       if (to.name === "login") {
-        // Clear saved positions so the next session starts at the top of each tab.
-        positions.clear();
-        return;
+        // Clear saved positions so the next session starts at the top of each page.
+        tabPositions.clear();
+        entryPositions.clear();
+      } else {
+        // Save the departing page's position before Vue replaces its view.
+        const top = pageScroller()?.scrollTop ?? 0;
+        const key = libraryPageKey(from);
+
+        if (currentEntry) {
+          entryPositions.set(currentEntry, top);
+        }
+        if (key) {
+          tabPositions.set(key, top);
+        }
       }
 
-      const key = libraryPageKey(from);
-
-      if (key) {
-        // Save the departing tab's position before Vue replaces its view.
-        positions.set(key, { left: window.scrollX, top: window.scrollY });
-      }
+      currentEntry = historyEntryKey(to);
     });
   }
 

@@ -56,16 +56,34 @@ describe("library navigation", () => {
     expect(router.currentRoute.value.query.from).toBe("/shelves/custom/12");
   });
 
-  it("restores tab positions, honors browser history, and clears positions on logout", async () => {
+  it("restores tab and history positions, and clears them on logout", async () => {
     const { router, navigation } = testRouter();
+    const scroller = document.createElement("div");
+    scroller.className = "page-scroller";
+    scroller.scrollTo = vi.fn() as typeof scroller.scrollTo;
+    document.body.append(scroller);
+    const scrollTo = vi.mocked(scroller.scrollTo);
+
     await router.push("/shelves/to-read");
     const tab = router.currentRoute.value;
-    vi.spyOn(window, "scrollY", "get").mockReturnValue(4321);
+    scroller.scrollTop = 4321;
     await router.push("/books/1");
     const detail = router.currentRoute.value;
-    expect(await navigation.scrollBehavior(tab, detail, null)).toEqual({ left: 0, top: 4321 });
-    expect(await navigation.scrollBehavior(tab, detail, { left: 0, top: 123 })).toEqual({ left: 0, top: 123 });
+    scroller.scrollTop = 123;
+    await router.push("/shelves/finished");
+
+    // A visit to the tab returns to its last position
+    await navigation.scrollBehavior(tab, detail, null);
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 4321 });
+
+    // Back and Forward return to the history entry's position
+    await navigation.scrollBehavior(detail, tab, { left: 0, top: 0 });
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 123 });
+
     await router.push("/login");
-    expect(await navigation.scrollBehavior(tab, detail, null)).toEqual({ left: 0, top: 0 });
+    await navigation.scrollBehavior(tab, detail, null);
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 0 });
+
+    scroller.remove();
   });
 });

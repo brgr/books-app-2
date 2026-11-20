@@ -1,5 +1,7 @@
+import { pageScroller } from "./pageScroller";
+
 export function scrollToTop() {
-  window.scrollTo({
+  pageScroller()?.scrollTo({
     top: 0,
     behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
   });

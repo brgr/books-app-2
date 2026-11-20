@@ -33,18 +33,6 @@ const placement = ref<"below" | "above">("below");
 const margin = 8;
 /** Space between the menu and the book it belongs to, which is shown slightly enlarged. */
 const anchorGap = 12;
-/** How far past the screen's top and bottom edges the dimming reaches, to cover the page under Safari's bars. */
-const dimOverhang = 200;
-
-const dim = ref({ top: 0, height: 0 });
-
-/** Measures the part of the page to dim: what is on screen, plus what Safari shows under its bars. */
-function measureDim() {
-  const top = Math.max(0, window.scrollY - dimOverhang);
-  const bottom = Math.min(document.documentElement.scrollHeight, window.scrollY + window.innerHeight + dimOverhang);
-  dim.value = { top, height: bottom - top };
-}
-
 function place() {
   const el = menuEl.value;
   if (!el) {
@@ -87,14 +75,10 @@ function onKey(e: KeyboardEvent) {
 
 watch(
   () => [props.x, props.y, props.anchor],
-  () => {
-    measureDim();
-    void nextTick(place);
-  },
+  () => void nextTick(place),
 );
 
 onMounted(() => {
-  measureDim();
   nextTick(place);
   document.addEventListener("keydown", onKey);
 });
@@ -106,7 +90,7 @@ onBeforeUnmount(() => {
 
 <template>
   <teleport to="body">
-    <div v-if="anchor" class="ctx-dim" :style="{ top: dim.top + 'px', height: dim.height + 'px' }" />
+    <div v-if="anchor" class="ctx-dim" />
     <div class="ctx-backdrop" @pointerdown.self="onBackdropPointerDown" @contextmenu.prevent="emit('close')">
       <div
         v-if="anchor"
@@ -170,8 +154,7 @@ onBeforeUnmount(() => {
    Safari draws the page under its status bar and toolbar, but cuts fixed elements off at their edges */
 .ctx-dim {
   position: absolute;
-  left: 0;
-  right: 0;
+  inset: 0;
   z-index: 1000;
   background: rgba(0, 0, 0, 0.25);
   -webkit-backdrop-filter: blur(8px);
