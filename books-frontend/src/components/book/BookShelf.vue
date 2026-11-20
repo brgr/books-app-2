@@ -82,6 +82,7 @@ const { isDragging, dragOptions, ignoresClick, handleChoose, handleDragStart, ha
   books,
   canDrag: canReorder,
   onPickUp: (bookId, rect) => openContextMenu({ bookId, x: rect.left, y: rect.bottom, anchor: rect }),
+  onDragStart: closeContextMenu,
   onDrop: (index) => void saveBookAt(index),
 });
 
@@ -103,13 +104,6 @@ watch([isDragging, isSaving, isCollapsed], () => void nextTick(reobserve));
 // - after a new page renders, since the sentinel may still be in view
 // - after any fetch ends, since loadMore skips while one runs, and a background refetch that changes nothing renders nothing
 watch([books, isLoadingMore], () => void nextTick(reobserve));
-
-function startDrag() {
-  // Starting a drag dismisses any open long-press menu, revealing the book being
-  // moved (the drag was already armed underneath the menu).
-  closeContextMenu();
-  handleDragStart();
-}
 
 function handleCoverClick(bookId: number) {
   if (ignoresClick()) {
@@ -217,7 +211,7 @@ async function handleContextRemove() {
         item-key="id"
         v-bind="dragOptions"
         @choose="handleChoose"
-        @start="startDrag"
+        @start="handleDragStart"
         @end="handleDragEnd"
       >
         <template #item="{ element: book }">

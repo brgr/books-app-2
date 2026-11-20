@@ -10,6 +10,8 @@ export interface ShelfDragOptions {
   canDrag: Ref<boolean>;
   /** A finger rested on a book long enough to pick it up; `rect` is where the book sits on screen. */
   onPickUp: (bookId: number, rect: DOMRect) => void;
+  /** A book starts being dragged. */
+  onDragStart: () => void;
   /** A book was dropped at `index` of `books`, away from where it was. */
   onDrop: (index: number) => void;
 }
@@ -65,7 +67,7 @@ function preventDefault(event: Event) {
  * For both, SortableJS's drag delay decides when the hold has lasted long enough.
  */
 export function useShelfDrag(options: ShelfDragOptions) {
-  const { books, canDrag, onPickUp, onDrop } = options;
+  const { books, canDrag, onPickUp, onDragStart, onDrop } = options;
 
   const isDragging = ref(false);
   const lastGestureEnd = ref(0);
@@ -136,6 +138,7 @@ export function useShelfDrag(options: ShelfDragOptions) {
 
   function handleDragStart() {
     isDragging.value = true;
+    onDragStart();
   }
 
   function handleDragEnd(event: { newIndex?: number; oldIndex?: number } | null) {
