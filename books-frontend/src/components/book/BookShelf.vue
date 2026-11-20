@@ -100,6 +100,7 @@ const contextMenuBook = computed(() => books.value.find((book) => book.id === co
 const {
   isDragging,
   isSaving,
+  canReorder,
   dragOptions,
   ignoresClick,
   handleChoose,
@@ -287,7 +288,7 @@ async function handleContextRemove() {
       :y="contextMenu.y"
       :anchor="contextMenu.anchor"
       :can-remove-from-shelf="canRemoveFromShelf"
-      :can-reorder="isReorderable && !isSaving"
+      :can-reorder="canReorder"
       @view="handleContextView"
       @move="handleContextMove"
       @remove-from-shelf="handleContextRemove"

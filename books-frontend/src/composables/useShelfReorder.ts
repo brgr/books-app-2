@@ -66,7 +66,15 @@ export function useShelfReorder(options: ShelfReorderOptions) {
   const lastGestureEnd = ref(0);
   const isSaving = ref(false);
 
-  const canDrag = computed(() => enabled.value && !isSaving.value);
+  /**
+   * Whether a book may be moved (reordered)right now.
+   * A book cannot be moved while:
+   * - a search filter is active on the shelf,
+   * - more books are loading,
+   * - the shelf shows an error, or
+   * - an earlier move is still being saved.
+   */
+  const canReorder = computed(() => enabled.value && !isSaving.value);
 
   const dragOptions = computed(() => ({
     animation: 150,
@@ -78,7 +86,7 @@ export function useShelfReorder(options: ShelfReorderOptions) {
     "force-fallback": true,
     // On a shelf that can't be reordered, a held book never starts dragging. Disabling SortableJS instead would also
     // take away the long press that opens the book's menu
-    "fallback-tolerance": canDrag.value ? dragStartDistance : Infinity,
+    "fallback-tolerance": canReorder.value ? dragStartDistance : Infinity,
     "ghost-class": "grid-ghost",
     "drag-class": "grid-drag",
   }));
@@ -172,7 +180,7 @@ export function useShelfReorder(options: ShelfReorderOptions) {
     if (event.newIndex === event.oldIndex) {
       return;
     }
-    if (!enabled.value || isSaving.value) {
+    if (!canReorder.value) {
       return;
     }
 
@@ -193,7 +201,7 @@ export function useShelfReorder(options: ShelfReorderOptions) {
 
   /** Moves a book to the top or bottom of the shelf. */
   async function moveBookToEdge(bookId: number, edge: "top" | "bottom") {
-    if (!enabled.value || isSaving.value) {
+    if (!canReorder.value) {
       return;
     }
 
@@ -224,6 +232,7 @@ export function useShelfReorder(options: ShelfReorderOptions) {
   return {
     isDragging,
     isSaving,
+    canReorder,
     dragOptions,
     ignoresClick,
     handleChoose,
