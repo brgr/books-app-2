@@ -180,7 +180,7 @@ export function useShelfReorder(options: ShelfReorderOptions) {
     isDragging.value = true;
   }
 
-  async function handleDragEnd(event: { newIndex?: number; oldIndex?: number } | null) {
+  function handleDragEnd(event: { newIndex?: number; oldIndex?: number } | null) {
     isDragging.value = false;
     lastGestureEnd.value = Date.now();
 
@@ -190,17 +190,23 @@ export function useShelfReorder(options: ShelfReorderOptions) {
     if (event.newIndex === event.oldIndex) {
       return;
     }
+
+    void saveBookAt(event.newIndex);
+  }
+
+  /** Saves the place of the book at `index`, where vuedraggable just dropped it, between its new neighbors. */
+  async function saveBookAt(index: number) {
     if (!canReorder.value) {
       return;
     }
 
     const list = books.value;
-    const movedBook = list[event.newIndex];
+    const movedBook = list[index];
     if (!movedBook) {
       return;
     }
-    const beforeBook = event.newIndex > 0 ? list[event.newIndex - 1] : null;
-    const afterBook = event.newIndex < list.length - 1 ? list[event.newIndex + 1] : null;
+    const beforeBook = index > 0 ? list[index - 1] : null;
+    const afterBook = index < list.length - 1 ? list[index + 1] : null;
 
     await persist({
       moved_book_id: movedBook.id,
