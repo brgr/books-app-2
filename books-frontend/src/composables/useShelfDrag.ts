@@ -58,11 +58,11 @@ function preventDefault(event: Event) {
 }
 
 /**
- * Drag-to-reorder for one shelf: tracks the gesture, and reports when a click is really the tail of a drag rather than
- * a tap on a book.
+ * Reports when a book is picked up and where it is dropped.
+ * It also tells when a click only comes from letting go of such a book. Such a click must not open the book.
  *
- * On touch, holding a book opens its menu and lets it be dragged. SortableJS's drag delay decides when the hold has
- * lasted long enough, for both.
+ * On touch, holding a book picks it up, and moving drags it.
+ * For both, SortableJS's drag delay decides when the hold has lasted long enough.
  */
 export function useShelfDrag(options: ShelfDragOptions) {
   const { books, canDrag, onPickUp, onDrop } = options;
