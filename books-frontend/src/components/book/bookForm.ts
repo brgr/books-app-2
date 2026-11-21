@@ -5,6 +5,7 @@ export interface BookFormData {
   title: string;
   author: string;
   isbn: string;
+  google_books_id: string;
   page_count: string | number;
   published_date: string;
   description: string;
@@ -16,6 +17,7 @@ export function emptyBookForm(): BookFormData {
     title: "",
     author: "",
     isbn: "",
+    google_books_id: "",
     page_count: "",
     published_date: "",
     description: "",
@@ -28,6 +30,7 @@ export function bookToForm(book: Book): BookFormData {
     title: book.title,
     author: book.author ?? "",
     isbn: book.isbn ?? "",
+    google_books_id: book.google_books_id ?? "",
     page_count: book.page_count ?? "",
     published_date: book.published_date?.split("T")[0] ?? "",
     description: book.description ?? "",
@@ -40,6 +43,7 @@ export function formToPayload(form: BookFormData): BookCreate {
     title: form.title.trim(),
     author: form.author.trim() || null,
     isbn: form.isbn.trim() || undefined,
+    google_books_id: form.google_books_id.trim() || null,
     page_count: form.page_count === "" ? undefined : Number(form.page_count),
     published_date: form.published_date || undefined,
     description: form.description.trim() || undefined,

@@ -182,6 +182,7 @@ describe("adding a book", () => {
       title: "A Manual Book",
       author: "An Author",
       isbn: undefined,
+      google_books_id: null,
       page_count: undefined,
       published_date: undefined,
       description: undefined,

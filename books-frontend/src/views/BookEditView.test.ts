@@ -79,6 +79,7 @@ describe("editing a book", () => {
     await wrapper.get('[name="title"]').setValue("  Edited title  ");
     await wrapper.get('[name="author"]').setValue("  An Author  ");
     await wrapper.get('[name="isbn"]').setValue(" 1234567890 ");
+    await wrapper.get('[name="google_books_id"]').setValue(" dune-volume ");
     await wrapper.get('[name="description"]').setValue("  Edited description  ");
     await wrapper.get("form").trigger("submit");
     await flushPromises();
@@ -87,6 +88,7 @@ describe("editing a book", () => {
       title: "Edited title",
       author: "An Author",
       isbn: "1234567890",
+      google_books_id: "dune-volume",
       page_count: 0,
       published_date: "1965-08-01",
       description: "Edited description",

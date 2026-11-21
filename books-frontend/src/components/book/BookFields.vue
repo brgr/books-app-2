@@ -66,6 +66,18 @@ const id = useId();
     </div>
 
     <div class="form-group">
+      <label :for="`${id}-google-books-id`">Google Books ID</label>
+      <input
+        :id="`${id}-google-books-id`"
+        v-model="formData.google_books_id"
+        name="google_books_id"
+        type="text"
+        maxlength="128"
+        placeholder="Enter Google Books ID"
+      />
+    </div>
+
+    <div class="form-group">
       <label :for="`${id}-published-date`">Published Date</label>
       <input :id="`${id}-published-date`" v-model="formData.published_date" name="published_date" type="date" />
     </div>
