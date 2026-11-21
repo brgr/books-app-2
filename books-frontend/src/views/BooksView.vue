@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import BookShelf from "../components/book/BookShelf.vue";
+import BookShelf from "../components/book/BookShelf/BookShelf.vue";
 import BooksSearchHeader from "../components/book/BooksSearchHeader.vue";
 import NavigationBar from "../components/navigation/NavigationBar.vue";
 import GoToTopButton from "../components/ui/GoToTopButton.vue";

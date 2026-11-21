@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { mount } from "@vue/test-utils";
 import BookCoverTile from "./BookCoverTile.vue";
-import { ReadingShelf } from "../../api/types";
-import { makeBook, makeUserBook } from "../../test/factories";
+import { ReadingShelf } from "../../../api/types";
+import { makeBook, makeUserBook } from "../../../test/factories";
 
 describe("BookCoverTile", () => {
   it("renders cover image when thumbnail url is present", () => {

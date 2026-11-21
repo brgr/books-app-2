@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import type { MenuAnchor } from "../../composables/useContextMenu";
-import { swallowNextClick } from "../../utils/click";
+import type { MenuAnchor } from "../../../composables/useContextMenu";
+import { swallowNextClick } from "../../../utils/click";
 
 const props = defineProps<{
   x: number;

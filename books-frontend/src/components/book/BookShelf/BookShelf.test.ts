@@ -3,14 +3,14 @@ import { enableAutoUnmount, mount } from "@vue/test-utils";
 import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
 import { defineComponent, h, nextTick, ref } from "vue";
 import BookShelf from "./BookShelf.vue";
-import BookCard from "./BookCard/BookCard.vue";
+import BookCard from "../BookCard/BookCard.vue";
 import BookCoverTile from "./BookCoverTile.vue";
 import BookContextMenu from "./BookContextMenu.vue";
-import { reorderShelfItem } from "../../api/books";
-import { type Book, type PaginatedBooks, type ShelfRef } from "../../api/types";
-import { provideLibraryPage } from "../../composables/useLibraryPage";
-import { queryKeys } from "../../query/keys";
-import { makeBook } from "../../test/factories";
+import { reorderShelfItem } from "../../../api/books";
+import { type Book, type PaginatedBooks, type ShelfRef } from "../../../api/types";
+import { provideLibraryPage } from "../../../composables/useLibraryPage";
+import { queryKeys } from "../../../query/keys";
+import { makeBook } from "../../../test/factories";
 
 enableAutoUnmount(afterEach);
 
@@ -21,7 +21,7 @@ vi.mock("vue-router", () => ({
 }));
 
 const getShelfBooks = vi.fn();
-vi.mock("../../api/books", () => ({
+vi.mock("../../../api/books", () => ({
   getShelfBooks: (...args: unknown[]) => getShelfBooks(...args),
   reorderShelfItem: vi.fn(async () => ({})),
 }));

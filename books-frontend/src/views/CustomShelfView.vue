@@ -4,7 +4,7 @@ import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { deleteShelf, renameShelf } from "../api/books";
 import { parseShelfRef, type Shelf, type ShelfRef } from "../api/types";
-import BookShelf from "../components/book/BookShelf.vue";
+import BookShelf from "../components/book/BookShelf/BookShelf.vue";
 import CustomShelfEditModal from "../components/modals/CustomShelfEditModal.vue";
 import BooksSearchHeader from "../components/book/BooksSearchHeader.vue";
 import NavigationBar from "../components/navigation/NavigationBar.vue";

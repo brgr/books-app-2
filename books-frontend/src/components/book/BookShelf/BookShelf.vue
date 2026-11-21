@@ -2,20 +2,20 @@
 import { computed, nextTick, ref, useId, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import draggable from "vuedraggable";
-import BookCard from "./BookCard/BookCard.vue";
+import BookCard from "../BookCard/BookCard.vue";
 import BookContextMenu from "./BookContextMenu.vue";
 import BookCoverTile from "./BookCoverTile.vue";
 import ShelfViewModeToggle from "./ShelfViewModeToggle.vue";
 import ShelfCollapseToggle from "./ShelfCollapseToggle.vue";
-import type { ShelfRef } from "../../api/types";
-import { useContextMenu } from "../../composables/useContextMenu";
-import { useInfiniteScroll } from "../../composables/useInfiniteScroll";
-import { useShelfBooks } from "../../composables/useShelfBooks";
-import { useShelfDrag } from "../../composables/useShelfDrag";
-import { useShelfViewMode, type ViewMode } from "../../composables/useShelfViewMode";
-import { removeBookFromShelf } from "../../api/books";
-import { invalidateAfter } from "../../query/invalidate";
-import { useSeedBook } from "../../composables/useBook";
+import type { ShelfRef } from "../../../api/types";
+import { useContextMenu } from "../../../composables/useContextMenu";
+import { useInfiniteScroll } from "../../../composables/useInfiniteScroll";
+import { useShelfBooks } from "../../../composables/useShelfBooks";
+import { useShelfDrag } from "../../../composables/useShelfDrag";
+import { useShelfViewMode, type ViewMode } from "../../../composables/useShelfViewMode";
+import { removeBookFromShelf } from "../../../api/books";
+import { invalidateAfter } from "../../../query/invalidate";
+import { useSeedBook } from "../../../composables/useBook";
 
 const props = withDefaults(
   defineProps<{

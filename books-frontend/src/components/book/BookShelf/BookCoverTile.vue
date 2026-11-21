@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { type Book, ReadingShelf } from "../../api/types";
-import { getMediaUrl } from "../../api/client";
-import { isPlainLeftClick } from "../../utils/click";
+import { type Book, ReadingShelf } from "../../../api/types";
+import { getMediaUrl } from "../../../api/client";
+import { isPlainLeftClick } from "../../../utils/click";
 
 const props = withDefaults(
   defineProps<{

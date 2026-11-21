@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import ChevronRightIcon from "../icons/ChevronRightIcon.vue";
+import ChevronRightIcon from "../../icons/ChevronRightIcon.vue";
 
 defineProps<{
   collapsed: boolean;
