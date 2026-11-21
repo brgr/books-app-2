@@ -88,14 +88,11 @@ export function useShelfReorder(options: ShelfReorderOptions) {
 
     const updatedBooks = previousBooks.filter((book) => book.id !== bookId);
 
+    // Moving a book to the bottom while more books are still to load only takes it out of the list: the shelf's last
+    // books aren't loaded yet
     if (edge === "top") {
       updatedBooks.unshift(bookToMove);
-    }
-
-    // When hasMore is true, the bottom of the shelf is not actually the last book in the list.
-    // In that case, we don't actually move the book as it wouldn't be loaded yet
-    // (we just remove it from the list, as done above).
-    else if (!hasMore.value) {
+    } else if (!hasMore.value) {
       updatedBooks.push(bookToMove);
     }
     books.value = updatedBooks;
