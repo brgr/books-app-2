@@ -40,6 +40,19 @@ def test_google_books_id_is_saved_and_preserved_on_edit(
     assert response.json()["items"][0]["google_books_id"] == "dune-volume"
 
 
+def test_google_books_id_can_be_set_on_edit(client, auth_headers, sample_book_data):
+    response = client.post("/api/books", json=sample_book_data, headers=auth_headers)
+    book_id = response.json()["id"]
+
+    response = client.put(
+        f"/api/books/{book_id}",
+        json={"google_books_id": " dune-volume "},
+        headers=auth_headers,
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["google_books_id"] == "dune-volume"
+
+
 def test_create_book_requires_auth(client, sample_book_data):
     """Test that creating a book requires authentication."""
     response = client.post("/api/books", json=sample_book_data)

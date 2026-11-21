@@ -54,16 +54,16 @@ class AccessTokenResponse(BaseModel):
 
 
 # Book schemas
+GoogleBooksId = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
+]
+
+
 class BookBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     author: str | None = Field(None, max_length=100)
     isbn: str | None = Field(None, max_length=20)
-    google_books_id: (
-        Annotated[
-            str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)
-        ]
-        | None
-    ) = None
+    google_books_id: GoogleBooksId | None = None
     description: str | None = None
     published_date: datetime | None = None
     page_count: int | None = Field(None, ge=0)
@@ -78,6 +78,7 @@ class BookUpdate(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=255)
     author: str | None = Field(None, max_length=100)
     isbn: str | None = Field(None, max_length=20)
+    google_books_id: GoogleBooksId | None = None
     description: str | None = None
     published_date: datetime | None = None
     page_count: int | None = Field(None, ge=0)

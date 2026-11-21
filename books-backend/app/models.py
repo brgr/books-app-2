@@ -169,6 +169,8 @@ class Book(Base):
             self.author = data.author
         if "isbn" in fields:
             self.isbn = data.isbn
+        if "google_books_id" in fields:
+            self.google_books_id = data.google_books_id
         if "description" in fields:
             self.description = data.description
         if "published_date" in fields:
