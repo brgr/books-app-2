@@ -2,7 +2,7 @@
 import { getMediaUrl } from "../../../api/client";
 import CoverCandidateGrid from "./CoverCandidateGrid.vue";
 import CoverCandidateTile from "./CoverCandidateTile.vue";
-import { useCoverUpgradeSearch } from "./useCoverUpgradeSearch";
+import { useCoverUpgradeSearch } from "../../../composables/bookForm/useCoverUpgradeSearch";
 
 const props = defineProps<{
   bookId: number;

@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent } from "vue";
 import { flushPromises, mount } from "@vue/test-utils";
-import { getCoverUpgradeSearch, startCoverUpgradeSearch } from "../../../api/covers";
-import type { CoverUpgradeJob } from "../../../api/types";
+import { getCoverUpgradeSearch, startCoverUpgradeSearch } from "../../api/covers";
+import type { CoverUpgradeJob } from "../../api/types";
 import { useCoverUpgradeSearch } from "./useCoverUpgradeSearch";
 
-vi.mock("../../../api/covers", () => ({
+vi.mock("../../api/covers", () => ({
   startCoverUpgradeSearch: vi.fn(),
   getCoverUpgradeSearch: vi.fn(),
 }));

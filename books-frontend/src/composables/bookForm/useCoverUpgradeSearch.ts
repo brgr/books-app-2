@@ -1,7 +1,7 @@
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import { isAxiosError } from "axios";
-import { getCoverUpgradeSearch, startCoverUpgradeSearch } from "../../../api/covers";
-import type { CoverUpgradeCandidate } from "../../../api/types";
+import { getCoverUpgradeSearch, startCoverUpgradeSearch } from "../../api/covers";
+import type { CoverUpgradeCandidate } from "../../api/types";
 
 // Each mounted upgrade tab owns one search job and its polling lifecycle.
 export function useCoverUpgradeSearch(bookId: number) {
