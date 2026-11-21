@@ -289,9 +289,13 @@ async function handleContextRemove() {
 }
 
 /*noinspection CssUnusedSymbol*/
+.books-grid :deep(.grid-drag .grid-cover-link) {
+  transform: scale(1.06);
+}
+
+/*noinspection CssUnusedSymbol*/
 .books-grid :deep(.grid-drag .grid-cover),
 .books-grid :deep(.grid-drag .grid-cover-placeholder) {
-  transform: scale(1.06);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
 }
 

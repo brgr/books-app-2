@@ -130,16 +130,33 @@ const showBadge = computed(
   -webkit-touch-callout: none;
   touch-action: manipulation;
   position: relative;
+  border-radius: 6px;
+  transition: transform 0.2s ease;
+}
+
+/* Shade the edges inward and let the top edge catch a little light: the cover looks like a softly padded board */
+.grid-cover-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 10px rgba(0, 0, 0, 0.11),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 .grid-cover {
   width: 100%;
   max-width: 100%;
   height: auto;
-  border-radius: var(--border-radius);
+  border-radius: inherit;
   cursor: pointer;
-  transition: transform 0.2s ease;
-  box-shadow: var(--shadow);
+  transition: box-shadow 0.2s ease;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.12),
+    0 4px 10px rgba(0, 0, 0, 0.1);
   display: block;
   user-select: none;
   -webkit-user-select: none;
@@ -159,10 +176,12 @@ const showBadge = computed(
   justify-content: center;
   background-color: var(--color-bg-card);
   border: 1px solid var(--color-border);
-  border-radius: var(--border-radius);
+  border-radius: inherit;
   cursor: pointer;
-  transition: transform 0.2s ease;
-  box-shadow: var(--shadow);
+  transition: box-shadow 0.2s ease;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.12),
+    0 4px 10px rgba(0, 0, 0, 0.1);
   padding: var(--spacing-md);
   /* Keep the 2:3 ratio even for long titles. Without this the flex box's automatic min-height lets the
    text push the placeholder taller. */
@@ -204,9 +223,7 @@ const showBadge = computed(
   letter-spacing: 0.02em;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
   pointer-events: none;
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+  transition: box-shadow 0.2s ease;
 }
 
 .grid-rating-badge {
@@ -217,14 +234,16 @@ const showBadge = computed(
 /* Lift a book on hover only with a mouse or trackpad. Touch screens keep :hover on whatever was last touched, which
    would leave a tapped or dragged book lifted */
 @media (hover: hover) {
-  .grid-cover:hover,
-  .grid-cover-placeholder:hover {
+  .grid-cover-link:hover {
     transform: translateY(-4px);
+  }
+
+  .grid-cover-link:hover .grid-cover,
+  .grid-cover-link:hover .grid-cover-placeholder {
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
   }
 
   .grid-cover-link:hover .grid-progress-badge {
-    transform: translateY(-4px);
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
   }
 }
