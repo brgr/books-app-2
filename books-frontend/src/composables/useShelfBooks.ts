@@ -56,14 +56,9 @@ export function useShelfBooks(options: ShelfBooksOptions) {
     }
   }
 
-  /**
-   * Refetches every loaded page, keeping the books visible meanwhile, then shows the server's order again. Rejects when
-   * that fails.
-   */
+  /** Refetches every loaded page, keeping the books visible meanwhile. Rejects when that fails. */
   async function refresh() {
     await refetch({ throwOnError: true });
-    // The watcher below doesn't run when the refetch changed nothing, e.g. when the server rejected a move
-    books.value = [...filteredBooks.value];
   }
 
   const error = computed(() => {
@@ -119,6 +114,7 @@ export function useShelfBooks(options: ShelfBooksOptions) {
 
   const { isSaving, canReorder, saveBookAt, moveBookToEdge } = useShelfReorder({
     books,
+    loadedBooks: filteredBooks,
     hasMore,
     shelf: options.shelf,
     isReorderBlocked,

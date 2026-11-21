@@ -5,6 +5,8 @@ import type { Book, ShelfRef, ShelfReorderRequest } from "../api/types";
 export interface ShelfReorderOptions {
   /** The shelf's books as shown. A move shows up here before it is saved. */
   books: Ref<Book[]>;
+  /** The books to show, in the order the server returned them. `books` copies them. */
+  loadedBooks: Ref<Book[]>;
   /** Whether there are more books that are not yet loaded. */
   hasMore: Ref<boolean>;
   /** Positions are persisted against this shelf. */
@@ -19,7 +21,7 @@ export interface ShelfReorderOptions {
  * Moves books on a shelf and saves each move, then reloads the shelf to match the server.
  */
 export function useShelfReorder(options: ShelfReorderOptions) {
-  const { books, hasMore, shelf, isReorderBlocked, refresh } = options;
+  const { books, loadedBooks, hasMore, shelf, isReorderBlocked, refresh } = options;
 
   const isSaving = ref(false);
 
@@ -45,6 +47,8 @@ export function useShelfReorder(options: ShelfReorderOptions) {
 
     try {
       await refresh();
+      // The watcher on `loadedBooks` doesn't run when the refetch changed nothing, e.g. when the server rejected a move
+      books.value = [...loadedBooks.value];
     } catch (err) {
       console.error("Failed to refresh shelf:", err);
     } finally {
