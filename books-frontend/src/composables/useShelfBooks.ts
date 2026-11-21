@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from "@tanstack/vue-query";
-import { computed, ref, type Ref, watch } from "vue";
+import { computed } from "vue";
 import { getShelfBooks } from "../api/books";
 import type { Book, ShelfRef } from "../api/types";
 import { queryKeys } from "../query/keys";
@@ -91,20 +91,6 @@ export function useShelfBooks(options: ShelfBooksOptions) {
   });
 
   /**
-   * The shelf's books as shown: a copy of the loaded books that a move changes right away, before it is saved. Dragging
-   * a book reorders this very array.
-   */
-  const books = ref<Book[]>([]) as Ref<Book[]>;
-
-  watch(
-    filteredBooks,
-    (next) => {
-      books.value = [...next];
-    },
-    { immediate: true },
-  );
-
-  /**
    * Whether moving books is blocked right now, while:
    * - a search filter is active on the shelf,
    * - more books are loading, or
@@ -112,8 +98,7 @@ export function useShelfBooks(options: ShelfBooksOptions) {
    */
   const isReorderBlocked = computed(() => isFiltered.value || isLoadingMore.value || loadError.value !== null);
 
-  const { isSaving, canReorder, saveBookAt, moveBookToEdge } = useShelfReorder({
-    books,
+  const { books, isSaving, canReorder, saveBookAt, moveBookToEdge } = useShelfReorder({
     loadedBooks: filteredBooks,
     hasMore,
     shelf: options.shelf,

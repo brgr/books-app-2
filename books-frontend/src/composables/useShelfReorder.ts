@@ -1,11 +1,9 @@
-import { computed, ref, type Ref } from "vue";
+import { computed, ref, type Ref, watch } from "vue";
 import { reorderShelfItem } from "../api/books";
 import type { Book, ShelfRef, ShelfReorderRequest } from "../api/types";
 
 export interface ShelfReorderOptions {
-  /** The shelf's books as shown. A move shows up here before it is saved. */
-  books: Ref<Book[]>;
-  /** The books to show, in the order the server returned them. `books` copies them. */
+  /** The books to show, in the order the server returned them. */
   loadedBooks: Ref<Book[]>;
   /** Whether there are more books that are not yet loaded. */
   hasMore: Ref<boolean>;
@@ -21,7 +19,21 @@ export interface ShelfReorderOptions {
  * Moves books on a shelf and saves each move, then reloads the shelf to match the server.
  */
 export function useShelfReorder(options: ShelfReorderOptions) {
-  const { books, loadedBooks, hasMore, shelf, isReorderBlocked, refresh } = options;
+  const { loadedBooks, hasMore, shelf, isReorderBlocked, refresh } = options;
+
+  /**
+   * The shelf's books as shown: a copy of `loadedBooks` that a move changes right away, before it is saved. Dragging a
+   * book reorders this very array.
+   */
+  const books = ref<Book[]>([]) as Ref<Book[]>;
+
+  watch(
+    loadedBooks,
+    (next) => {
+      books.value = [...next];
+    },
+    { immediate: true },
+  );
 
   const isSaving = ref(false);
 
@@ -104,5 +116,5 @@ export function useShelfReorder(options: ShelfReorderOptions) {
     await persist({ moved_book_id: bookId, edge }, previousBooks);
   }
 
-  return { isSaving, canReorder, saveBookAt, moveBookToEdge };
+  return { books, isSaving, canReorder, saveBookAt, moveBookToEdge };
 }
