@@ -16,7 +16,7 @@ export interface ShelfReorderOptions {
 }
 
 /**
- * Saves the order of books on one shelf, then reloads the shelf to match the server.
+ * Moves books on a shelf and saves each move, then reloads the shelf to match the server.
  */
 export function useShelfReorder(options: ShelfReorderOptions) {
   const { books, hasMore, shelf, isReorderBlocked, refresh } = options;
