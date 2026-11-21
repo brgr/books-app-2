@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 from io import BytesIO
 
@@ -11,6 +12,8 @@ from PIL import Image
 
 from app.covers.cover_matching import covers_match
 from app.covers.storage import store_cover_image
+
+logger = logging.getLogger(__name__)
 
 # Map content types to file extensions
 CONTENT_TYPE_TO_EXT = {
@@ -140,10 +143,10 @@ async def fetch_cover_image(url: str) -> tuple[bytes, str] | None:
             return content, extension
 
     except httpx.HTTPError as e:
-        print(f"Failed to download cover image from {url}: {e}")
+        logger.warning("Failed to download cover image from %s: %s", url, e)
         return None
     except (httpx.InvalidURL, OSError, ValueError, Image.DecompressionBombError) as e:
-        print(f"Invalid cover image or URL: {e}")
+        logger.warning("Invalid cover image or URL: %s", e)
         return None
 
 
@@ -156,6 +159,6 @@ async def download_cover_image(url: str) -> tuple[str, str | None] | None:
 
     try:
         return store_cover_image(*result)
-    except OSError as e:
-        print(f"Failed to store cover image: {e}")
+    except OSError:
+        logger.warning("Failed to store cover image", exc_info=True)
         return None

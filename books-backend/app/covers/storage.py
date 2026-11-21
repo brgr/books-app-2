@@ -1,5 +1,6 @@
 """Store book cover images and generate thumbnails."""
 
+import logging
 import uuid
 from io import BytesIO
 from pathlib import Path
@@ -7,6 +8,8 @@ from pathlib import Path
 from PIL import Image, ImageOps
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 THUMBNAIL_SIZE = (300, 450)
 
@@ -59,8 +62,8 @@ def _create_thumbnail(content: bytes, cover_id: uuid.UUID) -> str | None:
         )
 
         return f"{settings.uploads_url_prefix}/covers/thumbnails/{thumb_filename}"
-    except (OSError, ValueError, Image.DecompressionBombError) as exc:
-        print(f"Failed to generate cover thumbnail: {exc}")
+    except (OSError, ValueError, Image.DecompressionBombError):
+        logger.warning("Failed to generate cover thumbnail", exc_info=True)
         return None
 
 
