@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/vue-query";
-import { clearRating, setRating } from "../api/books";
-import { invalidateAfter } from "../query/invalidate";
-import { useSetUserBook } from "./useBook";
+import { clearRating, setRating } from "../../api/books";
+import { invalidateAfter } from "../../query/invalidate";
+import { useSetUserBook } from "../useBook";
 
 export function useSaveBookRating() {
   const setUserBook = useSetUserBook();

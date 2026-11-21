@@ -1,8 +1,8 @@
 import { useMutation } from "@tanstack/vue-query";
-import { addBookProgress } from "../api/books";
-import type { BookProgressUpdate } from "../api/types";
-import { invalidateAfter } from "../query/invalidate";
-import { useSetUserBook } from "./useBook";
+import { addBookProgress } from "../../api/books";
+import type { BookProgressUpdate } from "../../api/types";
+import { invalidateAfter } from "../../query/invalidate";
+import { useSetUserBook } from "../useBook";
 
 export function useSaveBookProgress() {
   const setUserBook = useSetUserBook();

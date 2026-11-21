@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { useSaveBookProgress } from "../../../composables/useSaveBookProgress";
+import { useSaveBookProgress } from "../../../composables/bookDetail/useSaveBookProgress";
 import type { ReadingProgress } from "./types";
 
 type ProgressUnit = ReadingProgress["unit"];

@@ -1,9 +1,9 @@
 import { useMutation } from "@tanstack/vue-query";
-import { setShelf } from "../api/books";
-import { ReadingDatePrecision, type ReadingDateValue, type ReadingShelf } from "../api/types";
-import { invalidateAfter } from "../query/invalidate";
-import { localDayValue } from "../utils/date";
-import { useSetUserBook } from "./useBook";
+import { setShelf } from "../../api/books";
+import { ReadingDatePrecision, type ReadingDateValue, type ReadingShelf } from "../../api/types";
+import { invalidateAfter } from "../../query/invalidate";
+import { localDayValue } from "../../utils/date";
+import { useSetUserBook } from "../useBook";
 
 type ShelfChange = { bookId: number; shelf: ReadingShelf; readingDate?: ReadingDateValue };
 

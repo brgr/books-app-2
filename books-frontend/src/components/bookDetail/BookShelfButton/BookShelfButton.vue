@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { type ReadingDateValue, ReadingShelf } from "../../../api/types";
-import { useChangeBookShelf } from "../../../composables/useChangeBookShelf";
+import { useChangeBookShelf } from "../../../composables/bookDetail/useChangeBookShelf";
 import ReadingDateMenu from "./ReadingDateMenu.vue";
 
 const props = defineProps<{

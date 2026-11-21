@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/vue-query";
-import { setNotes } from "../api/books";
-import { invalidateAfter } from "../query/invalidate";
-import { useSetUserBook } from "./useBook";
+import { setNotes } from "../../api/books";
+import { invalidateAfter } from "../../query/invalidate";
+import { useSetUserBook } from "../useBook";
 
 export function useSaveBookNotes() {
   const setUserBook = useSetUserBook();

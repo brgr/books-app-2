@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import type { UserBook } from "../../../api/types";
-import { useSaveBookNotes } from "../../../composables/useSaveBookNotes";
-import { useSaveBookRating } from "../../../composables/useSaveBookRating";
+import { useSaveBookNotes } from "../../../composables/bookDetail/useSaveBookNotes";
+import { useSaveBookRating } from "../../../composables/bookDetail/useSaveBookRating";
 import BookNotes from "./BookNotes.vue";
 import BookRating from "./BookRating.vue";
 
