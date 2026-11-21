@@ -1,9 +1,9 @@
 import { useInfiniteQuery } from "@tanstack/vue-query";
 import { computed } from "vue";
-import { getShelfBooks } from "../api/books";
-import type { Book, ShelfRef } from "../api/types";
-import { queryKeys } from "../query/keys";
-import { useLibraryPage } from "./useLibraryPage.ts";
+import { getShelfBooks } from "../../api/books";
+import type { Book, ShelfRef } from "../../api/types";
+import { queryKeys } from "../../query/keys";
+import { useLibraryPage } from "../useLibraryPage.ts";
 import { useShelfReorder } from "./useShelfReorder";
 
 const PAGE_SIZE = 100;

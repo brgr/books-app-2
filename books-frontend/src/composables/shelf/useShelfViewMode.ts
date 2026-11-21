@@ -1,5 +1,5 @@
 import { ref, watch, type Ref } from "vue";
-import type { ShelfRef } from "../api/types";
+import type { ShelfRef } from "../../api/types";
 
 // TODO: At one point, we should move this in the backend, so that it persists across devices.
 

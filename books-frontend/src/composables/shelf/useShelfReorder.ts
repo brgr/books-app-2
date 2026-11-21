@@ -1,6 +1,6 @@
 import { computed, ref, type Ref, watch } from "vue";
-import { reorderShelfItem } from "../api/books";
-import type { Book, ShelfRef, ShelfReorderRequest } from "../api/types";
+import { reorderShelfItem } from "../../api/books";
+import type { Book, ShelfRef, ShelfReorderRequest } from "../../api/types";
 
 export interface ShelfReorderOptions {
   /** The books to show, in the order the server returned them. */

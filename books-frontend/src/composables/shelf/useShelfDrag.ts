@@ -1,6 +1,6 @@
 import { computed, onBeforeUnmount, ref, type Ref } from "vue";
-import type { Book } from "../api/types";
-import { swallowNextClick } from "../utils/click";
+import type { Book } from "../../api/types";
+import { swallowNextClick } from "../../utils/click";
 
 export interface ShelfDragOptions {
   /**
