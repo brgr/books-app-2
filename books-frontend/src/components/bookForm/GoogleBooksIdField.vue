@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, useId } from "vue";
-import { googleBooksIdFromUrl } from "./googleBooksId";
+import { googleBooksIdFromUrl } from "../../utils/googleBooks";
 import GoogleBooksIdPicker from "./GoogleBooksIdPicker.vue";
 
 defineProps<{

@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import type { Book } from "../../api/types";
 import { formatShortDate } from "../../utils/date";
+import { googleBooksVolumeUrl } from "../../utils/googleBooks";
 
 const props = defineProps<{
   book: Book;
@@ -15,7 +16,7 @@ const amazonUrl = computed(() => {
 
 const googleBooksUrl = computed(() => {
   if (props.book.google_books_id) {
-    return `https://books.google.com/books?${new URLSearchParams({ id: props.book.google_books_id })}`;
+    return googleBooksVolumeUrl(props.book.google_books_id);
   }
 
   const isbn = props.book.isbn?.replace(/[\s-]/g, "");

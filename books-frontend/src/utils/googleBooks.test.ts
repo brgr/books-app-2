@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { googleBooksIdFromUrl } from "./googleBooksId";
+import { googleBooksIdFromUrl } from "./googleBooks";
 
 describe("googleBooksIdFromUrl", () => {
   it.each([

@@ -3,6 +3,7 @@ import { isAxiosError } from "axios";
 import { computed, ref } from "vue";
 import { searchGoogleBooks } from "../../api/books";
 import type { GoogleBookResult } from "../../api/types";
+import { googleBooksVolumeUrl } from "../../utils/googleBooks";
 
 const props = defineProps<{
   title: string;
@@ -41,10 +42,6 @@ async function handleSearch() {
     loading.value = false;
   }
 }
-
-function volumeUrl(googleBooksId: string) {
-  return `https://books.google.com/books?${new URLSearchParams({ id: googleBooksId })}`;
-}
 </script>
 
 <template>
@@ -65,7 +62,7 @@ function volumeUrl(googleBooksId: string) {
           <span v-if="result.published_date || result.isbn">
             {{ [result.published_date, result.isbn && `ISBN ${result.isbn}`].filter(Boolean).join(" · ") }}
           </span>
-          <a :href="volumeUrl(result.google_books_id)" target="_blank" rel="noopener noreferrer">View</a>
+          <a :href="googleBooksVolumeUrl(result.google_books_id)" target="_blank" rel="noopener noreferrer">View</a>
         </div>
         <button type="button" class="btn-small" @click="emit('select', result.google_books_id)">Use</button>
       </li>

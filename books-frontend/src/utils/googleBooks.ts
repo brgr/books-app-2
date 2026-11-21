@@ -25,3 +25,8 @@ export function googleBooksIdFromUrl(text: string): string | null {
   }
   return null;
 }
+
+/** Link to a volume's page on Google Books. */
+export function googleBooksVolumeUrl(googleBooksId: string): string {
+  return `https://books.google.com/books?${new URLSearchParams({ id: googleBooksId })}`;
+}
