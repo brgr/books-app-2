@@ -81,8 +81,14 @@ async def search_cover_images(
             data = response.json()
     except GoogleBooksRateLimitError:
         raise
+    except httpx.HTTPStatusError as e:
+        logger.warning(
+            "Google Books cover search error: status=%s", e.response.status_code
+        )
+        return []
     except httpx.HTTPError as e:
-        logger.warning("Google Books cover search error: %r", e)
+        # Avoid logging the request URL, which contains the API key.
+        logger.warning("Google Books cover search error: %s", type(e).__name__)
         return []
     except (JSONDecodeError, UnicodeDecodeError) as e:
         logger.warning("Invalid Google Books cover search response: %r", e)

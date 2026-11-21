@@ -41,6 +41,20 @@ async def test_cover_search_preserves_full_resolution_selection(monkeypatch):
     )
 
 
+async def test_cover_search_failure_does_not_log_the_api_key(monkeypatch, caplog):
+    async def fake_get(self, url, params=None):
+        return httpx.Response(
+            403, request=httpx.Request("GET", url, params=params), json={}
+        )
+
+    monkeypatch.setattr("app.google_books.settings.google_books_api_key", "SECRET")
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+
+    assert await search_cover_images(title="Waste Wars") == []
+    assert "403" in caplog.text
+    assert "SECRET" not in caplog.text
+
+
 async def test_search_shows_the_zoom_1_thumbnail_and_saves_zoom_0(monkeypatch):
     async def fake_get(self, url, params=None):
         return httpx.Response(
