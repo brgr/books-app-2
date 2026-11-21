@@ -6,7 +6,7 @@ import BookCard from "./BookCard/BookCard.vue";
 import BookContextMenu from "./BookContextMenu.vue";
 import BookCoverTile from "./BookCoverTile.vue";
 import ShelfViewModeToggle from "./ShelfViewModeToggle.vue";
-import ChevronRightIcon from "../icons/ChevronRightIcon.vue";
+import ShelfCollapseToggle from "./ShelfCollapseToggle.vue";
 import type { ShelfRef } from "../../api/types";
 import { useContextMenu } from "../../composables/useContextMenu";
 import { useInfiniteScroll } from "../../composables/useInfiniteScroll";
@@ -155,23 +155,14 @@ async function handleContextRemove() {
     <!-- Titleless shelves still get the shelf header row, so their toggle stays where a titled shelf's would be. -->
     <header v-if="books.length" class="book-shelf-header">
       <h2 v-if="title" class="book-shelf-title">
-        <button
+        <ShelfCollapseToggle
           v-if="collapsible"
-          type="button"
-          class="shelf-collapse-toggle"
-          :aria-expanded="!isCollapsed"
-          :aria-controls="contentId"
-          @click="toggleCollapsed"
+          :collapsed="isCollapsed"
+          :controls="contentId"
+          @toggle="toggleCollapsed"
         >
           {{ title }}
-          <ChevronRightIcon
-            class="shelf-chevron"
-            :class="{ expanded: !isCollapsed }"
-            width="16"
-            height="16"
-            aria-hidden="true"
-          />
-        </button>
+        </ShelfCollapseToggle>
         <template v-else>{{ title }}</template>
       </h2>
       <ShelfViewModeToggle v-if="!isCollapsed" v-model="viewMode" class="shelf-view-toggle" />
@@ -253,37 +244,6 @@ async function handleContextRemove() {
   color: var(--color-text);
   letter-spacing: 0.04em;
   text-transform: uppercase;
-}
-
-.shelf-collapse-toggle {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-xs) 0;
-  border: none;
-  background: transparent;
-  font: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
-  text-align: left;
-}
-
-.shelf-collapse-toggle:hover {
-  background: transparent;
-  color: var(--color-primary);
-}
-
-.shelf-collapse-toggle:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 3px;
-}
-
-.shelf-chevron {
-  flex-shrink: 0;
-}
-
-.shelf-chevron.expanded {
-  transform: rotate(90deg);
 }
 
 .books-container {
