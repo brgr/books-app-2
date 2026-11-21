@@ -6,9 +6,10 @@ import { queryKeys } from "../query/keys";
 import { useLibraryPage } from "./useLibraryPage.ts";
 import { useShelfOrder } from "./useShelfOrder";
 
+const PAGE_SIZE = 100;
+
 export interface ShelfBooksOptions {
   shelf: ShelfRef;
-  pageSize: number;
 }
 
 export function useShelfBooks(options: ShelfBooksOptions) {
@@ -23,8 +24,8 @@ export function useShelfBooks(options: ShelfBooksOptions) {
     fetchNextPage,
     refetch,
   } = useInfiniteQuery({
-    queryKey: computed(() => queryKeys.shelves.books(options.shelf, options.pageSize)),
-    queryFn: ({ pageParam }) => getShelfBooks(options.shelf, pageParam, options.pageSize),
+    queryKey: computed(() => queryKeys.shelves.books(options.shelf)),
+    queryFn: ({ pageParam }) => getShelfBooks(options.shelf, pageParam, PAGE_SIZE),
     initialPageParam: 1,
     getNextPageParam: (last) => (last.page < last.pages ? last.page + 1 : undefined),
   });

@@ -41,8 +41,8 @@ const { allShelvesEmpty } = provideLibraryPage({ searchQuery });
         <template v-if="shelfFilter === 'to-read'">
           <!-- Books in progress load as a single page of up to 100: more than a user realistically
                reads at once. Worth revisiting if that ever stops holding. -->
-          <BookShelf shelf="reading:started" title="Reading now" show-progress :page-size="100" />
-          <BookShelf shelf="reading:paused" title="Paused Books" collapsible :page-size="100" />
+          <BookShelf shelf="reading:started" title="Reading now" show-progress />
+          <BookShelf shelf="reading:paused" title="Paused Books" collapsible />
           <BookShelf shelf="reading:want_to_read" title="Want to read" paginated />
         </template>
         <BookShelf v-else-if="shelfFilter === 'finished'" shelf="reading:finished" paginated />

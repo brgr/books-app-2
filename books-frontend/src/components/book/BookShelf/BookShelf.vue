@@ -27,13 +27,12 @@ const props = withDefaults(
     showProgress?: boolean;
     /** Whether to page in more books as the shelf's end scrolls into view. */
     paginated?: boolean;
-    pageSize?: number;
     /** Layout this shelf starts in, until the reader picks one; theirs is then remembered. */
     defaultViewMode?: ViewMode;
     /** Whether this shelf supports removing a book without removing it from the library. */
     canRemoveFromShelf?: boolean;
   }>(),
-  { title: null, showProgress: false, paginated: false, pageSize: 100, defaultViewMode: "list" },
+  { title: null, showProgress: false, paginated: false, defaultViewMode: "list" },
 );
 
 const router = useRouter();

@@ -4,7 +4,7 @@ export const queryKeys = {
   shelves: {
     all: () => ["shelves"] as const,
     list: () => ["shelves", "list"] as const,
-    books: (shelf: ShelfRef, pageSize: number) => ["shelves", shelf, "books", { pageSize }] as const,
+    books: (shelf: ShelfRef) => ["shelves", shelf, "books"] as const,
   },
   book: {
     root: () => ["books"] as const,

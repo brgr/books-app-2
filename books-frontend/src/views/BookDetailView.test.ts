@@ -200,7 +200,7 @@ describe("book detail", () => {
   });
 
   it("saves a half-star rating and refreshes cached shelves and activity", async () => {
-    const shelfKey = queryKeys.shelves.books("reading:finished", 20);
+    const shelfKey = queryKeys.shelves.books("reading:finished");
     queryClient.setQueryData(shelfKey, { pages: [{ items: [book] }], pageParams: [1] });
     const wrapper = await renderBook();
 
