@@ -6,6 +6,7 @@ import BookCard from "./BookCard/BookCard.vue";
 import BookContextMenu from "./BookContextMenu.vue";
 import BookCoverTile from "./BookCoverTile.vue";
 import ShelfViewModeToggle from "./ShelfViewModeToggle.vue";
+import ChevronRightIcon from "../icons/ChevronRightIcon.vue";
 import type { ShelfRef } from "../../api/types";
 import { useContextMenu } from "../../composables/useContextMenu";
 import { useInfiniteScroll } from "../../composables/useInfiniteScroll";
@@ -163,21 +164,13 @@ async function handleContextRemove() {
           @click="toggleCollapsed"
         >
           {{ title }}
-          <svg
+          <ChevronRightIcon
             class="shelf-chevron"
             :class="{ expanded: !isCollapsed }"
             width="16"
             height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
             aria-hidden="true"
-          >
-            <path d="m9 5 7 7-7 7" />
-          </svg>
+          />
         </button>
         <template v-else>{{ title }}</template>
       </h2>
