@@ -1,6 +1,7 @@
 """Google Books API integration for book search."""
 
 import asyncio
+import logging
 import random
 import re
 from json import JSONDecodeError
@@ -8,6 +9,8 @@ from json import JSONDecodeError
 import httpx
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 SEARCH_MAX_ATTEMPTS = 4
 
@@ -79,10 +82,10 @@ async def search_cover_images(
     except GoogleBooksRateLimitError:
         raise
     except httpx.HTTPError as e:
-        print(f"Google Books cover search error: {e!r}")
+        logger.warning("Google Books cover search error: %r", e)
         return []
     except (JSONDecodeError, UnicodeDecodeError) as e:
-        print(f"Invalid Google Books cover search response: {e!r}")
+        logger.warning("Invalid Google Books cover search response: %r", e)
         return []
 
     if not isinstance(data, dict) or not isinstance(data.get("items", []), list):
@@ -187,8 +190,10 @@ async def search_google_books(query: str, max_results: int = 10) -> list[dict]:
                 data = response.json()
             except httpx.HTTPStatusError as e:
                 status = e.response.status_code
-                print(
-                    f"Google Books API error: status={status} body={e.response.text.strip()}"
+                logger.warning(
+                    "Google Books API error: status=%s body=%s",
+                    status,
+                    e.response.text.strip(),
                 )
 
                 if (
@@ -200,11 +205,11 @@ async def search_google_books(query: str, max_results: int = 10) -> list[dict]:
                     ) from e
             except httpx.HTTPError as e:
                 # Avoid logging the request URL, which contains the API key.
-                print(f"Google Books API error: {type(e).__name__}")
+                logger.warning("Google Books API error: %s", type(e).__name__)
 
                 raise GoogleBooksSearchError from e
             except (JSONDecodeError, UnicodeDecodeError) as e:
-                print(f"Invalid Google Books search response: {e!r}")
+                logger.warning("Invalid Google Books search response: %r", e)
 
                 raise GoogleBooksSearchError from e
             else:
@@ -296,7 +301,7 @@ def _normalize_book_data(item: dict) -> dict | None:
             "google_books_id": google_books_id,
         }
 
-    except (AttributeError, TypeError) as e:
+    except (AttributeError, TypeError):
         # External metadata may have nulls or incorrect field types.
-        print(f"Error normalizing book data: {e}")
+        logger.warning("Error normalizing book data", exc_info=True)
         return None
