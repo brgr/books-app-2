@@ -64,7 +64,7 @@ async function handleSelectBook(book: GoogleBookResult) {
       description: book.description || undefined,
       published_date: book.published_date || undefined,
       page_count: book.page_count ?? undefined,
-      cover_image_url: book.thumbnail || undefined,
+      cover_image_url: book.image_url || undefined,
     });
 
     invalidateAfter.bookAdded();

@@ -268,26 +268,18 @@ def _normalize_book_data(item: dict) -> dict | None:
         # Get page count
         page_count = volume_info.get("pageCount")
 
-        # Get thumbnail image
+        # Google serves each cover in several sizes.
+        # In search results, we return the small zoom=1 cover; when we save the book, we save the large zoom=0 cover
+        # instead.
+        # Sometimes, a book doesn't have a large scan (at which point it gets a "image not available" placeholder).
+        # fetch_cover_image notices that and saves the zoom=1 one instead.
         thumbnail = None
-        image_links = volume_info.get("imageLinks", {})
-        if image_links:
-            # Get thumbnail (prefer thumbnail over smallThumbnail)
-            thumbnail = image_links.get("thumbnail") or image_links.get(
-                "smallThumbnail"
-            )
-
-            if thumbnail:
-                # Upgrade to HTTPS if needed
-                if thumbnail.startswith("http:"):
-                    thumbnail = thumbnail.replace("http:", "https:")
-
-                # Replace zoom parameter with zoom=0 for highest resolution
-                # Google Books uses zoom=1 (default) or zoom=5 (small), zoom=0 gives highest res
-                if "zoom=" in thumbnail:
-                    import re
-
-                    thumbnail = re.sub(r"zoom=\d+", "zoom=0", thumbnail)
+        image_url = None
+        image_links = volume_info.get("imageLinks") or {}
+        raw = image_links.get("thumbnail") or image_links.get("smallThumbnail")
+        if raw:
+            thumbnail = _upgrade_thumbnail(raw, zoom=1)
+            image_url = _upgrade_thumbnail(raw, zoom=0)
 
         # Get Google Books ID
         google_books_id = item.get("id")
@@ -300,6 +292,7 @@ def _normalize_book_data(item: dict) -> dict | None:
             "published_date": published_date,
             "page_count": page_count,
             "thumbnail": thumbnail,
+            "image_url": image_url,
             "google_books_id": google_books_id,
         }
 

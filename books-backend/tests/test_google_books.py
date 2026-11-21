@@ -41,6 +41,37 @@ async def test_cover_search_preserves_full_resolution_selection(monkeypatch):
     )
 
 
+async def test_search_shows_the_zoom_1_thumbnail_and_saves_zoom_0(monkeypatch):
+    async def fake_get(self, url, params=None):
+        return httpx.Response(
+            200,
+            request=httpx.Request("GET", url),
+            json={
+                "items": [
+                    {
+                        "id": "volume",
+                        "volumeInfo": {
+                            "title": "Unterwegs",
+                            "imageLinks": {
+                                "thumbnail": "http://books.google.com/books/content?id=volume&img=1&zoom=1&edge=curl",
+                            },
+                        },
+                    }
+                ],
+            },
+        )
+
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+    [result] = await search_google_books("Unterwegs")
+
+    assert result["thumbnail"] == (
+        "https://books.google.com/books/content?id=volume&img=1&zoom=1"
+    )
+    assert result["image_url"] == (
+        "https://books.google.com/books/content?id=volume&img=1&zoom=0"
+    )
+
+
 async def test_search_retries_upstream_503_then_returns_books(monkeypatch):
     statuses = iter([503, 503, 503, 200])
     delays = []

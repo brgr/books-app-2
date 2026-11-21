@@ -141,6 +141,7 @@ export interface GoogleBookResult {
   published_date: string | null;
   page_count: number | null;
   thumbnail: string | null;
+  image_url: string | null;
   google_books_id: string | null;
 }
 

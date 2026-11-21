@@ -277,6 +277,7 @@ class GoogleBookResult(BaseModel):
     published_date: str | None = None
     page_count: int | None = None
     thumbnail: str | None = None
+    image_url: str | None = None
     google_books_id: str | None = None
 
 
