@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     # Application
     app_name: str = "Books API"
     debug: bool = False
+    log_level: str = "INFO"
 
     # CORS (if needed later)
     allowed_origins: list[str] = [

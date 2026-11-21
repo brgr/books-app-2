@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -9,6 +11,11 @@ from app.imports import router as imports
 from app.reading import router as reading
 from app.shelves import router as shelves
 from app.shelves.service import ShelfError
+
+logging.basicConfig(
+    level=settings.log_level.upper(),
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
 
