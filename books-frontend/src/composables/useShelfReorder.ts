@@ -2,7 +2,7 @@ import { computed, ref, type Ref } from "vue";
 import { reorderShelfItem } from "../api/books";
 import type { Book, ShelfRef, ShelfReorderRequest } from "../api/types";
 
-export interface ShelfOrderOptions {
+export interface ShelfReorderOptions {
   /** The shelf's books as shown. A move shows up here before it is saved. */
   books: Ref<Book[]>;
   /** Whether there are more books that are not yet loaded. */
@@ -22,7 +22,7 @@ export interface ShelfOrderOptions {
 /**
  * Saves the order of books on one shelf, then reloads the shelf to match the server.
  */
-export function useShelfOrder(options: ShelfOrderOptions) {
+export function useShelfReorder(options: ShelfReorderOptions) {
   const { books, hasMore, shelf, isFiltered, isLoadingMore, hasError, refresh } = options;
 
   const isSaving = ref(false);

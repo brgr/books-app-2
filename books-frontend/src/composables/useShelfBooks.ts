@@ -4,7 +4,7 @@ import { getShelfBooks } from "../api/books";
 import type { Book, ShelfRef } from "../api/types";
 import { queryKeys } from "../query/keys";
 import { useLibraryPage } from "./useLibraryPage.ts";
-import { useShelfOrder } from "./useShelfOrder";
+import { useShelfReorder } from "./useShelfReorder";
 
 const PAGE_SIZE = 100;
 
@@ -109,7 +109,7 @@ export function useShelfBooks(options: ShelfBooksOptions) {
     { immediate: true },
   );
 
-  const { isSaving, canReorder, saveBookAt, moveBookToEdge } = useShelfOrder({
+  const { isSaving, canReorder, saveBookAt, moveBookToEdge } = useShelfReorder({
     books,
     hasMore,
     shelf: options.shelf,
