@@ -428,8 +428,6 @@ def test_import_cover_failures(
 ):
     from app.imports import reading_list_import
 
-    # Alembic's logging configuration disables application loggers during setup
-    monkeypatch.setattr(reading_list_import.logger, "disabled", False)
     zip_bytes = _make_zip(
         [{"Reading List ID": "COVER-ID", "Title": "With Cover"}],
         images={"COVER-ID.png": b"image"},
