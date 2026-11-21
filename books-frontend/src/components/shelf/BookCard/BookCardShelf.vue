@@ -1,21 +1,39 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { type Book } from "../../../api/types";
+import { type Book, ReadingShelf } from "../../../api/types";
 import { formatReadingDate } from "../../../utils/date";
-import { getShelfColor, getShelfLabel } from "../../../book/shelf";
 
 const props = defineProps<{
   book: Book;
 }>();
 
 const shelf = computed(() => props.book.user_book.shelf);
+
+const SHELF_LABELS: Record<ReadingShelf, string> = {
+  [ReadingShelf.WANT_TO_READ]: "Want to read",
+  [ReadingShelf.STARTED]: "Started",
+  [ReadingShelf.PAUSED]: "Paused",
+  [ReadingShelf.FINISHED]: "Finished",
+  [ReadingShelf.ABANDONED]: "Abandoned",
+};
+
+const SHELF_COLORS: Record<ReadingShelf, string> = {
+  [ReadingShelf.WANT_TO_READ]: "var(--color-primary)",
+  [ReadingShelf.STARTED]: "var(--color-warning)",
+  [ReadingShelf.PAUSED]: "var(--color-warning)",
+  [ReadingShelf.FINISHED]: "var(--color-success)",
+  [ReadingShelf.ABANDONED]: "var(--color-text-secondary)",
+};
+
+const shelfLabel = computed(() => (shelf.value ? SHELF_LABELS[shelf.value] : "N/A"));
+const shelfColor = computed(() => (shelf.value ? SHELF_COLORS[shelf.value] : "var(--color-text-secondary)"));
 </script>
 
 <template>
   <div class="book-shelf">
     <span class="book-shelf-label">Shelf:</span>
-    <span class="book-shelf-pill" :style="{ borderColor: getShelfColor(shelf), color: getShelfColor(shelf) }">
-      {{ getShelfLabel(shelf) }}
+    <span class="book-shelf-pill" :style="{ borderColor: shelfColor, color: shelfColor }">
+      {{ shelfLabel }}
     </span>
   </div>
 
