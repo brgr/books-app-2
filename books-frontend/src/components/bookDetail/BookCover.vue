@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { getMediaUrl } from "../../../api/client";
+import { getMediaUrl } from "../../api/client";
 
 /**
  * A book's large cover. Shows the (usually already cached) thumbnail until the full cover is ready to paint.

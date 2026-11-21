@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { enableAutoUnmount, flushPromises, mount } from "@vue/test-utils";
 import { VueQueryPlugin } from "@tanstack/vue-query";
 import BookDetailView from "./BookDetailView.vue";
-import BookReadingCard from "../components/book/BookReadingCard/BookReadingCard.vue";
+import BookReadingCard from "../components/bookDetail/BookReadingCard/BookReadingCard.vue";
 import { clearRating, getBook, getBookEvents, setRating } from "../api/books";
 import { type Book, BookEventType, ReadingShelf, type UserBook } from "../api/types";
 import { queryClient } from "../query/client";

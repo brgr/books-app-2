@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { useRouter } from "vue-router";
-import BookNotesAndRating from "../components/book/BookNotesAndRating/BookNotesAndRating.vue";
-import BookReadingStatus from "../components/book/BookReadingStatus.vue";
+import BookNotesAndRating from "../components/bookDetail/BookNotesAndRating/BookNotesAndRating.vue";
+import BookReadingStatus from "../components/bookDetail/BookReadingStatus.vue";
 import BackToShelfLink from "../components/navigation/BackToShelfLink.vue";
 import NavigationBar from "../components/navigation/NavigationBar.vue";
 import CollapsibleText from "../components/ui/CollapsibleText.vue";
-import BookMetadata from "../components/book/BookMetadata.vue";
-import EventTimeline from "../components/book/EventTimeline.vue";
-import BookCustomShelves from "../components/book/BookCustomShelves.vue";
-import BookCover from "../components/book/cover/BookCover.vue";
+import BookMetadata from "../components/bookDetail/BookMetadata.vue";
+import EventTimeline from "../components/bookDetail/EventTimeline.vue";
+import BookCustomShelves from "../components/bookDetail/BookCustomShelves.vue";
+import BookCover from "../components/bookDetail/BookCover.vue";
 import { useBook, useRouteBookId } from "../composables/useBook";
 
 const router = useRouter();
