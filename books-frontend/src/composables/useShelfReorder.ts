@@ -27,8 +27,8 @@ export function useShelfReorder(options: ShelfReorderOptions) {
   const canReorder = computed(() => !isReorderBlocked.value && !isSaving.value);
 
   /**
-   * Persists changes to the shelf and updates the order of books based on the provided payload.
-   * On failure, it restores the previous order of books if provided.
+   * Saves a move to the server, then reloads the shelf in the server's order.
+   * If saving fails, `books` goes back to `booksToRestoreOnFailure` before the reload.
    */
   async function persist(payload: ShelfReorderRequest, booksToRestoreOnFailure?: Book[]) {
     isSaving.value = true;
