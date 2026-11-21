@@ -5,8 +5,8 @@ import { createMemoryHistory, createRouter, RouterView } from "vue-router";
 import BookAddView from "./BookAddView.vue";
 import { createBook, searchGoogleBooks } from "../api/books";
 import { uploadBookCover } from "../api/covers";
-import CoverEditField from "../components/book/cover/CoverEditField.vue";
-import { getPendingCover, stagePendingCover } from "../components/book/cover/pendingCoverUploads";
+import CoverEditField from "../components/bookForm/cover/CoverEditField.vue";
+import { getPendingCover, stagePendingCover } from "../components/bookForm/cover/pendingCoverUploads";
 import { invalidateAfter } from "../query/invalidate";
 
 vi.mock("../api/books", () => ({ createBook: vi.fn(), searchGoogleBooks: vi.fn() }));

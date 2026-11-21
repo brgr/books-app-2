@@ -5,8 +5,8 @@ import { createMemoryHistory, createRouter, RouterView } from "vue-router";
 import BookEditView from "./BookEditView.vue";
 import { getBook, searchGoogleBooks, updateBook } from "../api/books";
 import { uploadBookCover } from "../api/covers";
-import CoverEditField from "../components/book/cover/CoverEditField.vue";
-import { getPendingCover, stagePendingCover } from "../components/book/cover/pendingCoverUploads";
+import CoverEditField from "../components/bookForm/cover/CoverEditField.vue";
+import { getPendingCover, stagePendingCover } from "../components/bookForm/cover/pendingCoverUploads";
 import { invalidateAfter } from "../query/invalidate";
 import { makeBook } from "../test/factories";
 

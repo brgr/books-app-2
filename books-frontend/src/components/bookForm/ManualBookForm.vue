@@ -6,8 +6,8 @@ import { createBook } from "../../api/books";
 import { invalidateAfter } from "../../query/invalidate";
 import BookFields from "./BookFields.vue";
 import { emptyBookForm, formToPayload } from "./bookForm";
-import { getPendingCover, isPendingCover } from "../book/cover/pendingCoverUploads";
-import { savePendingCover } from "../book/cover/savePendingCover";
+import { getPendingCover, isPendingCover } from "./cover/pendingCoverUploads";
+import { savePendingCover } from "./cover/savePendingCover";
 
 const router = useRouter();
 const formData = ref(emptyBookForm());

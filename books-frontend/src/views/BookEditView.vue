@@ -6,7 +6,7 @@ import { deleteBook, updateBook } from "../api/books";
 import NavigationBar from "../components/navigation/NavigationBar.vue";
 import BookFields from "../components/bookForm/BookFields.vue";
 import { bookToForm, emptyBookForm, formToPayload } from "../components/bookForm/bookForm";
-import { savePendingCover } from "../components/book/cover/savePendingCover";
+import { savePendingCover } from "../components/bookForm/cover/savePendingCover";
 import { useBook, useRouteBookId } from "../composables/useBook";
 import { invalidateAfter } from "../query/invalidate";
 

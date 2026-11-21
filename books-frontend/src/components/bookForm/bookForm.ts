@@ -1,5 +1,5 @@
 import type { Book, BookCreate } from "../../api/types";
-import { isPendingCover } from "../book/cover/pendingCoverUploads";
+import { isPendingCover } from "./cover/pendingCoverUploads";
 
 export interface BookFormData {
   title: string;
