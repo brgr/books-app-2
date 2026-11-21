@@ -2,6 +2,7 @@
 import { useId } from "vue";
 import type { BookFormData } from "./bookForm";
 import CoverEditField from "./cover/CoverEditField.vue";
+import GoogleBooksIdPicker from "./GoogleBooksIdPicker.vue";
 
 defineProps<{
   disabled?: boolean;
@@ -74,6 +75,13 @@ const id = useId();
         type="text"
         maxlength="128"
         placeholder="Enter Google Books ID"
+      />
+      <GoogleBooksIdPicker
+        v-if="!formData.google_books_id.trim()"
+        :title="formData.title"
+        :author="formData.author"
+        :isbn="formData.isbn"
+        @select="formData.google_books_id = $event"
       />
     </div>
 

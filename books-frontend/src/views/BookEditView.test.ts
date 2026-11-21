@@ -1,16 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { enableAutoUnmount, flushPromises, mount } from "@vue/test-utils";
+import { enableAutoUnmount, flushPromises, mount, type VueWrapper } from "@vue/test-utils";
 import { QueryClient, VueQueryPlugin } from "@tanstack/vue-query";
 import { createMemoryHistory, createRouter, RouterView } from "vue-router";
 import BookEditView from "./BookEditView.vue";
-import { getBook, updateBook } from "../api/books";
+import { getBook, searchGoogleBooks, updateBook } from "../api/books";
 import { uploadBookCover } from "../api/covers";
 import CoverEditField from "../components/book/cover/CoverEditField.vue";
 import { getPendingCover, stagePendingCover } from "../components/book/cover/pendingCoverUploads";
 import { invalidateAfter } from "../query/invalidate";
 import { makeBook } from "../test/factories";
 
-vi.mock("../api/books", () => ({ getBook: vi.fn(), updateBook: vi.fn(), deleteBook: vi.fn() }));
+vi.mock("../api/books", () => ({
+  getBook: vi.fn(),
+  updateBook: vi.fn(),
+  deleteBook: vi.fn(),
+  searchGoogleBooks: vi.fn(),
+}));
 vi.mock("../api/covers", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api/covers")>()),
   uploadBookCover: vi.fn(),
@@ -43,6 +48,14 @@ async function mountEditView() {
   });
   await vi.waitFor(() => expect(wrapper.find("form").exists()).toBe(true));
   return { wrapper, router };
+}
+
+function findButton(wrapper: VueWrapper, text: string) {
+  const button = wrapper.findAll("button").find((candidate) => candidate.text() === text);
+  if (!button) {
+    throw new Error(`No button "${text}"`);
+  }
+  return button;
 }
 
 function stageCover() {
@@ -97,6 +110,35 @@ describe("editing a book", () => {
     expect(uploadBookCover).not.toHaveBeenCalled();
     expect(invalidateAfter.bookUpdated).toHaveBeenCalledWith(42);
     expect(router.currentRoute.value.name).toBe("book-detail");
+  });
+
+  it("finds a Google Books id by title and author and saves the chosen one", async () => {
+    vi.mocked(searchGoogleBooks).mockResolvedValue([
+      {
+        title: "Dune",
+        author: "Frank Herbert",
+        isbn: null,
+        description: null,
+        published_date: "1965",
+        page_count: null,
+        thumbnail: null,
+        image_url: null,
+        google_books_id: "dune-volume",
+      },
+    ]);
+    const { wrapper } = await mountEditView();
+
+    await findButton(wrapper, "Find on Google Books").trigger("click");
+    await flushPromises();
+    expect(searchGoogleBooks).toHaveBeenCalledWith("Dune Frank Herbert");
+
+    await findButton(wrapper, "Use").trigger("click");
+    expect((wrapper.get('[name="google_books_id"]').element as HTMLInputElement).value).toBe("dune-volume");
+    expect(wrapper.find('[aria-label="Google Books matches"]').exists()).toBe(false);
+
+    await wrapper.get("form").trigger("submit");
+    await flushPromises();
+    expect(updateBook).toHaveBeenCalledExactlyOnceWith(42, expect.objectContaining({ google_books_id: "dune-volume" }));
   });
 
   it("retains a staged cover after an upload failure and retries it before saving metadata", async () => {
