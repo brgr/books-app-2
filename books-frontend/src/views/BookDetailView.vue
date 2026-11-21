@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRouter } from "vue-router";
-import BookNotesAndRating from "../components/book/BookNotesAndRating.vue";
+import BookNotesAndRating from "../components/book/BookNotesAndRating/BookNotesAndRating.vue";
 import BookReadingStatus from "../components/book/BookReadingStatus.vue";
 import BackToShelfLink from "../components/navigation/BackToShelfLink.vue";
 import NavigationBar from "../components/navigation/NavigationBar.vue";
