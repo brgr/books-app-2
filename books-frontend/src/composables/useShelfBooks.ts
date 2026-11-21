@@ -109,13 +109,19 @@ export function useShelfBooks(options: ShelfBooksOptions) {
     { immediate: true },
   );
 
+  /**
+   * Whether moving books is blocked right now, while:
+   * - a search filter is active on the shelf,
+   * - more books are loading, or
+   * - the shelf shows an error.
+   */
+  const isReorderBlocked = computed(() => isFiltered.value || isLoadingMore.value || loadError.value !== null);
+
   const { isSaving, canReorder, saveBookAt, moveBookToEdge } = useShelfReorder({
     books,
     hasMore,
     shelf: options.shelf,
-    isFiltered,
-    isLoadingMore,
-    hasError: computed(() => loadError.value !== null),
+    isReorderBlocked,
     refresh,
   });
 
