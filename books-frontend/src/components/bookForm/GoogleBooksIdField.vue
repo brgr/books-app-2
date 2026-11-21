@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { useId } from "vue";
+import { computed, useId } from "vue";
+import { googleBooksIdFromUrl } from "./googleBooksId";
 import GoogleBooksIdPicker from "./GoogleBooksIdPicker.vue";
 
 defineProps<{
@@ -10,6 +11,14 @@ defineProps<{
 
 const googleBooksId = defineModel<string>({ required: true });
 const id = useId();
+
+// Keep only the id when a Google Books link is pasted into the field
+const inputValue = computed({
+  get: () => googleBooksId.value,
+  set: (value: string) => {
+    googleBooksId.value = googleBooksIdFromUrl(value) ?? value;
+  },
+});
 </script>
 
 <template>
@@ -17,11 +26,10 @@ const id = useId();
     <label :for="id">Google Books ID</label>
     <input
       :id="id"
-      v-model="googleBooksId"
+      v-model="inputValue"
       name="google_books_id"
       type="text"
-      maxlength="128"
-      placeholder="Enter Google Books ID"
+      placeholder="Enter Google Books ID or paste a Google Books link"
     />
     <GoogleBooksIdPicker
       v-if="!googleBooksId.trim()"

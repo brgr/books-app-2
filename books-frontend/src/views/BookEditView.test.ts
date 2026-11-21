@@ -112,6 +112,15 @@ describe("editing a book", () => {
     expect(router.currentRoute.value.name).toBe("book-detail");
   });
 
+  it("keeps only the id when a Google Books link is pasted into the Google Books ID field", async () => {
+    const { wrapper } = await mountEditView();
+    const input = wrapper.get('[name="google_books_id"]');
+
+    await input.setValue("https://books.google.de/books?id=LTpjQwAACAAJ&hl=de");
+
+    expect((input.element as HTMLInputElement).value).toBe("LTpjQwAACAAJ");
+  });
+
   it("finds a Google Books id by title and author and saves the chosen one", async () => {
     vi.mocked(searchGoogleBooks).mockResolvedValue([
       {
