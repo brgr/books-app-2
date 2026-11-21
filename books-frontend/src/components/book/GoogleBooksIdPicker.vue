@@ -41,25 +41,80 @@ async function handleSearch() {
     loading.value = false;
   }
 }
+
+function volumeUrl(googleBooksId: string) {
+  return `https://books.google.com/books?${new URLSearchParams({ id: googleBooksId })}`;
+}
 </script>
 
 <template>
-  <div>
+  <div class="google-books-id-picker">
     <button type="button" class="btn-small" :disabled="loading || !query" @click="handleSearch">
       {{ loading ? "Searching..." : "Find on Google Books" }}
     </button>
 
     <p v-if="error" class="error" role="alert">{{ error }}</p>
-    <p v-else-if="hasSearched && results.length === 0">No matches on Google Books.</p>
+    <p v-else-if="hasSearched && results.length === 0" class="empty">No matches on Google Books.</p>
 
-    <ul v-if="results.length > 0" aria-label="Google Books matches">
-      <li v-for="result in results" :key="result.google_books_id">
-        <div>
+    <ul v-if="results.length > 0" class="results" aria-label="Google Books matches">
+      <li v-for="result in results" :key="result.google_books_id" class="result">
+        <img v-if="result.thumbnail" :src="result.thumbnail" alt="" class="thumbnail" />
+        <div class="info">
           <strong>{{ result.title }}</strong>
           <span v-if="result.author">{{ result.author }}</span>
+          <span v-if="result.published_date || result.isbn">
+            {{ [result.published_date, result.isbn && `ISBN ${result.isbn}`].filter(Boolean).join(" · ") }}
+          </span>
+          <a :href="volumeUrl(result.google_books_id)" target="_blank" rel="noopener noreferrer">View</a>
         </div>
         <button type="button" class="btn-small" @click="emit('select', result.google_books_id)">Use</button>
       </li>
     </ul>
   </div>
 </template>
+
+<style scoped>
+.google-books-id-picker {
+  margin-top: var(--spacing-sm);
+}
+
+.empty {
+  margin: var(--spacing-sm) 0 0;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.results {
+  list-style: none;
+  margin: var(--spacing-sm) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.result {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.thumbnail {
+  width: 40px;
+  border-radius: var(--border-radius);
+  flex-shrink: 0;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.info strong {
+  color: var(--color-text);
+}
+</style>
