@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { nextTick, ref } from "vue";
 import NavigationBar from "../components/navigation/NavigationBar.vue";
-import GoogleBookSearchForm from "../components/book/GoogleBookSearchForm.vue";
-import ManualBookForm from "../components/book/ManualBookForm.vue";
+import GoogleBookSearchForm from "../components/bookForm/GoogleBookSearchForm.vue";
+import ManualBookForm from "../components/bookForm/ManualBookForm.vue";
 
 type EntryMode = "search" | "manual";
 const entryMode = ref<EntryMode>("search");

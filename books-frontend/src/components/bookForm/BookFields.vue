@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useId } from "vue";
 import type { BookFormData } from "./bookForm";
-import CoverEditField from "./cover/CoverEditField.vue";
+import CoverEditField from "../book/cover/CoverEditField.vue";
 import GoogleBooksIdField from "./GoogleBooksIdField.vue";
 
 defineProps<{
