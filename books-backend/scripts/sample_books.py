@@ -31,7 +31,7 @@ def create_sample_books(
         db.add(book)
         db.flush()
 
-        user_book = ensure_added_event(db, user_id=user_id, book_id=book.id)
+        ensure_added_event(db, user_id=user_id, book_id=book.id)
 
         if shelf != ReadingShelf.WANT_TO_READ:
             record_started_reading(db, book.id, ReadingDate.unknown())
@@ -42,4 +42,4 @@ def create_sample_books(
         elif shelf == ReadingShelf.ABANDONED:
             record_reading_event(db, book.id, BookEventCode.ABANDONED_READING)
 
-        move_reading_shelf_placement(db, user_book, shelf)
+        move_reading_shelf_placement(db, book, shelf)

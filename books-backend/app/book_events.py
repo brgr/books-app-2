@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from sqlalchemy.orm import Session
 
 from app.models import (
+    Book,
     BookEvent,
     BookEventCode,
     BookEventCover,
@@ -114,7 +115,7 @@ def _ensure_user_book(session: Session, user_id: int, book_id: int) -> UserBook:
         .one()
     )
 
-    place_on_shelf(session, wanted, user_book, at_top=True)
+    place_on_shelf(session, wanted, user_book.book, at_top=True)
 
     return user_book
 
@@ -171,7 +172,7 @@ def ensure_added_event(
             )
             .one()
         )
-        place_on_shelf(session, shelf, user_book, at_top=True)
+        place_on_shelf(session, shelf, user_book.book, at_top=True)
 
     return user_book
 
@@ -473,14 +474,14 @@ def current_reading_shelf(session: Session, book_id: int) -> ReadingShelf:
 
 
 def move_reading_shelf_placement(
-    session: Session, user_book: UserBook, state: ReadingShelf
+    session: Session, book: Book, state: ReadingShelf
 ) -> None:
     """Move a book's sole reading placement to ``state`` without touching custom ones."""
     current = (
         session.query(ShelfPlacement)
         .join(Shelf)
         .filter(
-            ShelfPlacement.book_id == user_book.book_id,
+            ShelfPlacement.book_id == book.id,
             Shelf.kind == ShelfKind.READING,
         )
         .one_or_none()
@@ -494,11 +495,11 @@ def move_reading_shelf_placement(
 
     shelf = (
         session.query(Shelf)
-        .filter_by(user_id=user_book.user_id, kind=ShelfKind.READING, name=state.value)
+        .filter_by(user_id=book.user_id, kind=ShelfKind.READING, name=state.value)
         .one()
     )
 
-    place_on_shelf(session, shelf, user_book)
+    place_on_shelf(session, shelf, book)
 
 
 def project_user_book_state(session: Session, user_book: UserBook) -> UserBook:

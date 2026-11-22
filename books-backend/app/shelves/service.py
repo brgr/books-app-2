@@ -225,7 +225,7 @@ class ShelfService:
         if user_book is None:
             raise BookNotInLibraryError("Book not in your library")
 
-        place_on_shelf(self.db, self._custom_shelf(ref), user_book)
+        place_on_shelf(self.db, self._custom_shelf(ref), user_book.book)
         self.db.commit()
 
     def remove_book(self, ref: ShelfRef, book_id: int) -> None:

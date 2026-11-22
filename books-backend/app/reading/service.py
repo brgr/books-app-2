@@ -48,7 +48,7 @@ class ReadingService:
         self._apply_transition(user_book, previous, shelf_data.shelf, reading_date)
 
         if shelf_data.shelf != previous:
-            move_reading_shelf_placement(self.db, user_book, shelf_data.shelf)
+            move_reading_shelf_placement(self.db, user_book.book, shelf_data.shelf)
 
         project_user_book_state(self.db, user_book)
         self.db.commit()

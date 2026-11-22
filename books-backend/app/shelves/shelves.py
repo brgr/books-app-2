@@ -5,7 +5,7 @@ from decimal import Decimal
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.models import ReadingShelf, Shelf, ShelfKind, ShelfPlacement, UserBook
+from app.models import Book, ReadingShelf, Shelf, ShelfKind, ShelfPlacement
 
 SORT_ORDER_GAP = Decimal(1000)
 
@@ -47,10 +47,10 @@ def find_shelf_placement(
 
 
 def place_on_shelf(
-    db: Session, shelf: Shelf, user_book: UserBook, *, at_top: bool = False
+    db: Session, shelf: Shelf, book: Book, *, at_top: bool = False
 ) -> ShelfPlacement:
     """Add a placement at either edge, preserving an existing placement's order."""
-    existing = find_shelf_placement(db, shelf, user_book.book_id)
+    existing = find_shelf_placement(db, shelf, book.id)
     if existing is not None:
         return existing
 
@@ -65,7 +65,7 @@ def place_on_shelf(
     )
     placement = ShelfPlacement(
         shelf_id=shelf.id,
-        book_id=user_book.book_id,
+        book_id=book.id,
         sort_order=(
             SORT_ORDER_GAP
             if edge_sort is None

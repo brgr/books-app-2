@@ -96,7 +96,7 @@ def _parse_reading_date(value: str) -> ReadingDate:
     return ReadingDate.unknown()
 
 
-def _import_lists(db: Session, user_book: UserBook, raw: str) -> None:
+def _import_lists(db: Session, book: Book, raw: str) -> None:
     for entry in raw.split(";"):
         # Entries end with a signed list position; parentheses can also be
         # part of the name, e.g. "Short Book (< ~200 Pages) (31)".
@@ -107,16 +107,16 @@ def _import_lists(db: Session, user_book: UserBook, raw: str) -> None:
 
         shelf = (
             db.query(Shelf)
-            .filter_by(user_id=user_book.user_id, kind=ShelfKind.CUSTOM, name=name)
+            .filter_by(user_id=book.user_id, kind=ShelfKind.CUSTOM, name=name)
             .first()
         )
 
         if shelf is None:
-            shelf = Shelf(user_id=user_book.user_id, kind=ShelfKind.CUSTOM, name=name)
+            shelf = Shelf(user_id=book.user_id, kind=ShelfKind.CUSTOM, name=name)
             db.add(shelf)
             db.flush()
 
-        place_on_shelf(db, shelf, user_book)
+        place_on_shelf(db, shelf, book)
 
 
 def _import_cover(zf: zipfile.ZipFile, img_name: str) -> tuple[str, str | None] | None:
@@ -190,7 +190,7 @@ def import_reading_list_from_bytes(
                 .first()
             )
             if already_in_library:
-                _import_lists(db, already_in_library, row.get("Lists") or "")
+                _import_lists(db, already_in_library.book, row.get("Lists") or "")
                 skipped += 1
                 continue
 
@@ -280,10 +280,10 @@ def import_reading_list_from_bytes(
         if rating is not None:
             record_rating_event(db, book_id, rating=rating, import_id=import_id)
 
-        move_reading_shelf_placement(db, user_book, derived_shelf)
+        move_reading_shelf_placement(db, book, derived_shelf)
         project_user_book_state(db, user_book)
 
-        _import_lists(db, user_book, row.get("Lists") or "")
+        _import_lists(db, book, row.get("Lists") or "")
 
         imported += 1
 
