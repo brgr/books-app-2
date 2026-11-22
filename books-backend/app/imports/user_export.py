@@ -11,7 +11,7 @@ from app.models import Book, User
 from app.schemas import ExportBookEntry
 
 
-def build_user_books_export(db: Session, user: User) -> list[ExportBookEntry]:
+def build_books_export(db: Session, user: User) -> list[ExportBookEntry]:
     """Return the current reading state for every book the user owns."""
     books = db.query(Book).filter(Book.user_id == user.id).order_by(Book.id.asc()).all()
 

@@ -357,7 +357,7 @@ class ExportBookEntry(BaseModel):
         )
 
 
-class UserBooksExportResponse(BaseModel):
+class BooksExportResponse(BaseModel):
     # A small note: In theory, we should have bumped this already. Since, in practice,
     # this isn't really used yet; we didn't yet bump it.
     schema_version: str = "v1"

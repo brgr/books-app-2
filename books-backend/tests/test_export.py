@@ -1,9 +1,7 @@
 from fastapi import status
 
 
-def test_user_books_export_sorted_by_id(
-    client, auth_headers, sample_book_data, test_user
-):
+def test_books_export_sorted_by_id(client, auth_headers, sample_book_data, test_user):
     """Ensure the export endpoint returns books sorted by their IDs."""
     created_books = []
     titles = ["Zulu Book", "Alpha Book", "Gamma Book"]

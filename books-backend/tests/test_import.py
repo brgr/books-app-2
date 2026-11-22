@@ -108,7 +108,7 @@ def test_import_creates_books(client, auth_headers, db_session):
     assert book.description == "A great book"
 
 
-def test_import_creates_user_book(client, auth_headers, db_session):
+def test_import_creates_book_on_want_to_read_shelf(client, auth_headers, db_session):
     zip_bytes = _make_zip(
         [
             {"Reading List ID": "AAA", "Title": "Book One", "Authors": "Smith, Jane"},

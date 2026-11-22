@@ -18,13 +18,13 @@ from app.auth.security import (
 )
 from app.config import settings
 from app.database import get_db
-from app.imports.user_export import build_user_books_export
+from app.imports.user_export import build_books_export
 from app.models import User
 from app.schemas import (
     AccessTokenResponse,
+    BooksExportResponse,
     RefreshRequest,
     TokenResponse,
-    UserBooksExportResponse,
     UserResponse,
 )
 
@@ -121,8 +121,8 @@ def read_current_user(current_user: Annotated[User, Depends(get_current_user)]):
     return current_user
 
 
-@router.get("/users/me/export", response_model=UserBooksExportResponse)
-def export_user_books(
+@router.get("/users/me/export", response_model=BooksExportResponse)
+def export_books(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
@@ -130,5 +130,5 @@ def export_user_books(
     return {
         "exported_at": datetime.now(UTC),
         "user": current_user,
-        "books": build_user_books_export(db, current_user),
+        "books": build_books_export(db, current_user),
     }
