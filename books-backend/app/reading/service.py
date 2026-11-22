@@ -60,9 +60,9 @@ class ReadingService:
         self, user_book: UserBook, notes_data: UserBookNotesUpdate
     ) -> UserBookResponse:
         notes = notes_data.notes or None
-        if notes != user_book.notes:
+        if notes != user_book.book.notes:
             record_note_event(self.db, user_book.id, BookEventCode.NOTE_SET, notes)
-            user_book.notes = notes
+            user_book.book.notes = notes
 
         self.db.commit()
         self.db.refresh(user_book)
@@ -72,9 +72,9 @@ class ReadingService:
     def set_rating(
         self, user_book: UserBook, rating_data: UserBookRatingUpdate
     ) -> UserBookResponse:
-        if user_book.rating != rating_data.rating:
+        if user_book.book.rating != rating_data.rating:
             record_rating_event(self.db, user_book.id, rating_data.rating)
-            user_book.rating = rating_data.rating
+            user_book.book.rating = rating_data.rating
 
         self.db.commit()
         self.db.refresh(user_book)
@@ -82,9 +82,9 @@ class ReadingService:
         return build_user_book_response(self.db, user_book)
 
     def clear_rating(self, user_book: UserBook) -> None:
-        if user_book.rating is not None:
+        if user_book.book.rating is not None:
             record_rating_event(self.db, user_book.id, None)
-            user_book.rating = None
+            user_book.book.rating = None
 
         self.db.commit()
 

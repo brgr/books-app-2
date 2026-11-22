@@ -115,14 +115,15 @@ class User(Base):
 
 
 class Book(Base):
-    """A book in a user's library, with its title, author, cover and other details.
+    """A book in a user's library with its title, author, cover and other details, and the
+    user's notes and rating.
 
-    The user's notes, rating and reading progress for the book live in a separate
-    UserBook row. Splitting a book into two tables wasn't a well thought-out design:
-    it was meant for a catalog of books shared between users, which the app doesn't
-    have. We're in the process of merging the two tables into one. Until then, each
-    Book has exactly one UserBook; both are created when the book is added and
-    deleted when it is removed.
+    The user's reading progress for the book lives in a separate UserBook row.
+    Splitting a book into two tables wasn't a well thought-out design: it was meant
+    for a catalog of books shared between users, which the app doesn't have. We're in
+    the process of merging the two tables into one. Until then, each Book has exactly
+    one UserBook; both are created when the book is added and deleted when it is
+    removed.
     """
 
     __tablename__ = "books"
@@ -143,6 +144,8 @@ class Book(Base):
     page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     cover_image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     cover_thumbnail_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rating: Mapped[float | None] = mapped_column(Numeric(2, 1), nullable=True)
 
     # Relationship to users who have this book
     user_books: Mapped[list["UserBook"]] = relationship(
@@ -199,13 +202,13 @@ class Book(Base):
 
 
 class UserBook(Base):
-    """The user's notes, rating and reading progress for one book in their library.
+    """The user's reading progress for one book in their library.
 
     The book's events and shelf placements also belong to it, while the title,
-    author and cover live in a separate Book row. Splitting a book into two tables
-    wasn't a well thought-out design: it was meant for a catalog of books shared
-    between users, which the app doesn't have. We're in the process of merging the
-    two tables into one. Until then, each UserBook has exactly one Book; both are
+    author, cover, notes and rating live in a separate Book row. Splitting a book into
+    two tables wasn't a well thought-out design: it was meant for a catalog of books
+    shared between users, which the app doesn't have. We're in the process of merging
+    the two tables into one. Until then, each UserBook has exactly one Book; both are
     created when the book is added and deleted when it is removed.
     """
 
@@ -224,8 +227,6 @@ class UserBook(Base):
     book_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("books.id"), nullable=False
     )
-    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    rating: Mapped[float | None] = mapped_column(Numeric(2, 1), nullable=True)
     current_page: Mapped[int | None] = mapped_column(Integer, nullable=True)
     current_percent: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
 

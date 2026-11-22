@@ -140,8 +140,8 @@ def test_import_preserves_optional_rating(client, auth_headers, db_session):
     assert response.status_code == status.HTTP_200_OK
 
     ratings_by_title = {
-        user_book.book.title: float(user_book.rating) if user_book.rating else None
-        for user_book in db_session.query(UserBook).all()
+        book.title: float(book.rating) if book.rating else None
+        for book in db_session.query(Book).all()
     }
     assert ratings_by_title == {"Rated": 4.5, "Unrated": None}
 
@@ -354,8 +354,8 @@ def test_import_notes_and_current_page(client, auth_headers, db_session):
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
 
+    assert db_session.query(Book).one().notes == "Very insightful"
     ub = db_session.query(UserBook).one()
-    assert ub.notes == "Very insightful"
     assert ub.current_page == 42
     progress = (
         db_session.query(BookEvent)
@@ -416,7 +416,7 @@ def test_import_preserves_multiline_markdown_notes(client, auth_headers, db_sess
 
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
-    assert db_session.query(UserBook).one().notes == notes
+    assert db_session.query(Book).one().notes == notes
 
 
 # --- Cover images ---
@@ -806,7 +806,7 @@ def test_import_real_export_counts_match_csv(client, auth_headers, db_session):
         == expected_abandoned
     )
     assert (
-        db_session.query(UserBook).filter(UserBook.notes.isnot(None)).count()
+        db_session.query(Book).filter(Book.notes.isnot(None)).count()
         == expected_with_notes
     )
 

@@ -203,8 +203,8 @@ class UserBookResponse(BaseModel):
             user_id=user_book.user_id,
             book_id=user_book.book_id,
             shelf=shelf,
-            notes=user_book.notes,
-            rating=user_book.rating,
+            notes=user_book.book.notes,
+            rating=user_book.book.rating,
             started_at=ReadingDateValue.from_domain(started_at) if started_at else None,
             finished_at=ReadingDateValue.from_domain(finished_at)
             if finished_at
@@ -350,8 +350,8 @@ class ExportBookEntry(BaseModel):
             published_date=book.published_date,
             page_count=book.page_count,
             shelf=shelf,
-            notes=user_book.notes,
-            rating=user_book.rating,
+            notes=book.notes,
+            rating=book.rating,
             started_at=ReadingDateValue.from_domain(started_at) if started_at else None,
             finished_at=ReadingDateValue.from_domain(finished_at)
             if finished_at

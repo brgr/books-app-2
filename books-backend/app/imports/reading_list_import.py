@@ -234,11 +234,11 @@ def import_reading_list_from_bytes(
                 "provide only one progress value"
             )
 
+        book.notes = notes
+        book.rating = rating
         user_book = UserBook(
             user_id=user_id,
             book_id=book_id,
-            notes=notes,
-            rating=rating,
             current_page=current_page,
             current_percent=current_percent,
         )
