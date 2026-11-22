@@ -43,7 +43,7 @@ class ReadingService:
     def set_shelf(
         self, user_book: UserBook, shelf_data: UserBookShelfUpdate
     ) -> UserBookResponse:
-        previous = current_reading_shelf(self.db, user_book.id)
+        previous = current_reading_shelf(self.db, user_book.book_id)
         reading_date = self._reading_date_from_input(shelf_data.reading_date)
         self._apply_transition(user_book, previous, shelf_data.shelf, reading_date)
 
@@ -107,7 +107,7 @@ class ReadingService:
     def add_progress(
         self, user_book: UserBook, progress: BookProgressUpdate
     ) -> UserBookResponse:
-        if current_reading_shelf(self.db, user_book.id) != ReadingShelf.STARTED:
+        if current_reading_shelf(self.db, user_book.book_id) != ReadingShelf.STARTED:
             raise ValueError("Cannot record progress before starting reading")
 
         return build_user_book_response(

@@ -28,11 +28,12 @@ def test_add_900_books_preserves_existing_library(db_session, test_user):
     assert db_session.query(BookEventImportSource).count() == 0
     assert db_session.query(BookEvent).count() == 903
     assert db_session.query(Book).count() == 901
-    assert current_reading_shelf(db_session, original_id) == ReadingShelf.FINISHED
+    assert current_reading_shelf(db_session, original.book_id) == ReadingShelf.FINISHED
     added = db_session.query(UserBook).filter(UserBook.id != original_id).all()
     assert len(added) == 900
     assert all(
-        current_reading_shelf(db_session, user_book.id) == ReadingShelf.WANT_TO_READ
+        current_reading_shelf(db_session, user_book.book_id)
+        == ReadingShelf.WANT_TO_READ
         for user_book in added
     )
 
@@ -44,7 +45,7 @@ def test_generated_books_have_consistent_reading_state(db_session, test_user, sh
     db_session.commit()
 
     for user_book in db_session.query(UserBook).all():
-        assert current_reading_shelf(db_session, user_book.id) == shelf
+        assert current_reading_shelf(db_session, user_book.book_id) == shelf
         started, finished = derive_reading_date_values(db_session, user_book.book_id)
         assert (started is not None) == (shelf != ReadingShelf.WANT_TO_READ)
         assert (finished is not None) == (shelf == ReadingShelf.FINISHED)

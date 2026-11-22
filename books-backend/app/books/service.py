@@ -115,8 +115,8 @@ class BookService:
     def remove_from_library(self, book: Book) -> None:
         """Delete the book from the user's library.
 
-        Deleting the Book cascades to its events and its UserBook, and from the UserBook
-        to the shelf placements, via the ORM relationships.
+        Deleting the Book cascades to its events, shelf placements and UserBook via the
+        ORM relationships.
         """
         self.db.delete(book)
         self.db.commit()
@@ -124,7 +124,7 @@ class BookService:
     def clear_library(self) -> None:
         """Delete every book in the user's library."""
         # Deletes user_books before books: the database cascades from books to events
-        # and from user_books to shelf placements, but not from books to user_books
+        # and shelf placements, but not from books to user_books
         self.db.query(UserBook).filter(UserBook.user_id == self._user_id).delete(
             synchronize_session=False
         )

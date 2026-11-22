@@ -157,9 +157,7 @@ def ensure_added_event(
     has_reading_placement = (
         session.query(ShelfPlacement)
         .join(Shelf)
-        .filter(
-            ShelfPlacement.user_book_id == user_book.id, Shelf.kind == ShelfKind.READING
-        )
+        .filter(ShelfPlacement.book_id == book_id, Shelf.kind == ShelfKind.READING)
         .first()
     )
 
@@ -459,13 +457,13 @@ def _reading_date_for_event(event: BookEvent | None) -> ReadingDate | None:
     return ReadingDate(reading_date_entry.value, reading_date_entry.precision)
 
 
-def current_reading_shelf(session: Session, user_book_id: int) -> ReadingShelf:
+def current_reading_shelf(session: Session, book_id: int) -> ReadingShelf:
     """Read the current state from the book's sole reading-shelf placement."""
     placement = (
         session.query(ShelfPlacement)
         .join(Shelf)
         .filter(
-            ShelfPlacement.user_book_id == user_book_id,
+            ShelfPlacement.book_id == book_id,
             Shelf.kind == ShelfKind.READING,
         )
         .one()
@@ -482,7 +480,8 @@ def move_reading_shelf_placement(
         session.query(ShelfPlacement)
         .join(Shelf)
         .filter(
-            ShelfPlacement.user_book_id == user_book.id, Shelf.kind == ShelfKind.READING
+            ShelfPlacement.book_id == user_book.book_id,
+            Shelf.kind == ShelfKind.READING,
         )
         .one_or_none()
     )
@@ -544,7 +543,7 @@ def build_user_book_response(session: Session, user_book: UserBook) -> UserBookR
     ``UserBook`` itself carries no date attributes.
     """
     started_at, finished_at = derive_reading_date_values(session, user_book.book_id)
-    shelf = current_reading_shelf(session, user_book.id)
+    shelf = current_reading_shelf(session, user_book.book_id)
     if (
         shelf == ReadingShelf.STARTED
         and user_book.book.current_page is None

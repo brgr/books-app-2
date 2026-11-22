@@ -120,7 +120,7 @@ def test_import_creates_user_book(client, auth_headers, db_session):
     assert resp.status_code == status.HTTP_200_OK
 
     ub = db_session.query(UserBook).one()
-    assert current_reading_shelf(db_session, ub.id) == ReadingShelf.WANT_TO_READ
+    assert current_reading_shelf(db_session, ub.book_id) == ReadingShelf.WANT_TO_READ
 
 
 def test_import_preserves_optional_rating(client, auth_headers, db_session):
@@ -166,7 +166,7 @@ def test_import_status_finished(client, auth_headers, db_session):
     assert resp.status_code == status.HTTP_200_OK
 
     ub = db_session.query(UserBook).one()
-    assert current_reading_shelf(db_session, ub.id) == ReadingShelf.FINISHED
+    assert current_reading_shelf(db_session, ub.book_id) == ReadingShelf.FINISHED
 
 
 def test_import_status_abandoned(client, auth_headers, db_session):
@@ -185,7 +185,7 @@ def test_import_status_abandoned(client, auth_headers, db_session):
     assert resp.status_code == status.HTTP_200_OK
 
     ub = db_session.query(UserBook).one()
-    assert current_reading_shelf(db_session, ub.id) == ReadingShelf.ABANDONED
+    assert current_reading_shelf(db_session, ub.book_id) == ReadingShelf.ABANDONED
 
 
 def test_import_did_not_finish_takes_precedence_over_finished_date(
@@ -209,7 +209,7 @@ def test_import_did_not_finish_takes_precedence_over_finished_date(
     assert resp.status_code == status.HTTP_200_OK
 
     ub = db_session.query(UserBook).one()
-    assert current_reading_shelf(db_session, ub.id) == ReadingShelf.ABANDONED
+    assert current_reading_shelf(db_session, ub.book_id) == ReadingShelf.ABANDONED
 
 
 def test_import_status_started(client, auth_headers, db_session):
@@ -228,7 +228,7 @@ def test_import_status_started(client, auth_headers, db_session):
     assert resp.status_code == status.HTTP_200_OK
 
     ub = db_session.query(UserBook).one()
-    assert current_reading_shelf(db_session, ub.id) == ReadingShelf.STARTED
+    assert current_reading_shelf(db_session, ub.book_id) == ReadingShelf.STARTED
 
 
 def test_import_status_paused(client, auth_headers, db_session):
@@ -248,7 +248,7 @@ def test_import_status_paused(client, auth_headers, db_session):
     assert resp.status_code == status.HTTP_200_OK
 
     ub = db_session.query(UserBook).one()
-    assert current_reading_shelf(db_session, ub.id) == ReadingShelf.PAUSED
+    assert current_reading_shelf(db_session, ub.book_id) == ReadingShelf.PAUSED
     pause_event = (
         db_session.query(BookEvent)
         .join(BookEventType)
@@ -612,8 +612,7 @@ def test_import_puts_books_in_default_shelves(client, auth_headers, db_session):
         return {
             book.title
             for book in db_session.query(Book)
-            .join(UserBook, UserBook.book_id == Book.id)
-            .join(ShelfPlacement, ShelfPlacement.user_book_id == UserBook.id)
+            .join(ShelfPlacement, ShelfPlacement.book_id == Book.id)
             .join(Shelf, Shelf.id == ShelfPlacement.shelf_id)
             .filter(Shelf.kind == ShelfKind.READING, Shelf.name == shelf.value)
             .all()
@@ -777,8 +776,8 @@ def test_import_real_export_counts_match_csv(client, auth_headers, db_session):
     assert db_session.query(UserBook).count() == expected_imported
 
     assert (
-        db_session.query(UserBook)
-        .join(ShelfPlacement, ShelfPlacement.user_book_id == UserBook.id)
+        db_session.query(Book)
+        .join(ShelfPlacement, ShelfPlacement.book_id == Book.id)
         .join(Shelf, Shelf.id == ShelfPlacement.shelf_id)
         .filter(
             Shelf.kind == ShelfKind.READING, Shelf.name == ReadingShelf.FINISHED.value
@@ -787,8 +786,8 @@ def test_import_real_export_counts_match_csv(client, auth_headers, db_session):
         == expected_finished
     )
     assert (
-        db_session.query(UserBook)
-        .join(ShelfPlacement, ShelfPlacement.user_book_id == UserBook.id)
+        db_session.query(Book)
+        .join(ShelfPlacement, ShelfPlacement.book_id == Book.id)
         .join(Shelf, Shelf.id == ShelfPlacement.shelf_id)
         .filter(
             Shelf.kind == ShelfKind.READING, Shelf.name == ReadingShelf.STARTED.value
@@ -797,8 +796,8 @@ def test_import_real_export_counts_match_csv(client, auth_headers, db_session):
         == expected_started
     )
     assert (
-        db_session.query(UserBook)
-        .join(ShelfPlacement, ShelfPlacement.user_book_id == UserBook.id)
+        db_session.query(Book)
+        .join(ShelfPlacement, ShelfPlacement.book_id == Book.id)
         .join(Shelf, Shelf.id == ShelfPlacement.shelf_id)
         .filter(
             Shelf.kind == ShelfKind.READING, Shelf.name == ReadingShelf.ABANDONED.value
@@ -833,7 +832,7 @@ def test_import_real_export_currently_reading(client, auth_headers, db_session):
     started = (
         db_session.query(Book, UserBook)
         .join(UserBook, UserBook.book_id == Book.id)
-        .join(ShelfPlacement, ShelfPlacement.user_book_id == UserBook.id)
+        .join(ShelfPlacement, ShelfPlacement.book_id == Book.id)
         .join(Shelf, Shelf.id == ShelfPlacement.shelf_id)
         .filter(
             Shelf.kind == ShelfKind.READING, Shelf.name == ReadingShelf.STARTED.value
@@ -876,8 +875,7 @@ def test_import_real_export_creates_custom_shelves(client, auth_headers, db_sess
     shelves = (
         db_session.query(Shelf)
         .join(ShelfPlacement)
-        .join(UserBook)
-        .filter(UserBook.book_id == book.id, Shelf.kind == ShelfKind.CUSTOM)
+        .filter(ShelfPlacement.book_id == book.id, Shelf.kind == ShelfKind.CUSTOM)
         .all()
     )
     assert {shelf.name for shelf in shelves} == {
@@ -885,8 +883,7 @@ def test_import_real_export_creates_custom_shelves(client, auth_headers, db_sess
         "Philosophie",
         "Short Book (< ~200 Pages)",
     }
-    user_book = db_session.query(UserBook).filter_by(book_id=book.id).one()
-    assert current_reading_shelf(db_session, user_book.id) == ReadingShelf.WANT_TO_READ
+    assert current_reading_shelf(db_session, book.id) == ReadingShelf.WANT_TO_READ
 
 
 def test_import_lists_reuses_shelves_and_ignores_empty_names(
@@ -932,7 +929,7 @@ def test_import_lists_reuses_shelves_and_ignores_empty_names(
     }
     assert next(shelf for shelf in shelves if shelf.name == "Science").id == existing.id
     assert {
-        shelf.name: {placement.user_book.book.title for placement in shelf.placements}
+        shelf.name: {placement.book.title for placement in shelf.placements}
         for shelf in shelves
     } == {
         "Science": {"First", "Second"},
@@ -959,4 +956,4 @@ def test_import_lists_adds_memberships_to_existing_books(
     )
 
     assert len(shelf.placements) == 1
-    assert shelf.placements[0].user_book.book.title == "Existing"
+    assert shelf.placements[0].book.title == "Existing"

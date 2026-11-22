@@ -159,7 +159,7 @@ class ShelfService:
             .filter(
                 Shelf.user_id == self._user_id,
                 Shelf.kind == ShelfKind.CUSTOM,
-                ShelfPlacement.user_book_id == user_book.id,
+                ShelfPlacement.book_id == user_book.book_id,
             )
             .order_by(Shelf.id.asc())
             .all()
@@ -242,7 +242,7 @@ class ShelfService:
         query = (
             self.db.query(Book, UserBook)
             .join(UserBook, UserBook.book_id == Book.id)
-            .join(ShelfPlacement, ShelfPlacement.user_book_id == UserBook.id)
+            .join(ShelfPlacement, ShelfPlacement.book_id == Book.id)
             .filter(ShelfPlacement.shelf_id == shelf.id)
             .order_by(ShelfPlacement.sort_order.asc(), ShelfPlacement.id.asc())
         )

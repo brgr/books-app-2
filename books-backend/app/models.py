@@ -116,9 +116,9 @@ class User(Base):
 
 class Book(Base):
     """A book in a user's library with its title, author, cover and other details, and the
-    user's notes, rating, reading progress and events.
+    user's notes, rating, reading progress, events and shelf placements.
 
-    The book's shelf placements belong to a separate UserBook row.
+    Each Book also has a UserBook row, which holds only the user and book ids.
     Splitting a book into two tables wasn't a well thought-out design: it was meant
     for a catalog of books shared between users, which the app doesn't have. We're in
     the process of merging the two tables into one. Until then, each Book has exactly
@@ -160,6 +160,9 @@ class Book(Base):
         back_populates="book", cascade="all, delete-orphan"
     )
     events: Mapped[list["BookEvent"]] = relationship(
+        back_populates="book", cascade="all, delete-orphan"
+    )
+    shelf_placements: Mapped[list["ShelfPlacement"]] = relationship(
         back_populates="book", cascade="all, delete-orphan"
     )
 
@@ -213,14 +216,13 @@ class Book(Base):
 
 
 class UserBook(Base):
-    """The shelf placements of one book in a user's library.
+    """Links one book to a user's library, holding only the user and book ids.
 
-    The title, author, cover, notes, rating, reading progress and events live in a
-    separate Book row. Splitting a book into two tables wasn't a well thought-out
-    design: it was meant for a catalog of books shared between users, which the app
-    doesn't have. We're in the process of merging the two tables into one. Until
-    then, each UserBook has exactly one Book; both are created when the book is
-    added and deleted when it is removed.
+    Everything else about the book lives in its Book row. Splitting a book into two
+    tables wasn't a well thought-out design: it was meant for a catalog of books
+    shared between users, which the app doesn't have. We're in the process of merging
+    the two tables into one. Until then, each UserBook has exactly one Book; both are
+    created when the book is added and deleted when it is removed.
     """
 
     __tablename__ = "user_books"
@@ -236,9 +238,6 @@ class UserBook(Base):
     # Relationships
     user: Mapped["User"] = relationship(back_populates="user_books")
     book: Mapped["Book"] = relationship(back_populates="user_books")
-    shelf_placements: Mapped[list["ShelfPlacement"]] = relationship(
-        back_populates="user_book", cascade="all, delete-orphan"
-    )
 
     def __repr__(self):
         return f"<UserBook(user_id={self.user_id}, book_id={self.book_id})>"
@@ -494,22 +493,22 @@ class ShelfPlacement(Base):
     shelf_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("shelves.id", ondelete="CASCADE"), nullable=False
     )
-    user_book_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("user_books.id", ondelete="CASCADE"), nullable=False
+    book_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("books.id", ondelete="CASCADE"), nullable=False
     )
     sort_order: Mapped[Decimal] = mapped_column(Numeric(20, 10), nullable=False)
 
     shelf: Mapped["Shelf"] = relationship(back_populates="placements")
-    user_book: Mapped["UserBook"] = relationship(back_populates="shelf_placements")
+    book: Mapped["Book"] = relationship(back_populates="shelf_placements")
 
     __table_args__ = (
         UniqueConstraint(
             "shelf_id",
-            "user_book_id",
-            name="uq_shelf_placements_shelf_user_book",
+            "book_id",
+            name="uq_shelf_placements_shelf_book",
         ),
         Index("ix_shelf_placements_shelf_sort", "shelf_id", "sort_order"),
     )
 
     def __repr__(self):
-        return f"<ShelfPlacement(shelf_id={self.shelf_id}, user_book_id={self.user_book_id})>"
+        return f"<ShelfPlacement(shelf_id={self.shelf_id}, book_id={self.book_id})>"

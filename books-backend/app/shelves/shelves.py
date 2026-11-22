@@ -41,8 +41,7 @@ def find_shelf_placement(
 ) -> ShelfPlacement | None:
     return (
         db.query(ShelfPlacement)
-        .join(UserBook, UserBook.id == ShelfPlacement.user_book_id)
-        .filter(ShelfPlacement.shelf_id == shelf.id, UserBook.book_id == book_id)
+        .filter(ShelfPlacement.shelf_id == shelf.id, ShelfPlacement.book_id == book_id)
         .first()
     )
 
@@ -66,7 +65,7 @@ def place_on_shelf(
     )
     placement = ShelfPlacement(
         shelf_id=shelf.id,
-        user_book_id=user_book.id,
+        book_id=user_book.book_id,
         sort_order=(
             SORT_ORDER_GAP
             if edge_sort is None
