@@ -13,7 +13,6 @@ from app.models import (
     ShelfKind,
     ShelfPlacement,
     User,
-    UserBook,
 )
 from app.schemas import CustomShelfNamePayload, ShelfReorderRequest, ShelfResponse
 from app.shelves.refs import CustomShelfRef, ReadingShelfRef, ShelfRef
@@ -149,8 +148,7 @@ class ShelfService:
 
     def list_book_custom_shelves(self, book_id: int) -> list[ShelfResponse]:
         """Return the custom shelves containing one of the user's library books."""
-        user_book = self._get_user_book(book_id)
-        if user_book is None:
+        if self._get_library_book(book_id) is None:
             raise BookNotInLibraryError("Book not in your library")
 
         shelves = (
@@ -159,7 +157,7 @@ class ShelfService:
             .filter(
                 Shelf.user_id == self._user_id,
                 Shelf.kind == ShelfKind.CUSTOM,
-                ShelfPlacement.book_id == user_book.book_id,
+                ShelfPlacement.book_id == book_id,
             )
             .order_by(Shelf.id.asc())
             .all()
@@ -213,19 +211,15 @@ class ShelfService:
                 f"'{name}' is reserved for the paused reading shelf"
             )
 
-    def _get_user_book(self, book_id: int) -> UserBook | None:
-        return (
-            self.db.query(UserBook)
-            .filter_by(user_id=self._user_id, book_id=book_id)
-            .first()
-        )
+    def _get_library_book(self, book_id: int) -> Book | None:
+        return self.db.query(Book).filter_by(user_id=self._user_id, id=book_id).first()
 
     def add_book(self, ref: ShelfRef, book_id: int) -> None:
-        user_book = self._get_user_book(book_id)
-        if user_book is None:
+        book = self._get_library_book(book_id)
+        if book is None:
             raise BookNotInLibraryError("Book not in your library")
 
-        place_on_shelf(self.db, self._custom_shelf(ref), user_book.book)
+        place_on_shelf(self.db, self._custom_shelf(ref), book)
         self.db.commit()
 
     def remove_book(self, ref: ShelfRef, book_id: int) -> None:
@@ -255,7 +249,7 @@ class ShelfService:
         return books, total
 
     def reorder(self, shelf: Shelf, payload: ShelfReorderRequest) -> None:
-        if self._get_user_book(payload.moved_book_id) is None:
+        if self._get_library_book(payload.moved_book_id) is None:
             raise BookNotInLibraryError("Book not in your library")
 
         moved = find_shelf_placement(self.db, shelf, payload.moved_book_id)
@@ -333,7 +327,7 @@ class ShelfService:
     def _neighbour(self, shelf: Shelf, book_id: int | None) -> ShelfPlacement | None:
         if book_id is None:
             return None
-        if self._get_user_book(book_id) is None:
+        if self._get_library_book(book_id) is None:
             raise ShelfReorderError("Referenced book is not in your library")
 
         placement = find_shelf_placement(self.db, shelf, book_id)

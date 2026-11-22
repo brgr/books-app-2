@@ -9,7 +9,6 @@ from app.book_events import (
     project_user_book_state,
     record_cover_changed,
 )
-from app.books.queries import get_user_book
 from app.covers.cover_upgrade import CoverUpgradeJob, start_job
 from app.covers.image_utils import download_cover_image
 from app.models import Book, User, UserBook
@@ -152,13 +151,8 @@ class BookService:
         The snapshot columns are recomputed from the event stream and the
         event-derived reading dates are assembled into the DTO for serialization.
         """
-        user_book = get_user_book(self.db, user_id=self._user_id, book_id=book.id)
-
-        if user_book:
-            project_user_book_state(self.db, book)
-            book.user_book = build_user_book_response(self.db, book)
-        else:
-            book.user_book = None
+        project_user_book_state(self.db, book)
+        book.user_book = build_user_book_response(self.db, book)
 
         return book
 

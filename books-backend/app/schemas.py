@@ -16,7 +16,6 @@ from app.models import (
     ReadingDate,
     ReadingDatePrecision,
     ReadingShelf,
-    UserBook,
 )
 
 
@@ -329,10 +328,9 @@ class ExportBookEntry(BaseModel):
     current_percent: float | None = None
 
     @classmethod
-    def from_orm_pair(
+    def from_book(
         cls,
         book: Book,
-        user_book: UserBook,
         shelf: ReadingShelf,
         started_at: ReadingDate | None,
         finished_at: ReadingDate | None,

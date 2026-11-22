@@ -7,29 +7,22 @@ from app.book_events import (
     derive_reading_date_values,
     project_user_book_state,
 )
-from app.models import Book, User, UserBook
+from app.models import Book, User
 from app.schemas import ExportBookEntry
 
 
 def build_user_books_export(db: Session, user: User) -> list[ExportBookEntry]:
     """Return the current reading state for every book the user owns."""
-    user_books = (
-        db.query(UserBook, Book)
-        .join(Book, UserBook.book_id == Book.id)
-        .filter(UserBook.user_id == user.id)
-        .order_by(Book.id.asc())
-        .all()
-    )
+    books = db.query(Book).filter(Book.user_id == user.id).order_by(Book.id.asc()).all()
 
     entries = []
-    for user_book, book in user_books:
+    for book in books:
         project_user_book_state(db, book)
         started_at, finished_at = derive_reading_date_values(db, book.id)
         reading_shelf = current_reading_shelf(db, book.id)
 
-        book_entry = ExportBookEntry.from_orm_pair(
+        book_entry = ExportBookEntry.from_book(
             book,
-            user_book,
             reading_shelf,
             started_at=started_at,
             finished_at=finished_at,

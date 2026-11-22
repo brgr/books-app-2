@@ -184,13 +184,12 @@ def import_reading_list_from_bytes(
 
         if isbn:
             already_in_library = (
-                db.query(UserBook)
-                .join(Book, Book.id == UserBook.book_id)
-                .filter(UserBook.user_id == user_id, Book.isbn == isbn)
+                db.query(Book)
+                .filter(Book.user_id == user_id, Book.isbn == isbn)
                 .first()
             )
             if already_in_library:
-                _import_lists(db, already_in_library.book, row.get("Lists") or "")
+                _import_lists(db, already_in_library, row.get("Lists") or "")
                 skipped += 1
                 continue
 
