@@ -182,30 +182,28 @@ def import_reading_list_from_bytes(
         page_count = int(page_count_raw) if page_count_raw else None
         pub_date = _parse_date((row.get("Publication Date") or "").strip())
 
-        book = None
         if isbn:
-            book = db.query(Book).filter(Book.isbn == isbn).first()
-        if book is not None:
             already_in_library = (
                 db.query(UserBook)
-                .filter(UserBook.user_id == user_id, UserBook.book_id == book.id)
+                .join(Book, Book.id == UserBook.book_id)
+                .filter(UserBook.user_id == user_id, Book.isbn == isbn)
                 .first()
             )
             if already_in_library:
                 _import_lists(db, already_in_library, row.get("Lists") or "")
                 skipped += 1
                 continue
-        else:
-            book = Book(
-                title=title,
-                author=author,
-                isbn=isbn,
-                description=description,
-                page_count=page_count,
-                published_date=pub_date,
-            )
-            db.add(book)
-            db.flush()
+
+        book = Book(
+            title=title,
+            author=author,
+            isbn=isbn,
+            description=description,
+            page_count=page_count,
+            published_date=pub_date,
+        )
+        db.add(book)
+        db.flush()
 
         reading_list_id = (row.get("Reading List ID") or "").strip()
         if reading_list_id:
@@ -217,15 +215,6 @@ def import_reading_list_from_bytes(
                     break
 
         book_id = book.id
-        existing_ub = (
-            db.query(UserBook)
-            .filter(UserBook.user_id == user_id, UserBook.book_id == book_id)
-            .first()
-        )
-        if existing_ub:
-            _import_lists(db, existing_ub, row.get("Lists") or "")
-            imported += 1
-            continue
 
         derived_shelf = _derive_shelf(row)
         started_at = _parse_reading_date(row.get("Started Reading") or "")

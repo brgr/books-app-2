@@ -123,7 +123,7 @@ class Book(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     author: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    isbn: Mapped[str | None] = mapped_column(String(20), unique=True)
+    isbn: Mapped[str | None] = mapped_column(String(20), nullable=True)
     google_books_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     published_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
