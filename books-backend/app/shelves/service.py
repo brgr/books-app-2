@@ -240,8 +240,7 @@ class ShelfService:
         self, shelf: Shelf, page: int, page_size: int
     ) -> tuple[list[Book], int]:
         query = (
-            self.db.query(Book, UserBook)
-            .join(UserBook, UserBook.book_id == Book.id)
+            self.db.query(Book)
             .join(ShelfPlacement, ShelfPlacement.book_id == Book.id)
             .filter(ShelfPlacement.shelf_id == shelf.id)
             .order_by(ShelfPlacement.sort_order.asc(), ShelfPlacement.id.asc())
@@ -249,10 +248,8 @@ class ShelfService:
         total = query.count()
 
         books = []
-        for book, user_book in (
-            query.offset((page - 1) * page_size).limit(page_size).all()
-        ):
-            book.user_book = build_user_book_response(self.db, user_book)
+        for book in query.offset((page - 1) * page_size).limit(page_size).all():
+            book.user_book = build_user_book_response(self.db, book)
             books.append(book)
 
         return books, total

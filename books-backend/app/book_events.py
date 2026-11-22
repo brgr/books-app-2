@@ -372,27 +372,27 @@ def record_progress_event(
 
 def apply_progress_event(
     session: Session,
-    user_book: UserBook,
+    book: Book,
     page: int | None = None,
     percent: float | None = None,
     max_page: int | None = None,
-) -> UserBook:
+) -> Book:
     """Record a progress event and update the book's current position.
 
     ``page`` is clamped to ``max_page`` (the book's length) when provided.
-    Commits and returns the refreshed user_book.
+    Commits and returns the refreshed book.
     """
     if page is not None and max_page is not None and page > max_page:
         page = max_page
 
-    record_progress_event(
-        session, book_id=user_book.book_id, page=page, percent=percent
-    )
-    user_book.book.current_page = page
-    user_book.book.current_percent = percent
+    record_progress_event(session, book_id=book.id, page=page, percent=percent)
+    book.current_page = page
+    book.current_percent = percent
+
     session.commit()
-    session.refresh(user_book)
-    return user_book
+    session.refresh(book)
+
+    return book
 
 
 def record_cover_changed(
@@ -502,15 +502,14 @@ def move_reading_shelf_placement(
     place_on_shelf(session, shelf, book)
 
 
-def project_user_book_state(session: Session, user_book: UserBook) -> UserBook:
+def project_user_book_state(session: Session, book: Book) -> Book:
     """Project the current reading state from the event stream onto the book's progress columns.
 
     Reading dates are not stored. This only sets the persisted progress columns
     (current page/percent).
     """
-    book_id = user_book.book_id
-    latest_start = _latest_event(session, book_id, BookEventCode.STARTED_READING)
-    latest_progress = _latest_event(session, book_id, BookEventCode.PROGRESS_SET)
+    latest_start = _latest_event(session, book.id, BookEventCode.STARTED_READING)
+    latest_progress = _latest_event(session, book.id, BookEventCode.PROGRESS_SET)
 
     if latest_progress and (
         latest_start is None or _is_after(latest_progress, latest_start)
@@ -520,39 +519,37 @@ def project_user_book_state(session: Session, user_book: UserBook) -> UserBook:
             .filter(BookEventProgress.event_id == latest_progress.id)
             .first()
         )
-        user_book.book.current_page = progress_entry.page if progress_entry else None
-        user_book.book.current_percent = (
-            progress_entry.percent if progress_entry else None
-        )
+        book.current_page = progress_entry.page if progress_entry else None
+        book.current_percent = progress_entry.percent if progress_entry else None
     elif latest_start:
         # A new reading cycle begins at zero until progress is recorded.
-        page_count_known = user_book.book.page_count is not None
-        user_book.book.current_page = 0 if page_count_known else None
-        user_book.book.current_percent = None if page_count_known else 0
+        page_count_known = book.page_count is not None
+        book.current_page = 0 if page_count_known else None
+        book.current_percent = None if page_count_known else 0
     else:
-        user_book.book.current_page = None
-        user_book.book.current_percent = None
+        book.current_page = None
+        book.current_percent = None
 
-    return user_book
+    return book
 
 
-def build_user_book_response(session: Session, user_book: UserBook) -> UserBookResponse:
-    """Assemble the reading-state response DTO for a user_book.
+def build_user_book_response(session: Session, book: Book) -> UserBookResponse:
+    """Assemble the reading-state response DTO for a book.
 
     Combines the persisted snapshot columns with the event-derived reading
     dates. This is the single seam that produces the read model; the ORM
-    ``UserBook`` itself carries no date attributes.
+    ``Book`` itself carries no date attributes.
     """
-    started_at, finished_at = derive_reading_date_values(session, user_book.book_id)
-    shelf = current_reading_shelf(session, user_book.book_id)
+    started_at, finished_at = derive_reading_date_values(session, book.id)
+    shelf = current_reading_shelf(session, book.id)
     if (
         shelf == ReadingShelf.STARTED
-        and user_book.book.current_page is None
-        and user_book.book.current_percent is None
+        and book.current_page is None
+        and book.current_percent is None
     ):
         # Previously, progress could be None to mean no progress yet.
         # That now means page 0 or 0%.
         # For older books that still have None, we just project the reading progress here from the book events.
-        project_user_book_state(session, user_book)
+        project_user_book_state(session, book)
 
-    return UserBookResponse.from_user_book(user_book, shelf, started_at, finished_at)
+    return UserBookResponse.from_book(book, shelf, started_at, finished_at)

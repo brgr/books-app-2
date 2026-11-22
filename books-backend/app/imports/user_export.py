@@ -23,7 +23,7 @@ def build_user_books_export(db: Session, user: User) -> list[ExportBookEntry]:
 
     entries = []
     for user_book, book in user_books:
-        project_user_book_state(db, user_book)
+        project_user_book_state(db, book)
         started_at, finished_at = derive_reading_date_values(db, book.id)
         reading_shelf = current_reading_shelf(db, book.id)
 

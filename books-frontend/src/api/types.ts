@@ -66,7 +66,6 @@ export interface User {
 }
 
 export interface UserBook {
-  id: number;
   user_id: number;
   book_id: number;
   shelf: ReadingShelf;

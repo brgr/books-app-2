@@ -50,11 +50,11 @@ class ReadingService:
         if shelf_data.shelf != previous:
             move_reading_shelf_placement(self.db, user_book.book, shelf_data.shelf)
 
-        project_user_book_state(self.db, user_book)
+        project_user_book_state(self.db, user_book.book)
         self.db.commit()
         self.db.refresh(user_book)
 
-        return build_user_book_response(self.db, user_book)
+        return build_user_book_response(self.db, user_book.book)
 
     def set_notes(
         self, user_book: UserBook, notes_data: UserBookNotesUpdate
@@ -67,7 +67,7 @@ class ReadingService:
         self.db.commit()
         self.db.refresh(user_book)
 
-        return build_user_book_response(self.db, user_book)
+        return build_user_book_response(self.db, user_book.book)
 
     def set_rating(
         self, user_book: UserBook, rating_data: UserBookRatingUpdate
@@ -79,7 +79,7 @@ class ReadingService:
         self.db.commit()
         self.db.refresh(user_book)
 
-        return build_user_book_response(self.db, user_book)
+        return build_user_book_response(self.db, user_book.book)
 
     def clear_rating(self, user_book: UserBook) -> None:
         if user_book.book.rating is not None:
@@ -114,7 +114,7 @@ class ReadingService:
             self.db,
             apply_progress_event(
                 self.db,
-                user_book,
+                user_book.book,
                 page=progress.value if progress.unit == "page" else None,
                 percent=progress.value if progress.unit == "percent" else None,
                 max_page=user_book.book.page_count,

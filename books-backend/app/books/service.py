@@ -155,8 +155,8 @@ class BookService:
         user_book = get_user_book(self.db, user_id=self._user_id, book_id=book.id)
 
         if user_book:
-            project_user_book_state(self.db, user_book)
-            book.user_book = build_user_book_response(self.db, user_book)
+            project_user_book_state(self.db, book)
+            book.user_book = build_user_book_response(self.db, book)
         else:
             book.user_book = None
 
@@ -170,8 +170,8 @@ class BookService:
         return None
 
     def _add_to_library(self, book: Book) -> None:
-        user_book = ensure_added_event(self.db, user_id=self._user_id, book_id=book.id)
-        project_user_book_state(self.db, user_book)
+        ensure_added_event(self.db, user_id=self._user_id, book_id=book.id)
+        project_user_book_state(self.db, book)
 
     def _record_cover_change(
         self,

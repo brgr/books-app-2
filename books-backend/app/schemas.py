@@ -172,7 +172,6 @@ def build_progress(
 
 
 class UserBookResponse(BaseModel):
-    id: int
     user_id: int
     book_id: int
     shelf: ReadingShelf
@@ -185,33 +184,30 @@ class UserBookResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     @classmethod
-    def from_user_book(
+    def from_book(
         cls,
-        user_book: UserBook,
+        book: Book,
         shelf: ReadingShelf,
         started_at: ReadingDate | None,
         finished_at: ReadingDate | None,
     ) -> "UserBookResponse":
-        """Build the response from a user_book plus its event-derived dates.
+        """Build the response from a book plus its event-derived dates.
 
-        Reading dates are not stored on ``UserBook``; the caller derives them
+        Reading dates are not stored on ``Book``; the caller derives them
         from the event stream and passes them in.
         """
         # noinspection PyTypeChecker
         return cls(
-            id=user_book.id,
-            user_id=user_book.user_id,
-            book_id=user_book.book_id,
+            user_id=book.user_id,
+            book_id=book.id,
             shelf=shelf,
-            notes=user_book.book.notes,
-            rating=user_book.book.rating,
+            notes=book.notes,
+            rating=book.rating,
             started_at=ReadingDateValue.from_domain(started_at) if started_at else None,
             finished_at=ReadingDateValue.from_domain(finished_at)
             if finished_at
             else None,
-            progress=build_progress(
-                user_book.book.current_page, user_book.book.current_percent
-            ),
+            progress=build_progress(book.current_page, book.current_percent),
         )
 
 

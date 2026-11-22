@@ -2,7 +2,6 @@ import { type Book, ReadingShelf, type UserBook } from "../api/types";
 
 export function makeUserBook(overrides: Partial<UserBook> = {}): UserBook {
   return {
-    id: 1,
     user_id: 1,
     book_id: 1,
     shelf: ReadingShelf.WANT_TO_READ,

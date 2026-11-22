@@ -4,7 +4,6 @@ import { authenticate } from "../support/auth";
 // The API always returns a book together with its library entry.
 function userBook(bookId: number) {
   return {
-    id: bookId,
     user_id: 1,
     book_id: bookId,
     shelf: "want_to_read",

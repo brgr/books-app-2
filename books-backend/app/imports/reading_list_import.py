@@ -281,7 +281,7 @@ def import_reading_list_from_bytes(
             record_rating_event(db, book_id, rating=rating, import_id=import_id)
 
         move_reading_shelf_placement(db, book, derived_shelf)
-        project_user_book_state(db, user_book)
+        project_user_book_state(db, book)
 
         _import_lists(db, book, row.get("Lists") or "")
 
