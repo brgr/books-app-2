@@ -17,11 +17,11 @@ from app.book_events import (
     record_started_reading,
 )
 from app.models import (
+    Book,
     BookEvent,
     BookEventCode,
     ReadingDate,
     ReadingShelf,
-    UserBook,
 )
 from app.schemas import (
     BookProgressUpdate,
@@ -41,54 +41,54 @@ class ReadingService:
     #  but we add or remove a book from that shelf. For reading, in the API, we might want to talk about
     #  reading state instead; and use a different API endpoint, even though the DB model differs only slightly.
     def set_shelf(
-        self, user_book: UserBook, shelf_data: UserBookShelfUpdate
+        self, book: Book, shelf_data: UserBookShelfUpdate
     ) -> UserBookResponse:
-        previous = current_reading_shelf(self.db, user_book.book_id)
+        previous = current_reading_shelf(self.db, book.id)
         reading_date = self._reading_date_from_input(shelf_data.reading_date)
-        self._apply_transition(user_book, previous, shelf_data.shelf, reading_date)
+        self._apply_transition(book, previous, shelf_data.shelf, reading_date)
 
         if shelf_data.shelf != previous:
-            move_reading_shelf_placement(self.db, user_book.book, shelf_data.shelf)
+            move_reading_shelf_placement(self.db, book, shelf_data.shelf)
 
-        project_user_book_state(self.db, user_book.book)
+        project_user_book_state(self.db, book)
         self.db.commit()
-        self.db.refresh(user_book)
+        self.db.refresh(book)
 
-        return build_user_book_response(self.db, user_book.book)
+        return build_user_book_response(self.db, book)
 
     def set_notes(
-        self, user_book: UserBook, notes_data: UserBookNotesUpdate
+        self, book: Book, notes_data: UserBookNotesUpdate
     ) -> UserBookResponse:
         notes = notes_data.notes or None
-        if notes != user_book.book.notes:
-            record_note_event(self.db, user_book.book_id, BookEventCode.NOTE_SET, notes)
-            user_book.book.notes = notes
+        if notes != book.notes:
+            record_note_event(self.db, book.id, BookEventCode.NOTE_SET, notes)
+            book.notes = notes
 
         self.db.commit()
-        self.db.refresh(user_book)
+        self.db.refresh(book)
 
-        return build_user_book_response(self.db, user_book.book)
+        return build_user_book_response(self.db, book)
 
     def set_rating(
-        self, user_book: UserBook, rating_data: UserBookRatingUpdate
+        self, book: Book, rating_data: UserBookRatingUpdate
     ) -> UserBookResponse:
-        if user_book.book.rating != rating_data.rating:
-            record_rating_event(self.db, user_book.book_id, rating_data.rating)
-            user_book.book.rating = rating_data.rating
+        if book.rating != rating_data.rating:
+            record_rating_event(self.db, book.id, rating_data.rating)
+            book.rating = rating_data.rating
 
         self.db.commit()
-        self.db.refresh(user_book)
+        self.db.refresh(book)
 
-        return build_user_book_response(self.db, user_book.book)
+        return build_user_book_response(self.db, book)
 
-    def clear_rating(self, user_book: UserBook) -> None:
-        if user_book.book.rating is not None:
-            record_rating_event(self.db, user_book.book_id, None)
-            user_book.book.rating = None
+    def clear_rating(self, book: Book) -> None:
+        if book.rating is not None:
+            record_rating_event(self.db, book.id, None)
+            book.rating = None
 
         self.db.commit()
 
-    def get_events(self, user_book: UserBook) -> list[BookEvent]:
+    def get_events(self, book: Book) -> list[BookEvent]:
         return (
             self.db.query(BookEvent)
             .options(
@@ -99,25 +99,25 @@ class ReadingService:
                 joinedload(BookEvent.import_source),
                 joinedload(BookEvent.reading_date_entry),
             )
-            .filter(BookEvent.book_id == user_book.book_id)
+            .filter(BookEvent.book_id == book.id)
             .order_by(BookEvent.occurred_at.desc(), BookEvent.id.desc())
             .all()
         )
 
     def add_progress(
-        self, user_book: UserBook, progress: BookProgressUpdate
+        self, book: Book, progress: BookProgressUpdate
     ) -> UserBookResponse:
-        if current_reading_shelf(self.db, user_book.book_id) != ReadingShelf.STARTED:
+        if current_reading_shelf(self.db, book.id) != ReadingShelf.STARTED:
             raise ValueError("Cannot record progress before starting reading")
 
         return build_user_book_response(
             self.db,
             apply_progress_event(
                 self.db,
-                user_book.book,
+                book,
                 page=progress.value if progress.unit == "page" else None,
                 percent=progress.value if progress.unit == "percent" else None,
-                max_page=user_book.book.page_count,
+                max_page=book.page_count,
             ),
         )
 
@@ -142,7 +142,7 @@ class ReadingService:
 
     def _apply_transition(
         self,
-        user_book: UserBook,
+        book: Book,
         source: ReadingShelf,
         target: ReadingShelf,
         reading_date: ReadingDate,
@@ -158,28 +158,22 @@ class ReadingService:
             raise ValueError("Cannot finish reading before starting")
 
         if source == ReadingShelf.WANT_TO_READ and target == ReadingShelf.STARTED:
-            record_started_reading(self.db, user_book.book_id, reading_date)
+            record_started_reading(self.db, book.id, reading_date)
         elif source == ReadingShelf.STARTED and target == ReadingShelf.PAUSED:
-            record_reading_event(
-                self.db, user_book.book_id, BookEventCode.PAUSED_READING
-            )
+            record_reading_event(self.db, book.id, BookEventCode.PAUSED_READING)
         elif source == ReadingShelf.PAUSED and target == ReadingShelf.STARTED:
-            record_reading_event(
-                self.db, user_book.book_id, BookEventCode.RESUMED_READING
-            )
+            record_reading_event(self.db, book.id, BookEventCode.RESUMED_READING)
         elif source == ReadingShelf.STARTED and target == ReadingShelf.FINISHED:
-            record_finished_reading(self.db, user_book.book_id, reading_date)
+            record_finished_reading(self.db, book.id, reading_date)
         elif (
             source in {ReadingShelf.STARTED, ReadingShelf.PAUSED}
             and target == ReadingShelf.ABANDONED
         ):
-            record_reading_event(
-                self.db, user_book.book_id, BookEventCode.ABANDONED_READING
-            )
+            record_reading_event(self.db, book.id, BookEventCode.ABANDONED_READING)
         elif (
             source in {ReadingShelf.FINISHED, ReadingShelf.ABANDONED}
             and target == ReadingShelf.STARTED
         ):
-            record_started_reading(self.db, user_book.book_id, reading_date)
+            record_started_reading(self.db, book.id, reading_date)
         else:
             raise ValueError(f"Cannot move from '{source.value}' to '{target.value}'")
