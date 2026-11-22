@@ -15,7 +15,7 @@ from app.covers.cover_upgrade import (
     _score_candidates,
     get_job,
 )
-from app.models import Book, User, UserBook
+from app.models import Book, User
 
 
 def _make_image(
@@ -39,12 +39,6 @@ def _create_book_with_local_cover(
     db.commit()
     db.refresh(book)
     return book
-
-
-def _add_to_library(db, *, user_id, book_id):
-    ub = UserBook(user_id=user_id, book_id=book_id)
-    db.add(ub)
-    db.commit()
 
 
 def _user_id(db, username: str) -> int:
@@ -99,9 +93,6 @@ def test_start_cover_upgrade_400_when_no_local_cover(client, auth_headers, db_se
     db_session.add(book)
     db_session.commit()
     db_session.refresh(book)
-    _add_to_library(
-        db_session, user_id=_user_id(db_session, "testuser"), book_id=book.id
-    )
     r = client.post(f"/api/books/{book.id}/cover-upgrade-search", headers=auth_headers)
     assert r.status_code == 400
 
@@ -116,9 +107,6 @@ def test_start_cover_upgrade_400_for_external_cover(client, auth_headers, db_ses
     db_session.add(book)
     db_session.commit()
     db_session.refresh(book)
-    _add_to_library(
-        db_session, user_id=_user_id(db_session, "testuser"), book_id=book.id
-    )
     r = client.post(f"/api/books/{book.id}/cover-upgrade-search", headers=auth_headers)
     assert r.status_code == 400
 
@@ -134,9 +122,6 @@ def test_start_and_get_cover_upgrade_job(
     monkeypatch.setattr(cover_upgrade, "_run_job", fake_run)
 
     book = _create_book_with_local_cover(db_session, cover_path=local_cover)
-    _add_to_library(
-        db_session, user_id=_user_id(db_session, "testuser"), book_id=book.id
-    )
 
     r = client.post(f"/api/books/{book.id}/cover-upgrade-search", headers=auth_headers)
     assert r.status_code == 202
@@ -162,9 +147,6 @@ def test_get_job_404_for_wrong_book_id(
     monkeypatch.setattr(cover_upgrade, "_run_job", fake_run)
 
     book = _create_book_with_local_cover(db_session, cover_path=local_cover)
-    _add_to_library(
-        db_session, user_id=_user_id(db_session, "testuser"), book_id=book.id
-    )
     r = client.post(f"/api/books/{book.id}/cover-upgrade-search", headers=auth_headers)
     job_id = r.json()["job_id"]
 
@@ -186,9 +168,6 @@ def test_get_job_404_for_other_users_job(
     monkeypatch.setattr(cover_upgrade, "_run_job", fake_run)
 
     book = _create_book_with_local_cover(db_session, cover_path=local_cover)
-    _add_to_library(
-        db_session, user_id=_user_id(db_session, "testuser"), book_id=book.id
-    )
 
     r = client.post(f"/api/books/{book.id}/cover-upgrade-search", headers=auth_headers)
     job_id = r.json()["job_id"]

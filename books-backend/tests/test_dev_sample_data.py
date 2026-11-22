@@ -8,7 +8,6 @@ from app.models import (
     Import,
     ReadingShelf,
     User,
-    UserBook,
 )
 from scripts.dev_with_sample_data import build_parser
 from scripts.sample_books import create_sample_books
@@ -18,8 +17,7 @@ def test_add_900_books_preserves_existing_library(db_session, test_user):
     user = db_session.query(User).one()
     create_sample_books(db_session, user.id, 1, ReadingShelf.FINISHED)
     db_session.commit()
-    original = db_session.query(UserBook).one()
-    original_id = original.id
+    original = db_session.query(Book).one()
 
     create_sample_books(db_session, user.id, 900, ReadingShelf.WANT_TO_READ)
     db_session.commit()
@@ -28,13 +26,12 @@ def test_add_900_books_preserves_existing_library(db_session, test_user):
     assert db_session.query(BookEventImportSource).count() == 0
     assert db_session.query(BookEvent).count() == 903
     assert db_session.query(Book).count() == 901
-    assert current_reading_shelf(db_session, original.book_id) == ReadingShelf.FINISHED
-    added = db_session.query(UserBook).filter(UserBook.id != original_id).all()
+    assert current_reading_shelf(db_session, original.id) == ReadingShelf.FINISHED
+    added = db_session.query(Book).filter(Book.id != original.id).all()
     assert len(added) == 900
     assert all(
-        current_reading_shelf(db_session, user_book.book_id)
-        == ReadingShelf.WANT_TO_READ
-        for user_book in added
+        current_reading_shelf(db_session, book.id) == ReadingShelf.WANT_TO_READ
+        for book in added
     )
 
 
@@ -44,9 +41,9 @@ def test_generated_books_have_consistent_reading_state(db_session, test_user, sh
     create_sample_books(db_session, user.id, 2, shelf)
     db_session.commit()
 
-    for user_book in db_session.query(UserBook).all():
-        assert current_reading_shelf(db_session, user_book.book_id) == shelf
-        started, finished = derive_reading_date_values(db_session, user_book.book_id)
+    for book in db_session.query(Book).all():
+        assert current_reading_shelf(db_session, book.id) == shelf
+        started, finished = derive_reading_date_values(db_session, book.id)
         assert (started is not None) == (shelf != ReadingShelf.WANT_TO_READ)
         assert (finished is not None) == (shelf == ReadingShelf.FINISHED)
 

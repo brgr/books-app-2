@@ -21,7 +21,6 @@ from app.models import (
     Shelf,
     ShelfKind,
     ShelfPlacement,
-    UserBook,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -119,8 +118,8 @@ def test_import_creates_user_book(client, auth_headers, db_session):
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
 
-    ub = db_session.query(UserBook).one()
-    assert current_reading_shelf(db_session, ub.book_id) == ReadingShelf.WANT_TO_READ
+    book = db_session.query(Book).one()
+    assert current_reading_shelf(db_session, book.id) == ReadingShelf.WANT_TO_READ
 
 
 def test_import_preserves_optional_rating(client, auth_headers, db_session):
@@ -165,8 +164,8 @@ def test_import_status_finished(client, auth_headers, db_session):
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
 
-    ub = db_session.query(UserBook).one()
-    assert current_reading_shelf(db_session, ub.book_id) == ReadingShelf.FINISHED
+    book = db_session.query(Book).one()
+    assert current_reading_shelf(db_session, book.id) == ReadingShelf.FINISHED
 
 
 def test_import_status_abandoned(client, auth_headers, db_session):
@@ -184,8 +183,8 @@ def test_import_status_abandoned(client, auth_headers, db_session):
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
 
-    ub = db_session.query(UserBook).one()
-    assert current_reading_shelf(db_session, ub.book_id) == ReadingShelf.ABANDONED
+    book = db_session.query(Book).one()
+    assert current_reading_shelf(db_session, book.id) == ReadingShelf.ABANDONED
 
 
 def test_import_did_not_finish_takes_precedence_over_finished_date(
@@ -208,8 +207,8 @@ def test_import_did_not_finish_takes_precedence_over_finished_date(
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
 
-    ub = db_session.query(UserBook).one()
-    assert current_reading_shelf(db_session, ub.book_id) == ReadingShelf.ABANDONED
+    book = db_session.query(Book).one()
+    assert current_reading_shelf(db_session, book.id) == ReadingShelf.ABANDONED
 
 
 def test_import_status_started(client, auth_headers, db_session):
@@ -227,8 +226,8 @@ def test_import_status_started(client, auth_headers, db_session):
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
 
-    ub = db_session.query(UserBook).one()
-    assert current_reading_shelf(db_session, ub.book_id) == ReadingShelf.STARTED
+    book = db_session.query(Book).one()
+    assert current_reading_shelf(db_session, book.id) == ReadingShelf.STARTED
 
 
 def test_import_status_paused(client, auth_headers, db_session):
@@ -247,13 +246,13 @@ def test_import_status_paused(client, auth_headers, db_session):
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
 
-    ub = db_session.query(UserBook).one()
-    assert current_reading_shelf(db_session, ub.book_id) == ReadingShelf.PAUSED
+    book = db_session.query(Book).one()
+    assert current_reading_shelf(db_session, book.id) == ReadingShelf.PAUSED
     pause_event = (
         db_session.query(BookEvent)
         .join(BookEventType)
         .filter(
-            BookEvent.book_id == ub.book_id,
+            BookEvent.book_id == book.id,
             BookEventType.code == BookEventCode.PAUSED_READING.value,
         )
         .one()
@@ -332,7 +331,6 @@ def test_import_rejects_both_progress_values(
         "provide only one progress value"
     )
     assert db_session.query(Book).count() == 0
-    assert db_session.query(UserBook).count() == 0
     assert db_session.query(BookEvent).count() == 0
     assert db_session.query(Import).count() == 0
 
@@ -357,12 +355,11 @@ def test_import_notes_and_current_page(client, auth_headers, db_session):
     book = db_session.query(Book).one()
     assert book.notes == "Very insightful"
     assert book.current_page == 42
-    ub = db_session.query(UserBook).one()
     progress = (
         db_session.query(BookEvent)
         .join(BookEventType)
         .filter(
-            BookEvent.book_id == ub.book_id,
+            BookEvent.book_id == book.id,
             BookEventType.code == BookEventCode.PROGRESS_SET.value,
         )
         .one()
@@ -387,13 +384,13 @@ def test_import_current_percentage(client, auth_headers, db_session):
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
 
-    assert db_session.query(Book).one().current_percent == 11
-    ub = db_session.query(UserBook).one()
+    book = db_session.query(Book).one()
+    assert book.current_percent == 11
     progress = (
         db_session.query(BookEvent)
         .join(BookEventType)
         .filter(
-            BookEvent.book_id == ub.book_id,
+            BookEvent.book_id == book.id,
             BookEventType.code == BookEventCode.PROGRESS_SET.value,
         )
         .one()
@@ -577,14 +574,13 @@ def test_import_duplicate_isbn_is_skipped(client, auth_headers, db_session):
     assert resp.status_code == status.HTTP_200_OK
     assert resp.json() == {"imported": 1, "skipped": 1}
     assert db_session.query(Book).count() == 1
-    assert db_session.query(UserBook).count() == 1
 
 
 def test_import_puts_books_in_default_shelves(client, auth_headers, db_session):
     """Imported books must appear on the default reading shelves.
 
     The frontend loads the main shelf by querying these shelves, so books not on
-    them show up as 'No books yet' even though rows exist in user_books.
+    them show up as 'No books yet' even though the books exist.
     """
     zip_bytes = _make_zip(
         [
@@ -773,7 +769,6 @@ def test_import_real_export_counts_match_csv(client, auth_headers, db_session):
     assert body["skipped"] == skipped_duplicates
 
     assert db_session.query(Book).count() == expected_imported
-    assert db_session.query(UserBook).count() == expected_imported
 
     assert (
         db_session.query(Book)
@@ -830,8 +825,7 @@ def test_import_real_export_currently_reading(client, auth_headers, db_session):
     assert resp.status_code == status.HTTP_200_OK
 
     started = (
-        db_session.query(Book, UserBook)
-        .join(UserBook, UserBook.book_id == Book.id)
+        db_session.query(Book)
         .join(ShelfPlacement, ShelfPlacement.book_id == Book.id)
         .join(Shelf, Shelf.id == ShelfPlacement.shelf_id)
         .filter(
@@ -840,26 +834,26 @@ def test_import_real_export_currently_reading(client, auth_headers, db_session):
         .all()
     )
 
-    titles_by_author = {book.title: ub for book, ub in started}
+    titles_by_author = {book.title: book for book in started}
     assert set(titles_by_author) == {
         "Der Ekel",
         "UNIX and Linux System Administration Handbook, 5/e",
     }
 
-    # Reading dates are derived from the event stream, not stored on user_books.
-    ekel = next(ub for book, ub in started if book.title == "Der Ekel")
-    assert derive_reading_date_values(db_session, ekel.book_id)[
+    # Reading dates are derived from the event stream, not stored on books.
+    ekel = next(book for book in started if book.title == "Der Ekel")
+    assert derive_reading_date_values(db_session, ekel.id)[
         0
     ] == ReadingDate.from_datetime(
         datetime(2026, 4, 13, tzinfo=UTC).replace(tzinfo=None)
     )
 
     unix = next(
-        ub
-        for book, ub in started
+        book
+        for book in started
         if book.title == "UNIX and Linux System Administration Handbook, 5/e"
     )
-    assert derive_reading_date_values(db_session, unix.book_id)[
+    assert derive_reading_date_values(db_session, unix.id)[
         0
     ] == ReadingDate.from_datetime(
         datetime(2026, 4, 18, tzinfo=UTC).replace(tzinfo=None)

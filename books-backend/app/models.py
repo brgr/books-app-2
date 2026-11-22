@@ -102,10 +102,6 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    # Relationship to user's books
-    user_books: Mapped[list["UserBook"]] = relationship(
-        back_populates="user", cascade="all, delete-orphan"
-    )
     shelves: Mapped[list["Shelf"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
@@ -116,15 +112,7 @@ class User(Base):
 
 class Book(Base):
     """A book in a user's library with its title, author, cover and other details, and the
-    user's notes, rating, reading progress, events and shelf placements.
-
-    Each Book also has a UserBook row, which holds only the user and book ids.
-    Splitting a book into two tables wasn't a well thought-out design: it was meant
-    for a catalog of books shared between users, which the app doesn't have. We're in
-    the process of merging the two tables into one. Until then, each Book has exactly
-    one UserBook; both are created when the book is added and deleted when it is
-    removed.
-    """
+    user's notes, rating, reading progress, events and shelf placements."""
 
     __tablename__ = "books"
     __table_args__ = (
@@ -155,10 +143,6 @@ class Book(Base):
     current_page: Mapped[int | None] = mapped_column(Integer, nullable=True)
     current_percent: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
 
-    # Relationship to users who have this book
-    user_books: Mapped[list["UserBook"]] = relationship(
-        back_populates="book", cascade="all, delete-orphan"
-    )
     events: Mapped[list["BookEvent"]] = relationship(
         back_populates="book", cascade="all, delete-orphan"
     )
@@ -213,34 +197,6 @@ class Book(Base):
 
     def __repr__(self):
         return f"<Book(title='{self.title}', author='{self.author}')>"
-
-
-class UserBook(Base):
-    """Links one book to a user's library, holding only the user and book ids.
-
-    Everything else about the book lives in its Book row. Splitting a book into two
-    tables wasn't a well thought-out design: it was meant for a catalog of books
-    shared between users, which the app doesn't have. We're in the process of merging
-    the two tables into one. Until then, each UserBook has exactly one Book; both are
-    created when the book is added and deleted when it is removed.
-    """
-
-    __tablename__ = "user_books"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
-    )
-    book_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("books.id"), nullable=False
-    )
-
-    # Relationships
-    user: Mapped["User"] = relationship(back_populates="user_books")
-    book: Mapped["Book"] = relationship(back_populates="user_books")
-
-    def __repr__(self):
-        return f"<UserBook(user_id={self.user_id}, book_id={self.book_id})>"
 
 
 class BookEventType(Base):

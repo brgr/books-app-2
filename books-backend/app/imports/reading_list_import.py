@@ -28,7 +28,6 @@ from app.models import (
     ReadingShelf,
     Shelf,
     ShelfKind,
-    UserBook,
 )
 from app.shelves.shelves import place_on_shelf
 
@@ -237,9 +236,6 @@ def import_reading_list_from_bytes(
         book.rating = rating
         book.current_page = current_page
         book.current_percent = current_percent
-        user_book = UserBook(user_id=user_id, book_id=book_id)
-        db.add(user_book)
-        db.flush()
 
         ensure_added_event(db, user_id=user_id, book_id=book_id, import_id=import_id)
         if derived_shelf in (

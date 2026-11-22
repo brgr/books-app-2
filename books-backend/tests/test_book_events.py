@@ -155,9 +155,7 @@ def test_added_to_library_only_once(db_session):
     first_event = record_added_to_library(db_session, user.id, book.id)
     assert first_event.event_type.code == BookEventCode.ADDED_TO_LIBRARY.value
 
-    with pytest.raises(
-        ValueError, match=r"^Book already added to library for this user$"
-    ):
+    with pytest.raises(ValueError, match=r"^Book already added to library$"):
         record_added_to_library(db_session, user.id, book.id)
 
     count = db_session.query(BookEvent).count()

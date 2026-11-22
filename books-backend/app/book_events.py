@@ -20,7 +20,6 @@ from app.models import (
     Shelf,
     ShelfKind,
     ShelfPlacement,
-    UserBook,
 )
 from app.schemas import UserBookResponse
 from app.shelves.shelves import place_on_shelf
@@ -66,15 +65,15 @@ def record_added_to_library(
     occurred_at: datetime | None = None,
     import_id: int | None = None,
 ) -> BookEvent:
-    """Create the user_book record if needed and append the first add event.
+    """Append the first add event and put the book on the want-to-read shelf.
 
     Raises ValueError if an add event already exists for this book.
     """
-    _ensure_user_book(session, user_id=user_id, book_id=book_id)
-
     existing_add = _latest_event(session, book_id, BookEventCode.ADDED_TO_LIBRARY)
     if existing_add:
-        raise ValueError("Book already added to library for this user")
+        raise ValueError("Book already added to library")
+
+    _ensure_reading_placement(session, user_id=user_id, book_id=book_id)
 
     event_type = _get_event_type(session, BookEventCode.ADDED_TO_LIBRARY)
     event = BookEvent(
@@ -92,19 +91,17 @@ def record_added_to_library(
     return event
 
 
-def _ensure_user_book(session: Session, user_id: int, book_id: int) -> UserBook:
-    user_book: UserBook | None = (
-        session.query(UserBook)
-        .filter(UserBook.user_id == user_id, UserBook.book_id == book_id)
+def _ensure_reading_placement(session: Session, user_id: int, book_id: int) -> None:
+    """Put the book on the want-to-read shelf unless it is on a reading shelf."""
+    has_reading_placement = (
+        session.query(ShelfPlacement)
+        .join(Shelf)
+        .filter(ShelfPlacement.book_id == book_id, Shelf.kind == ShelfKind.READING)
         .first()
     )
+    if has_reading_placement is not None:
+        return
 
-    if user_book is not None:
-        return user_book
-
-    user_book = UserBook(user_id=user_id, book_id=book_id)
-    session.add(user_book)
-    session.flush()
     wanted = (
         session.query(Shelf)
         .filter_by(
@@ -114,10 +111,7 @@ def _ensure_user_book(session: Session, user_id: int, book_id: int) -> UserBook:
         )
         .one()
     )
-
-    place_on_shelf(session, wanted, user_book.book, at_top=True)
-
-    return user_book
+    place_on_shelf(session, wanted, session.get_one(Book, book_id), at_top=True)
 
 
 def ensure_added_event(
@@ -125,56 +119,14 @@ def ensure_added_event(
     user_id: int,
     book_id: int,
     import_id: int | None = None,
-) -> UserBook:
-    """Guarantee a user_book row and its initial add event exist."""
-    # noinspection PyTypeChecker
-    user_book: UserBook | None = (
-        session.query(UserBook)
-        .filter(UserBook.user_id == user_id, UserBook.book_id == book_id)
-        .first()
-    )
-
-    if user_book is None:
+) -> None:
+    """Guarantee the book's add event and reading placement exist."""
+    if _latest_event(session, book_id, BookEventCode.ADDED_TO_LIBRARY):
+        _ensure_reading_placement(session, user_id=user_id, book_id=book_id)
+    else:
         record_added_to_library(
             session, user_id=user_id, book_id=book_id, import_id=import_id
         )
-        # noinspection PyTypeChecker
-        user_book = (
-            session.query(UserBook)
-            .filter(UserBook.user_id == user_id, UserBook.book_id == book_id)
-            .first()
-        )
-        if user_book is None:
-            raise ValueError("Failed to create user_book for add event")
-        return user_book
-
-    existing_add = _latest_event(session, book_id, BookEventCode.ADDED_TO_LIBRARY)
-    if not existing_add:
-        record_added_to_library(
-            session, user_id=user_id, book_id=book_id, import_id=import_id
-        )
-    # Imports may have created a legacy-style UserBook row first. Ensure it has
-    # exactly one initial reading placement as well.
-    has_reading_placement = (
-        session.query(ShelfPlacement)
-        .join(Shelf)
-        .filter(ShelfPlacement.book_id == book_id, Shelf.kind == ShelfKind.READING)
-        .first()
-    )
-
-    if has_reading_placement is None:
-        shelf = (
-            session.query(Shelf)
-            .filter_by(
-                user_id=user_id,
-                kind=ShelfKind.READING,
-                name=ReadingShelf.WANT_TO_READ.value,
-            )
-            .one()
-        )
-        place_on_shelf(session, shelf, user_book.book, at_top=True)
-
-    return user_book
 
 
 def record_started_reading(
