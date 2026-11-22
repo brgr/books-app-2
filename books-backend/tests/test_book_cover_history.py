@@ -33,7 +33,7 @@ def _make_book(db_session, **overrides):
     # The update/cover endpoints require the book to be in the acting user's
     # library. Use the normal event path so it also receives its initial
     # reading-shelf placement.
-    ensure_added_event(db_session, user_id=user.id, book_id=book.id)
+    ensure_added_event(db_session, book.id)
     db_session.commit()
     return book
 

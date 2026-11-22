@@ -237,7 +237,7 @@ def import_reading_list_from_bytes(
         book.current_page = current_page
         book.current_percent = current_percent
 
-        ensure_added_event(db, user_id=user_id, book_id=book_id, import_id=import_id)
+        ensure_added_event(db, book_id, import_id=import_id)
         if derived_shelf in (
             ReadingShelf.STARTED,
             ReadingShelf.PAUSED,

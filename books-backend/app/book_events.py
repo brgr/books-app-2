@@ -60,7 +60,6 @@ def _is_after(candidate: BookEvent, other: BookEvent | None) -> bool:
 
 def record_added_to_library(
     session: Session,
-    user_id: int,
     book_id: int,
     occurred_at: datetime | None = None,
     import_id: int | None = None,
@@ -73,7 +72,7 @@ def record_added_to_library(
     if existing_add:
         raise ValueError("Book already added to library")
 
-    _ensure_reading_placement(session, user_id=user_id, book_id=book_id)
+    _ensure_reading_placement(session, book_id)
 
     event_type = _get_event_type(session, BookEventCode.ADDED_TO_LIBRARY)
     event = BookEvent(
@@ -91,7 +90,7 @@ def record_added_to_library(
     return event
 
 
-def _ensure_reading_placement(session: Session, user_id: int, book_id: int) -> None:
+def _ensure_reading_placement(session: Session, book_id: int) -> None:
     """Put the book on the want-to-read shelf unless it is on a reading shelf."""
     has_reading_placement = (
         session.query(ShelfPlacement)
@@ -102,31 +101,29 @@ def _ensure_reading_placement(session: Session, user_id: int, book_id: int) -> N
     if has_reading_placement is not None:
         return
 
+    book = session.get_one(Book, book_id)
     wanted = (
         session.query(Shelf)
         .filter_by(
-            user_id=user_id,
+            user_id=book.user_id,
             kind=ShelfKind.READING,
             name=ReadingShelf.WANT_TO_READ.value,
         )
         .one()
     )
-    place_on_shelf(session, wanted, session.get_one(Book, book_id), at_top=True)
+    place_on_shelf(session, wanted, book, at_top=True)
 
 
 def ensure_added_event(
     session: Session,
-    user_id: int,
     book_id: int,
     import_id: int | None = None,
 ) -> None:
     """Guarantee the book's add event and reading placement exist."""
     if _latest_event(session, book_id, BookEventCode.ADDED_TO_LIBRARY):
-        _ensure_reading_placement(session, user_id=user_id, book_id=book_id)
+        _ensure_reading_placement(session, book_id)
     else:
-        record_added_to_library(
-            session, user_id=user_id, book_id=book_id, import_id=import_id
-        )
+        record_added_to_library(session, book_id, import_id=import_id)
 
 
 def record_started_reading(

@@ -161,7 +161,7 @@ class BookService:
         return None
 
     def _add_to_library(self, book: Book) -> None:
-        ensure_added_event(self.db, user_id=self._user_id, book_id=book.id)
+        ensure_added_event(self.db, book.id)
         project_reading_progress(self.db, book)
 
     def _record_cover_change(
@@ -170,7 +170,7 @@ class BookService:
         old_cover_image_url: str | None,
         old_cover_thumbnail_url: str | None,
     ) -> None:
-        ensure_added_event(self.db, user_id=self._user_id, book_id=book.id)
+        ensure_added_event(self.db, book.id)
         record_cover_changed(
             self.db,
             book_id=book.id,

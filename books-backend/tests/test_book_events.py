@@ -23,13 +23,13 @@ from app.models import (
 )
 
 
-def _create_user_and_book(db_session):
+def _create_book(db_session):
     user = create_user(db_session, "alice", "secret123")
     book = Book(user_id=user.id, title="Sample", author="Author")
     db_session.add(book)
     db_session.commit()
     db_session.refresh(book)
-    return user, book
+    return book
 
 
 def _today() -> ReadingDate:
@@ -45,8 +45,8 @@ def test_event_type_seeding_is_idempotent(db_session):
     "page, percent", [(None, None), (10, 3.5), (0, 0), (0, 3.5), (10, 0)]
 )
 def test_progress_event_requires_exactly_one_value(db_session, page, percent):
-    user, book = _create_user_and_book(db_session)
-    record_added_to_library(db_session, user.id, book.id)
+    book = _create_book(db_session)
+    record_added_to_library(db_session, book.id)
     event_count = db_session.query(BookEvent).count()
 
     with pytest.raises(
@@ -59,8 +59,8 @@ def test_progress_event_requires_exactly_one_value(db_session, page, percent):
 
 @pytest.mark.parametrize("page, percent", [(0, None), (None, 0)])
 def test_progress_event_accepts_zero(db_session, page, percent):
-    user, book = _create_user_and_book(db_session)
-    record_added_to_library(db_session, user.id, book.id)
+    book = _create_book(db_session)
+    record_added_to_library(db_session, book.id)
 
     event = record_progress_event(db_session, book.id, page=page, percent=percent)
 
@@ -73,8 +73,8 @@ def test_progress_event_accepts_zero(db_session, page, percent):
     "page, percent", [(None, None), (10, 3.5), (0, 0), (0, 3.5), (10, 0)]
 )
 def test_database_rejects_invalid_progress_event(db_session, page, percent):
-    user, book = _create_user_and_book(db_session)
-    record_added_to_library(db_session, user.id, book.id)
+    book = _create_book(db_session)
+    record_added_to_library(db_session, book.id)
     event = record_progress_event(db_session, book.id, page=5)
 
     with (
@@ -97,8 +97,8 @@ def test_database_rejects_invalid_progress_event(db_session, page, percent):
     "page, percent", [(10, None), (None, 42.5), (0, None), (None, 0)]
 )
 def test_database_accepts_one_progress_event_value(db_session, page, percent):
-    user, book = _create_user_and_book(db_session)
-    record_added_to_library(db_session, user.id, book.id)
+    book = _create_book(db_session)
+    record_added_to_library(db_session, book.id)
     event = record_progress_event(db_session, book.id, page=5)
 
     db_session.execute(
@@ -115,7 +115,7 @@ def test_database_accepts_one_progress_event_value(db_session, page, percent):
 
 @pytest.mark.parametrize("page, percent", [(10, 3.5), (0, 0), (0, 3.5), (10, 0)])
 def test_database_rejects_both_current_progress_values(db_session, page, percent):
-    _, book = _create_user_and_book(db_session)
+    book = _create_book(db_session)
 
     with (
         pytest.raises(IntegrityError, match="ck_books_at_most_one_progress_value"),
@@ -136,7 +136,7 @@ def test_database_rejects_both_current_progress_values(db_session, page, percent
     "page, percent", [(None, None), (10, None), (None, 42.5), (0, None), (None, 0)]
 )
 def test_database_accepts_at_most_one_current_progress_value(db_session, page, percent):
-    _, book = _create_user_and_book(db_session)
+    book = _create_book(db_session)
 
     db_session.execute(
         update(Book)
@@ -150,20 +150,20 @@ def test_database_accepts_at_most_one_current_progress_value(db_session, page, p
 
 
 def test_added_to_library_only_once(db_session):
-    user, book = _create_user_and_book(db_session)
+    book = _create_book(db_session)
 
-    first_event = record_added_to_library(db_session, user.id, book.id)
+    first_event = record_added_to_library(db_session, book.id)
     assert first_event.event_type.code == BookEventCode.ADDED_TO_LIBRARY.value
 
     with pytest.raises(ValueError, match=r"^Book already added to library$"):
-        record_added_to_library(db_session, user.id, book.id)
+        record_added_to_library(db_session, book.id)
 
     count = db_session.query(BookEvent).count()
     assert count == 1
 
 
 def test_start_requires_add(db_session):
-    _, book = _create_user_and_book(db_session)
+    book = _create_book(db_session)
 
     with pytest.raises(
         ValueError, match=r"^Cannot start reading before adding to library$"
@@ -172,8 +172,8 @@ def test_start_requires_add(db_session):
 
 
 def test_start_twice_without_finish_is_rejected(db_session):
-    user, book = _create_user_and_book(db_session)
-    record_added_to_library(db_session, user.id, book.id)
+    book = _create_book(db_session)
+    record_added_to_library(db_session, book.id)
 
     record_started_reading(db_session, book.id, _today())
     with pytest.raises(
@@ -184,8 +184,8 @@ def test_start_twice_without_finish_is_rejected(db_session):
 
 
 def test_finish_requires_start(db_session):
-    user, book = _create_user_and_book(db_session)
-    record_added_to_library(db_session, user.id, book.id)
+    book = _create_book(db_session)
+    record_added_to_library(db_session, book.id)
 
     with pytest.raises(ValueError, match=r"^Cannot finish reading before starting$"):
         record_finished_reading(db_session, book.id, _today())
@@ -200,8 +200,8 @@ def test_finish_requires_start(db_session):
 
 
 def test_reread_cycle_allowed(db_session):
-    user, book = _create_user_and_book(db_session)
-    record_added_to_library(db_session, user.id, book.id)
+    book = _create_book(db_session)
+    record_added_to_library(db_session, book.id)
 
     record_started_reading(db_session, book.id, _today())
     record_finished_reading(db_session, book.id, _today())
@@ -214,8 +214,8 @@ def test_reread_cycle_allowed(db_session):
 
 
 def test_cascade_on_book_delete(db_session):
-    user, book = _create_user_and_book(db_session)
-    record_added_to_library(db_session, user.id, book.id)
+    book = _create_book(db_session)
+    record_added_to_library(db_session, book.id)
 
     record_started_reading(db_session, book.id, _today())
     record_finished_reading(db_session, book.id, _today())
@@ -228,9 +228,9 @@ def test_cascade_on_book_delete(db_session):
 
 
 def test_timeline_ordering(db_session):
-    user, book = _create_user_and_book(db_session)
+    book = _create_book(db_session)
     record_added_to_library(
-        db_session, user.id, book.id, occurred_at=datetime(2024, 1, 1, tzinfo=UTC)
+        db_session, book.id, occurred_at=datetime(2024, 1, 1, tzinfo=UTC)
     )
 
     record_started_reading(
@@ -270,8 +270,8 @@ def test_reading_date_normalizes_partial_calendar_values():
 
 
 def test_reading_events_persist_partial_and_unknown_dates(db_session):
-    user, book = _create_user_and_book(db_session)
-    record_added_to_library(db_session, user.id, book.id)
+    book = _create_book(db_session)
+    record_added_to_library(db_session, book.id)
 
     start_event = record_started_reading(
         db_session,
@@ -296,8 +296,8 @@ def test_reading_events_persist_partial_and_unknown_dates(db_session):
 
 
 def test_missing_reading_date_payload_is_a_data_integrity_error(db_session):
-    user, book = _create_user_and_book(db_session)
-    record_added_to_library(db_session, user.id, book.id)
+    book = _create_book(db_session)
+    record_added_to_library(db_session, book.id)
     event = record_started_reading(db_session, book.id, _today())
 
     db_session.delete(event.reading_date_entry)

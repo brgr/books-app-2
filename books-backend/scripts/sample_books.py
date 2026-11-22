@@ -31,7 +31,7 @@ def create_sample_books(
         db.add(book)
         db.flush()
 
-        ensure_added_event(db, user_id=user_id, book_id=book.id)
+        ensure_added_event(db, book.id)
 
         if shelf != ReadingShelf.WANT_TO_READ:
             record_started_reading(db, book.id, ReadingDate.unknown())
