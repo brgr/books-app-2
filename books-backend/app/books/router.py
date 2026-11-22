@@ -223,7 +223,7 @@ def get_book(
     service: Annotated[BookService, Depends(get_book_service)],
 ):
     """Get a single book from the user's library. Includes the user's shelf entry."""
-    return service.attach_user_book(book)
+    return service.build_response(book)
 
 
 @router.put("/books/{book_id}", response_model=BookResponse)

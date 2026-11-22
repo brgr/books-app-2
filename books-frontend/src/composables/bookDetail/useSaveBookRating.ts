@@ -1,10 +1,10 @@
 import { useMutation } from "@tanstack/vue-query";
 import { clearRating, setRating } from "../../api/books";
 import { invalidateAfter } from "../../query/invalidate";
-import { useSetReadingState } from "../useBook";
+import { useSetBook } from "../useBook";
 
 export function useSaveBookRating() {
-  const setReadingState = useSetReadingState();
+  const setBook = useSetBook();
 
   return useMutation({
     mutationFn: async ({ bookId, rating }: { bookId: number; rating: number | null }) => {
@@ -16,8 +16,8 @@ export function useSaveBookRating() {
       await clearRating(bookId);
       return null;
     },
-    onSuccess: async (readingState, { bookId }) => {
-      await setReadingState(bookId, readingState ?? { rating: null });
+    onSuccess: async (book, { bookId }) => {
+      await setBook(bookId, book ?? { rating: null });
       await invalidateAfter.ratingSaved(bookId);
     },
   });

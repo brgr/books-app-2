@@ -13,7 +13,6 @@ import type {
   ShelfRef,
   ShelfReorderRequest,
   BookShelfUpdate,
-  ReadingState,
 } from "./types";
 import { parseShelfRef } from "./types";
 
@@ -83,18 +82,18 @@ export async function deleteAllBooks(): Promise<void> {
   await apiClient.delete("/books");
 }
 
-export async function setShelf(bookId: number, data: BookShelfUpdate): Promise<ReadingState> {
-  const response = await apiClient.put<ReadingState>(`/books/${bookId}/shelf`, data);
+export async function setShelf(bookId: number, data: BookShelfUpdate): Promise<Book> {
+  const response = await apiClient.put<Book>(`/books/${bookId}/shelf`, data);
   return response.data;
 }
 
-export async function setNotes(bookId: number, notes: string): Promise<ReadingState> {
-  const response = await apiClient.put<ReadingState>(`/books/${bookId}/notes`, { notes });
+export async function setNotes(bookId: number, notes: string): Promise<Book> {
+  const response = await apiClient.put<Book>(`/books/${bookId}/notes`, { notes });
   return response.data;
 }
 
-export async function setRating(bookId: number, rating: number): Promise<ReadingState> {
-  const response = await apiClient.put<ReadingState>(`/books/${bookId}/rating`, { rating });
+export async function setRating(bookId: number, rating: number): Promise<Book> {
+  const response = await apiClient.put<Book>(`/books/${bookId}/rating`, { rating });
   return response.data;
 }
 
@@ -114,8 +113,8 @@ export async function getBookEvents(bookId: number): Promise<BookEvent[]> {
   return response.data;
 }
 
-export async function addBookProgress(bookId: number, data: BookProgressUpdate): Promise<ReadingState> {
-  const response = await apiClient.post<ReadingState>(`/books/${bookId}/progress`, data);
+export async function addBookProgress(bookId: number, data: BookProgressUpdate): Promise<Book> {
+  const response = await apiClient.post<Book>(`/books/${bookId}/progress`, data);
   return response.data;
 }
 

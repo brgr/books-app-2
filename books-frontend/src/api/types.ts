@@ -91,9 +91,6 @@ export interface Book {
   rating: number | null;
 }
 
-/** The part of a book that the shelf, notes, rating and progress endpoints answer with. */
-export type ReadingState = Pick<Book, "shelf" | "started_at" | "finished_at" | "notes" | "progress" | "rating">;
-
 export interface PaginatedBooks {
   items: Book[];
   total: number;

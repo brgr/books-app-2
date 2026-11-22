@@ -4,8 +4,9 @@ import { VueQueryPlugin } from "@tanstack/vue-query";
 import BookReadingCard from "./BookReadingCard.vue";
 import type { ReadingProgress } from "./types";
 import { addBookProgress } from "../../../api/books";
-import { ReadingDatePrecision, type ReadingDateValue, ReadingShelf, type ReadingState } from "../../../api/types";
+import { ReadingDatePrecision, type ReadingDateValue, ReadingShelf } from "../../../api/types";
 import { queryClient } from "../../../query/client";
+import { makeBook } from "../../../test/factories";
 
 enableAutoUnmount(afterEach);
 
@@ -13,14 +14,7 @@ vi.mock("../../../api/books", () => ({
   addBookProgress: vi.fn(),
 }));
 
-const readingState: ReadingState = {
-  shelf: ReadingShelf.STARTED,
-  started_at: null,
-  finished_at: null,
-  notes: null,
-  progress: { unit: "page", value: 42 },
-  rating: null,
-};
+const book = makeBook({ shelf: ReadingShelf.STARTED, progress: { unit: "page", value: 42 } });
 
 function makeProps(
   overrides: Partial<{
@@ -117,7 +111,7 @@ describe("BookReadingCard", () => {
   });
 
   it("closes the editor once saved, even when the progress didn't change", async () => {
-    vi.mocked(addBookProgress).mockResolvedValue(readingState);
+    vi.mocked(addBookProgress).mockResolvedValue(book);
     const wrapper = mountCard();
     await wrapper.get('[data-test="edit-progress"]').trigger("click");
     await wrapper.get('[data-test="save-progress"]').trigger("click");

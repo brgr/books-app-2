@@ -6,7 +6,6 @@ from pydantic import (
     ConfigDict,
     Field,
     StringConstraints,
-    computed_field,
     model_validator,
 )
 
@@ -85,47 +84,7 @@ class BookUpdate(BaseModel):
     cover_image_url: str | None = Field(None, max_length=500)
 
 
-class BookResponse(BookBase):
-    id: int
-    cover_thumbnail_url: str | None = None
-    user_book: "UserBookResponse"
-
-    model_config = ConfigDict(from_attributes=True)
-
-    # The reading state also appears flat on the book, so the frontend can stop
-    # reading it from user_book
-    @computed_field
-    @property
-    def shelf(self) -> ReadingShelf:
-        return self.user_book.shelf
-
-    @computed_field
-    @property
-    def notes(self) -> str | None:
-        return self.user_book.notes
-
-    @computed_field
-    @property
-    def rating(self) -> float | None:
-        return self.user_book.rating
-
-    @computed_field
-    @property
-    def started_at(self) -> "ReadingDateValue | None":
-        return self.user_book.started_at
-
-    @computed_field
-    @property
-    def finished_at(self) -> "ReadingDateValue | None":
-        return self.user_book.finished_at
-
-    @computed_field
-    @property
-    def progress(self) -> "BookProgressUpdate | None":
-        return self.user_book.progress
-
-
-# UserBook schemas
+# Reading-state schemas
 class ReadingDateValue(BaseModel):
     """A calendar date together with how precisely the user knows it."""
 
@@ -203,17 +162,15 @@ def build_progress(
     return None
 
 
-class UserBookResponse(BaseModel):
-    user_id: int
-    book_id: int
+class BookResponse(BookBase):
+    id: int
+    cover_thumbnail_url: str | None = None
     shelf: ReadingShelf
     notes: str | None = None
     rating: float | None = None
     started_at: ReadingDateValue | None = None
     finished_at: ReadingDateValue | None = None
     progress: BookProgressUpdate | None
-
-    model_config = ConfigDict(from_attributes=True)
 
     @classmethod
     def from_book(
@@ -222,7 +179,7 @@ class UserBookResponse(BaseModel):
         shelf: ReadingShelf,
         started_at: ReadingDate | None,
         finished_at: ReadingDate | None,
-    ) -> "UserBookResponse":
+    ) -> "BookResponse":
         """Build the response from a book plus its event-derived dates.
 
         Reading dates are not stored on ``Book``; the caller derives them
@@ -230,8 +187,16 @@ class UserBookResponse(BaseModel):
         """
         # noinspection PyTypeChecker
         return cls(
-            user_id=book.user_id,
-            book_id=book.id,
+            id=book.id,
+            title=book.title,
+            author=book.author,
+            isbn=book.isbn,
+            google_books_id=book.google_books_id,
+            description=book.description,
+            published_date=book.published_date,
+            page_count=book.page_count,
+            cover_image_url=book.cover_image_url,
+            cover_thumbnail_url=book.cover_thumbnail_url,
             shelf=shelf,
             notes=book.notes,
             rating=book.rating,

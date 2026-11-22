@@ -242,7 +242,7 @@ def test_add_and_remove_books(client, auth_headers, sample_book_data):
     assert books["total"] == 1
 
     # The shelf view carries the same reading-state payload as any other listing
-    assert books["items"][0]["user_book"]["shelf"] == "want_to_read"
+    assert books["items"][0]["shelf"] == "want_to_read"
 
     response = client.delete(
         f"/api/shelves/{shelf_ref}/books/{book_id}", headers=auth_headers

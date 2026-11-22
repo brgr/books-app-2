@@ -12,8 +12,8 @@ from app.schemas import (
     BookNotesUpdate,
     BookProgressUpdate,
     BookRatingUpdate,
+    BookResponse,
     BookShelfUpdate,
-    UserBookResponse,
     build_book_event_response,
 )
 
@@ -24,7 +24,7 @@ def get_reading_service(db: Annotated[Session, Depends(get_db)]) -> ReadingServi
     return ReadingService(db)
 
 
-@router.put("/books/{book_id}/shelf", response_model=UserBookResponse)
+@router.put("/books/{book_id}/shelf", response_model=BookResponse)
 def set_shelf(
     shelf_data: BookShelfUpdate,
     book: Annotated[Book, Depends(get_library_book)],
@@ -39,7 +39,7 @@ def set_shelf(
         ) from exc
 
 
-@router.put("/books/{book_id}/notes", response_model=UserBookResponse)
+@router.put("/books/{book_id}/notes", response_model=BookResponse)
 def set_notes(
     notes_data: BookNotesUpdate,
     book: Annotated[Book, Depends(get_library_book)],
@@ -49,7 +49,7 @@ def set_notes(
     return service.set_notes(book, notes_data)
 
 
-@router.put("/books/{book_id}/rating", response_model=UserBookResponse)
+@router.put("/books/{book_id}/rating", response_model=BookResponse)
 def set_rating(
     rating_data: BookRatingUpdate,
     book: Annotated[Book, Depends(get_library_book)],
@@ -77,7 +77,7 @@ def get_book_events(
     return [build_book_event_response(event) for event in service.get_events(book)]
 
 
-@router.post("/books/{book_id}/progress", response_model=UserBookResponse)
+@router.post("/books/{book_id}/progress", response_model=BookResponse)
 def add_progress_event(
     progress: BookProgressUpdate,
     book: Annotated[Book, Depends(get_library_book)],

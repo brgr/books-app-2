@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.book_events import (
     apply_progress_event,
-    build_user_book_response,
+    build_book_response,
     current_reading_shelf,
     move_reading_shelf_placement,
     project_reading_progress,
@@ -27,9 +27,9 @@ from app.schemas import (
     BookNotesUpdate,
     BookProgressUpdate,
     BookRatingUpdate,
+    BookResponse,
     BookShelfUpdate,
     ReadingDateValue,
-    UserBookResponse,
 )
 
 
@@ -40,7 +40,7 @@ class ReadingService:
     # TODO: We should separate the API for reading and custom shelves. For custom shelves, we don't "set" a shelf,
     #  but we add or remove a book from that shelf. For reading, in the API, we might want to talk about
     #  reading state instead; and use a different API endpoint, even though the DB model differs only slightly.
-    def set_shelf(self, book: Book, shelf_data: BookShelfUpdate) -> UserBookResponse:
+    def set_shelf(self, book: Book, shelf_data: BookShelfUpdate) -> BookResponse:
         previous = current_reading_shelf(self.db, book.id)
         reading_date = self._reading_date_from_input(shelf_data.reading_date)
         self._apply_transition(book, previous, shelf_data.shelf, reading_date)
@@ -52,9 +52,9 @@ class ReadingService:
         self.db.commit()
         self.db.refresh(book)
 
-        return build_user_book_response(self.db, book)
+        return build_book_response(self.db, book)
 
-    def set_notes(self, book: Book, notes_data: BookNotesUpdate) -> UserBookResponse:
+    def set_notes(self, book: Book, notes_data: BookNotesUpdate) -> BookResponse:
         notes = notes_data.notes or None
         if notes != book.notes:
             record_note_event(self.db, book.id, BookEventCode.NOTE_SET, notes)
@@ -63,9 +63,9 @@ class ReadingService:
         self.db.commit()
         self.db.refresh(book)
 
-        return build_user_book_response(self.db, book)
+        return build_book_response(self.db, book)
 
-    def set_rating(self, book: Book, rating_data: BookRatingUpdate) -> UserBookResponse:
+    def set_rating(self, book: Book, rating_data: BookRatingUpdate) -> BookResponse:
         if book.rating != rating_data.rating:
             record_rating_event(self.db, book.id, rating_data.rating)
             book.rating = rating_data.rating
@@ -73,7 +73,7 @@ class ReadingService:
         self.db.commit()
         self.db.refresh(book)
 
-        return build_user_book_response(self.db, book)
+        return build_book_response(self.db, book)
 
     def clear_rating(self, book: Book) -> None:
         if book.rating is not None:
@@ -98,13 +98,11 @@ class ReadingService:
             .all()
         )
 
-    def add_progress(
-        self, book: Book, progress: BookProgressUpdate
-    ) -> UserBookResponse:
+    def add_progress(self, book: Book, progress: BookProgressUpdate) -> BookResponse:
         if current_reading_shelf(self.db, book.id) != ReadingShelf.STARTED:
             raise ValueError("Cannot record progress before starting reading")
 
-        return build_user_book_response(
+        return build_book_response(
             self.db,
             apply_progress_event(
                 self.db,

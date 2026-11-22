@@ -46,7 +46,7 @@ def test_shelf_books_project_progress_from_events(
     response = client.get("/api/shelves/reading:started/books", headers=auth_headers)
 
     assert response.status_code == status.HTTP_200_OK
-    saved = response.json()["items"][0]["user_book"]
+    saved = response.json()["items"][0]
     assert saved["progress"] == expected_progress
 
 

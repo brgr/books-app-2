@@ -28,7 +28,7 @@ def test_set_shelf(client, auth_headers, created_book):
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     assert data["shelf"] == "started"
-    assert data["book_id"] == book_id
+    assert data["id"] == book_id
     assert "started_at" in data
     assert data["started_at"] is not None
 
@@ -67,7 +67,7 @@ def test_set_and_clear_rating(client, auth_headers, created_book):
 
     response = client.get(f"/api/books/{book_id}", headers=auth_headers)
     assert response.status_code == status.HTTP_200_OK
-    assert response.json()["user_book"]["rating"] is None
+    assert response.json()["rating"] is None
 
 
 @pytest.mark.parametrize("rating", [0, 0.25, 5.5])
@@ -147,8 +147,8 @@ def test_set_shelf_on_nonexistent_book(client, auth_headers):
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
-def test_book_list_includes_user_book(client, auth_headers, sample_book_data):
-    """Test that the book list includes the user's shelf entry."""
+def test_book_list_includes_reading_state(client, auth_headers, sample_book_data):
+    """Test that the book list includes the reading state."""
     # Create a book
     response = client.post("/api/books", json=sample_book_data, headers=auth_headers)
     book_id = response.json()["id"]
@@ -164,12 +164,11 @@ def test_book_list_includes_user_book(client, auth_headers, sample_book_data):
     books = response.json()["items"]
 
     book = next(b for b in books if b["id"] == book_id)
-    assert book["user_book"] is not None
-    assert book["user_book"]["shelf"] == "started"
+    assert book["shelf"] == "started"
 
 
-def test_get_book_includes_user_book(client, auth_headers, created_book):
-    """Test that getting a single book includes the user's shelf entry."""
+def test_get_book_includes_reading_state(client, auth_headers, created_book):
+    """Test that getting a single book includes the reading state."""
     book_id = created_book["id"]
 
     # Put it on a shelf
@@ -190,9 +189,8 @@ def test_get_book_includes_user_book(client, auth_headers, created_book):
     assert response.status_code == status.HTTP_200_OK
     book = response.json()
 
-    assert book["user_book"] is not None
-    assert book["user_book"]["shelf"] == "finished"
-    assert book["user_book"]["notes"] == "Excellent!"
+    assert book["shelf"] == "finished"
+    assert book["notes"] == "Excellent!"
 
 
 def test_cannot_revert_to_want_after_start(client, auth_headers, created_book):
@@ -469,7 +467,7 @@ def test_progress_rejects_invalid_payload(client, auth_headers, created_book, pr
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
     data = client.get(f"/api/books/{book_id}", headers=auth_headers).json()
-    assert data["user_book"]["progress"] == {"unit": "page", "value": 5}
+    assert data["progress"] == {"unit": "page", "value": 5}
 
     events = client.get(f"/api/books/{book_id}/events", headers=auth_headers).json()
     progress_events = [e for e in events if e["event_type"] == "progress_set"]

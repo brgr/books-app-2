@@ -22,9 +22,7 @@ def test_start_initializes_progress_at_zero(
         "value": 0,
     }
     assert response.json()["progress"] == expected_progress
-    saved = client.get(f"/api/books/{book_id}", headers=auth_headers).json()[
-        "user_book"
-    ]
+    saved = client.get(f"/api/books/{book_id}", headers=auth_headers).json()
     assert saved["progress"] == expected_progress
     events = client.get(f"/api/books/{book_id}/events", headers=auth_headers).json()
     assert sorted(event["event_type"] for event in events) == [

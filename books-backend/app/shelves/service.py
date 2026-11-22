@@ -6,7 +6,7 @@ from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.book_events import build_user_book_response
+from app.book_events import build_book_response
 from app.models import (
     Book,
     Shelf,
@@ -14,7 +14,12 @@ from app.models import (
     ShelfPlacement,
     User,
 )
-from app.schemas import CustomShelfNamePayload, ShelfReorderRequest, ShelfResponse
+from app.schemas import (
+    BookResponse,
+    CustomShelfNamePayload,
+    ShelfReorderRequest,
+    ShelfResponse,
+)
 from app.shelves.refs import CustomShelfRef, ReadingShelfRef, ShelfRef
 from app.shelves.shelves import (
     READING_SHELF_DISPLAY_NAMES,
@@ -232,7 +237,7 @@ class ShelfService:
 
     def list_books(
         self, shelf: Shelf, page: int, page_size: int
-    ) -> tuple[list[Book], int]:
+    ) -> tuple[list[BookResponse], int]:
         query = (
             self.db.query(Book)
             .join(ShelfPlacement, ShelfPlacement.book_id == Book.id)
@@ -241,10 +246,10 @@ class ShelfService:
         )
         total = query.count()
 
-        books = []
-        for book in query.offset((page - 1) * page_size).limit(page_size).all():
-            book.user_book = build_user_book_response(self.db, book)
-            books.append(book)
+        books = [
+            build_book_response(self.db, book)
+            for book in query.offset((page - 1) * page_size).limit(page_size).all()
+        ]
 
         return books, total
 

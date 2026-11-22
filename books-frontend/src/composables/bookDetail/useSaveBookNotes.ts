@@ -1,15 +1,15 @@
 import { useMutation } from "@tanstack/vue-query";
 import { setNotes } from "../../api/books";
 import { invalidateAfter } from "../../query/invalidate";
-import { useSetReadingState } from "../useBook";
+import { useSetBook } from "../useBook";
 
 export function useSaveBookNotes() {
-  const setReadingState = useSetReadingState();
+  const setBook = useSetBook();
 
   return useMutation({
     mutationFn: ({ bookId, notes }: { bookId: number; notes: string }) => setNotes(bookId, notes),
-    onSuccess: async (readingState, { bookId }) => {
-      await setReadingState(bookId, readingState);
+    onSuccess: async (book, { bookId }) => {
+      await setBook(bookId, book);
       await invalidateAfter.notesSaved(bookId);
     },
   });

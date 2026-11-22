@@ -21,7 +21,7 @@ from app.models import (
     ShelfKind,
     ShelfPlacement,
 )
-from app.schemas import UserBookResponse
+from app.schemas import BookResponse
 from app.shelves.shelves import place_on_shelf
 
 
@@ -485,8 +485,8 @@ def project_reading_progress(session: Session, book: Book) -> Book:
     return book
 
 
-def build_user_book_response(session: Session, book: Book) -> UserBookResponse:
-    """Assemble the reading-state response DTO for a book.
+def build_book_response(session: Session, book: Book) -> BookResponse:
+    """Assemble the response DTO for a book.
 
     Combines the persisted snapshot columns with the event-derived reading
     dates. This is the single seam that produces the read model; the ORM
@@ -504,4 +504,4 @@ def build_user_book_response(session: Session, book: Book) -> UserBookResponse:
         # For older books that still have None, we just project the reading progress here from the book events.
         project_reading_progress(session, book)
 
-    return UserBookResponse.from_book(book, shelf, started_at, finished_at)
+    return BookResponse.from_book(book, shelf, started_at, finished_at)

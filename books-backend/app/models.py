@@ -20,7 +20,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 
 if TYPE_CHECKING:
-    from app.schemas import BookCreate, BookUpdate, UserBookResponse
+    from app.schemas import BookCreate, BookUpdate
 
 Base = declarative_base()
 
@@ -121,9 +121,6 @@ class Book(Base):
             name="ck_books_at_most_one_progress_value",
         ),
     )
-    # Permit the non-Mapped ``user_book`` annotation below; it's a transient
-    # instance attribute the service layer sets, not a mapped column.
-    __allow_unmapped__ = True
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(
@@ -149,8 +146,6 @@ class Book(Base):
     shelf_placements: Mapped[list["ShelfPlacement"]] = relationship(
         back_populates="book", cascade="all, delete-orphan"
     )
-
-    user_book: "UserBookResponse | None" = None
 
     @classmethod
     def from_create(cls, data: "BookCreate", user_id: int) -> "Book":
