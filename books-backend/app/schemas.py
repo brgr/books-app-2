@@ -6,6 +6,7 @@ from pydantic import (
     ConfigDict,
     Field,
     StringConstraints,
+    computed_field,
     model_validator,
 )
 
@@ -90,6 +91,38 @@ class BookResponse(BookBase):
     user_book: "UserBookResponse"
 
     model_config = ConfigDict(from_attributes=True)
+
+    # The reading state also appears flat on the book, so the frontend can stop
+    # reading it from user_book
+    @computed_field
+    @property
+    def shelf(self) -> ReadingShelf:
+        return self.user_book.shelf
+
+    @computed_field
+    @property
+    def notes(self) -> str | None:
+        return self.user_book.notes
+
+    @computed_field
+    @property
+    def rating(self) -> float | None:
+        return self.user_book.rating
+
+    @computed_field
+    @property
+    def started_at(self) -> "ReadingDateValue | None":
+        return self.user_book.started_at
+
+    @computed_field
+    @property
+    def finished_at(self) -> "ReadingDateValue | None":
+        return self.user_book.finished_at
+
+    @computed_field
+    @property
+    def progress(self) -> "BookProgressUpdate | None":
+        return self.user_book.progress
 
 
 # UserBook schemas
