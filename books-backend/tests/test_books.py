@@ -220,7 +220,7 @@ def test_delete_all_books(client, auth_headers, sample_book_data):
 def test_delete_all_books_cascades_to_user_books_and_events(
     client, auth_headers, sample_book_data, db_session
 ):
-    """Deleting all books must also remove user_books and their events.
+    """Deleting all books must also remove their user_books and events.
 
     Regression: a bulk delete that leaves orphaned user_books lets SQLite reuse
     the freed book IDs for fresh books, silently re-linking old reading state

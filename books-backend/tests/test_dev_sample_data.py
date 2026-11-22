@@ -32,8 +32,8 @@ def test_add_900_books_preserves_existing_library(db_session, test_user):
     added = db_session.query(UserBook).filter(UserBook.id != original_id).all()
     assert len(added) == 900
     assert all(
-        current_reading_shelf(db_session, book.id) == ReadingShelf.WANT_TO_READ
-        for book in added
+        current_reading_shelf(db_session, user_book.id) == ReadingShelf.WANT_TO_READ
+        for user_book in added
     )
 
 

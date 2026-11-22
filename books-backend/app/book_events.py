@@ -71,7 +71,6 @@ def record_added_to_library(
     """
     _ensure_user_book(session, user_id=user_id, book_id=book_id)
 
-    # noinspection PyTypeChecker
     existing_add = _latest_event(session, book_id, BookEventCode.ADDED_TO_LIBRARY)
     if existing_add:
         raise ValueError("Book already added to library for this user")
@@ -84,9 +83,11 @@ def record_added_to_library(
     )
     session.add(event)
     session.flush()
+
     if import_id is not None:
         session.add(BookEventImportSource(event_id=event.id, import_id=import_id))
         session.flush()
+
     return event
 
 
@@ -146,7 +147,6 @@ def ensure_added_event(
             raise ValueError("Failed to create user_book for add event")
         return user_book
 
-    # noinspection PyTypeChecker
     existing_add = _latest_event(session, book_id, BookEventCode.ADDED_TO_LIBRARY)
     if not existing_add:
         record_added_to_library(
