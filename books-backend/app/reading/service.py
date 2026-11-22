@@ -9,7 +9,7 @@ from app.book_events import (
     build_user_book_response,
     current_reading_shelf,
     move_reading_shelf_placement,
-    project_user_book_state,
+    project_reading_progress,
     record_finished_reading,
     record_note_event,
     record_rating_event,
@@ -24,12 +24,12 @@ from app.models import (
     ReadingShelf,
 )
 from app.schemas import (
+    BookNotesUpdate,
     BookProgressUpdate,
+    BookRatingUpdate,
+    BookShelfUpdate,
     ReadingDateValue,
-    UserBookNotesUpdate,
-    UserBookRatingUpdate,
     UserBookResponse,
-    UserBookShelfUpdate,
 )
 
 
@@ -40,9 +40,7 @@ class ReadingService:
     # TODO: We should separate the API for reading and custom shelves. For custom shelves, we don't "set" a shelf,
     #  but we add or remove a book from that shelf. For reading, in the API, we might want to talk about
     #  reading state instead; and use a different API endpoint, even though the DB model differs only slightly.
-    def set_shelf(
-        self, book: Book, shelf_data: UserBookShelfUpdate
-    ) -> UserBookResponse:
+    def set_shelf(self, book: Book, shelf_data: BookShelfUpdate) -> UserBookResponse:
         previous = current_reading_shelf(self.db, book.id)
         reading_date = self._reading_date_from_input(shelf_data.reading_date)
         self._apply_transition(book, previous, shelf_data.shelf, reading_date)
@@ -50,15 +48,13 @@ class ReadingService:
         if shelf_data.shelf != previous:
             move_reading_shelf_placement(self.db, book, shelf_data.shelf)
 
-        project_user_book_state(self.db, book)
+        project_reading_progress(self.db, book)
         self.db.commit()
         self.db.refresh(book)
 
         return build_user_book_response(self.db, book)
 
-    def set_notes(
-        self, book: Book, notes_data: UserBookNotesUpdate
-    ) -> UserBookResponse:
+    def set_notes(self, book: Book, notes_data: BookNotesUpdate) -> UserBookResponse:
         notes = notes_data.notes or None
         if notes != book.notes:
             record_note_event(self.db, book.id, BookEventCode.NOTE_SET, notes)
@@ -69,9 +65,7 @@ class ReadingService:
 
         return build_user_book_response(self.db, book)
 
-    def set_rating(
-        self, book: Book, rating_data: UserBookRatingUpdate
-    ) -> UserBookResponse:
+    def set_rating(self, book: Book, rating_data: BookRatingUpdate) -> UserBookResponse:
         if book.rating != rating_data.rating:
             record_rating_event(self.db, book.id, rating_data.rating)
             book.rating = rating_data.rating

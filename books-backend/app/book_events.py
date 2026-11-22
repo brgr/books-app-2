@@ -454,7 +454,7 @@ def move_reading_shelf_placement(
     place_on_shelf(session, shelf, book)
 
 
-def project_user_book_state(session: Session, book: Book) -> Book:
+def project_reading_progress(session: Session, book: Book) -> Book:
     """Project the current reading state from the event stream onto the book's progress columns.
 
     Reading dates are not stored. This only sets the persisted progress columns
@@ -502,6 +502,6 @@ def build_user_book_response(session: Session, book: Book) -> UserBookResponse:
         # Previously, progress could be None to mean no progress yet.
         # That now means page 0 or 0%.
         # For older books that still have None, we just project the reading progress here from the book events.
-        project_user_book_state(session, book)
+        project_reading_progress(session, book)
 
     return UserBookResponse.from_book(book, shelf, started_at, finished_at)

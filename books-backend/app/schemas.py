@@ -148,7 +148,7 @@ class ReadingDateValue(BaseModel):
         return cls(value=reading_date.value, precision=reading_date.precision)
 
 
-class UserBookShelfUpdate(BaseModel):
+class BookShelfUpdate(BaseModel):
     """Schema for updating just the shelf via PUT endpoint."""
 
     model_config = ConfigDict(extra="forbid")
@@ -157,13 +157,13 @@ class UserBookShelfUpdate(BaseModel):
     reading_date: ReadingDateValue | None = None
 
 
-class UserBookNotesUpdate(BaseModel):
+class BookNotesUpdate(BaseModel):
     """Set or clear a user's notes for a book; empty notes clear them."""
 
     notes: str | None
 
 
-class UserBookRatingUpdate(BaseModel):
+class BookRatingUpdate(BaseModel):
     """Set a user's optional half-star rating for a book."""
 
     rating: float = Field(gt=0, le=5, multiple_of=0.5)

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.book_events import (
     ensure_added_event,
     move_reading_shelf_placement,
-    project_user_book_state,
+    project_reading_progress,
     record_finished_reading,
     record_progress_event,
     record_rating_event,
@@ -276,7 +276,7 @@ def import_reading_list_from_bytes(
             record_rating_event(db, book_id, rating=rating, import_id=import_id)
 
         move_reading_shelf_placement(db, book, derived_shelf)
-        project_user_book_state(db, book)
+        project_reading_progress(db, book)
 
         _import_lists(db, book, row.get("Lists") or "")
 

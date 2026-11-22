@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.book_events import (
     build_user_book_response,
     ensure_added_event,
-    project_user_book_state,
+    project_reading_progress,
     record_cover_changed,
 )
 from app.covers.cover_upgrade import CoverUpgradeJob, start_job
@@ -147,7 +147,7 @@ class BookService:
         The snapshot columns are recomputed from the event stream and the
         event-derived reading dates are assembled into the DTO for serialization.
         """
-        project_user_book_state(self.db, book)
+        project_reading_progress(self.db, book)
         book.user_book = build_user_book_response(self.db, book)
 
         return book
@@ -161,7 +161,7 @@ class BookService:
 
     def _add_to_library(self, book: Book) -> None:
         ensure_added_event(self.db, user_id=self._user_id, book_id=book.id)
-        project_user_book_state(self.db, book)
+        project_reading_progress(self.db, book)
 
     def _record_cover_change(
         self,

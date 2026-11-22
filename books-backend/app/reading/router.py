@@ -9,11 +9,11 @@ from app.models import Book
 from app.reading.service import ReadingService
 from app.schemas import (
     BookEventResponse,
+    BookNotesUpdate,
     BookProgressUpdate,
-    UserBookNotesUpdate,
-    UserBookRatingUpdate,
+    BookRatingUpdate,
+    BookShelfUpdate,
     UserBookResponse,
-    UserBookShelfUpdate,
     build_book_event_response,
 )
 
@@ -26,7 +26,7 @@ def get_reading_service(db: Annotated[Session, Depends(get_db)]) -> ReadingServi
 
 @router.put("/books/{book_id}/shelf", response_model=UserBookResponse)
 def set_shelf(
-    shelf_data: UserBookShelfUpdate,
+    shelf_data: BookShelfUpdate,
     book: Annotated[Book, Depends(get_library_book)],
     service: Annotated[ReadingService, Depends(get_reading_service)],
 ):
@@ -41,7 +41,7 @@ def set_shelf(
 
 @router.put("/books/{book_id}/notes", response_model=UserBookResponse)
 def set_notes(
-    notes_data: UserBookNotesUpdate,
+    notes_data: BookNotesUpdate,
     book: Annotated[Book, Depends(get_library_book)],
     service: Annotated[ReadingService, Depends(get_reading_service)],
 ):
@@ -51,7 +51,7 @@ def set_notes(
 
 @router.put("/books/{book_id}/rating", response_model=UserBookResponse)
 def set_rating(
-    rating_data: UserBookRatingUpdate,
+    rating_data: BookRatingUpdate,
     book: Annotated[Book, Depends(get_library_book)],
     service: Annotated[ReadingService, Depends(get_reading_service)],
 ):
