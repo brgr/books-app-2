@@ -116,9 +116,9 @@ class User(Base):
 
 class Book(Base):
     """A book in a user's library with its title, author, cover and other details, and the
-    user's notes and rating.
+    user's notes, rating and reading progress.
 
-    The user's reading progress for the book lives in a separate UserBook row.
+    The book's events and shelf placements belong to a separate UserBook row.
     Splitting a book into two tables wasn't a well thought-out design: it was meant
     for a catalog of books shared between users, which the app doesn't have. We're in
     the process of merging the two tables into one. Until then, each Book has exactly
@@ -127,6 +127,12 @@ class Book(Base):
     """
 
     __tablename__ = "books"
+    __table_args__ = (
+        CheckConstraint(
+            "current_page IS NULL OR current_percent IS NULL",
+            name="ck_books_at_most_one_progress_value",
+        ),
+    )
     # Permit the non-Mapped ``user_book`` annotation below; it's a transient
     # instance attribute the service layer sets, not a mapped column.
     __allow_unmapped__ = True
@@ -146,6 +152,8 @@ class Book(Base):
     cover_thumbnail_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     rating: Mapped[float | None] = mapped_column(Numeric(2, 1), nullable=True)
+    current_page: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    current_percent: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
 
     # Relationship to users who have this book
     user_books: Mapped[list["UserBook"]] = relationship(
@@ -202,23 +210,17 @@ class Book(Base):
 
 
 class UserBook(Base):
-    """The user's reading progress for one book in their library.
+    """The events and shelf placements of one book in a user's library.
 
-    The book's events and shelf placements also belong to it, while the title,
-    author, cover, notes and rating live in a separate Book row. Splitting a book into
-    two tables wasn't a well thought-out design: it was meant for a catalog of books
-    shared between users, which the app doesn't have. We're in the process of merging
-    the two tables into one. Until then, each UserBook has exactly one Book; both are
-    created when the book is added and deleted when it is removed.
+    The title, author, cover, notes, rating and reading progress live in a separate
+    Book row. Splitting a book into two tables wasn't a well thought-out design: it
+    was meant for a catalog of books shared between users, which the app doesn't
+    have. We're in the process of merging the two tables into one. Until then, each
+    UserBook has exactly one Book; both are created when the book is added and
+    deleted when it is removed.
     """
 
     __tablename__ = "user_books"
-    __table_args__ = (
-        CheckConstraint(
-            "current_page IS NULL OR current_percent IS NULL",
-            name="ck_user_books_at_most_one_progress_value",
-        ),
-    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(
@@ -227,8 +229,6 @@ class UserBook(Base):
     book_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("books.id"), nullable=False
     )
-    current_page: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    current_percent: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
 
     # Relationships
     user: Mapped["User"] = relationship(back_populates="user_books")

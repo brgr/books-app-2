@@ -1,7 +1,7 @@
 import pytest
 from fastapi import status
 
-from app.models import UserBook
+from app.models import Book
 
 
 @pytest.mark.parametrize(
@@ -38,9 +38,9 @@ def test_shelf_books_project_progress_from_events(
         assert response.status_code == status.HTTP_200_OK
 
     # Simulate an older snapshot; the recorded events remain authoritative.
-    user_book = db_session.query(UserBook).filter_by(book_id=book_id).one()
-    user_book.current_page = None
-    user_book.current_percent = None
+    book = db_session.get(Book, book_id)
+    book.current_page = None
+    book.current_percent = None
     db_session.commit()
 
     response = client.get("/api/shelves/reading:started/books", headers=auth_headers)

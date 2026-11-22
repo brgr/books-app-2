@@ -209,7 +209,9 @@ class UserBookResponse(BaseModel):
             finished_at=ReadingDateValue.from_domain(finished_at)
             if finished_at
             else None,
-            progress=build_progress(user_book.current_page, user_book.current_percent),
+            progress=build_progress(
+                user_book.book.current_page, user_book.book.current_percent
+            ),
         )
 
 
@@ -356,8 +358,8 @@ class ExportBookEntry(BaseModel):
             finished_at=ReadingDateValue.from_domain(finished_at)
             if finished_at
             else None,
-            current_page=user_book.current_page,
-            current_percent=user_book.current_percent,
+            current_page=book.current_page,
+            current_percent=book.current_percent,
         )
 
 

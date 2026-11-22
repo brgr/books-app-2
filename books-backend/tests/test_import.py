@@ -354,9 +354,10 @@ def test_import_notes_and_current_page(client, auth_headers, db_session):
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
 
-    assert db_session.query(Book).one().notes == "Very insightful"
+    book = db_session.query(Book).one()
+    assert book.notes == "Very insightful"
+    assert book.current_page == 42
     ub = db_session.query(UserBook).one()
-    assert ub.current_page == 42
     progress = (
         db_session.query(BookEvent)
         .join(BookEventType)
@@ -386,8 +387,8 @@ def test_import_current_percentage(client, auth_headers, db_session):
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
 
+    assert db_session.query(Book).one().current_percent == 11
     ub = db_session.query(UserBook).one()
-    assert ub.current_percent == 11
     progress = (
         db_session.query(BookEvent)
         .join(BookEventType)

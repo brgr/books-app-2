@@ -382,7 +382,7 @@ def apply_progress_event(
     percent: float | None = None,
     max_page: int | None = None,
 ) -> UserBook:
-    """Record a progress event and update the user_book's current position.
+    """Record a progress event and update the book's current position.
 
     ``page`` is clamped to ``max_page`` (the book's length) when provided.
     Commits and returns the refreshed user_book.
@@ -393,8 +393,8 @@ def apply_progress_event(
     record_progress_event(
         session, user_book_id=user_book.id, page=page, percent=percent
     )
-    user_book.current_page = page
-    user_book.current_percent = percent
+    user_book.book.current_page = page
+    user_book.book.current_percent = percent
     session.commit()
     session.refresh(user_book)
     return user_book
@@ -507,10 +507,10 @@ def move_reading_shelf_placement(
 
 
 def project_user_book_state(session: Session, user_book: UserBook) -> UserBook:
-    """Project the current reading state from the event stream onto the user_book snapshot fields.
+    """Project the current reading state from the event stream onto the book's progress columns.
 
-    Reading dates are not stored on the user_book. This only projects the
-    persisted snapshot columns (shelf, current page/percent).
+    Reading dates are not stored. This only sets the persisted progress columns
+    (current page/percent).
     """
     user_book_id: int = user_book.id
     latest_start = _latest_event(session, user_book_id, BookEventCode.STARTED_READING)
@@ -524,16 +524,18 @@ def project_user_book_state(session: Session, user_book: UserBook) -> UserBook:
             .filter(BookEventProgress.event_id == latest_progress.id)
             .first()
         )
-        user_book.current_page = progress_entry.page if progress_entry else None
-        user_book.current_percent = progress_entry.percent if progress_entry else None
+        user_book.book.current_page = progress_entry.page if progress_entry else None
+        user_book.book.current_percent = (
+            progress_entry.percent if progress_entry else None
+        )
     elif latest_start:
         # A new reading cycle begins at zero until progress is recorded.
         page_count_known = user_book.book.page_count is not None
-        user_book.current_page = 0 if page_count_known else None
-        user_book.current_percent = None if page_count_known else 0
+        user_book.book.current_page = 0 if page_count_known else None
+        user_book.book.current_percent = None if page_count_known else 0
     else:
-        user_book.current_page = None
-        user_book.current_percent = None
+        user_book.book.current_page = None
+        user_book.book.current_percent = None
 
     return user_book
 
@@ -549,8 +551,8 @@ def build_user_book_response(session: Session, user_book: UserBook) -> UserBookR
     shelf = current_reading_shelf(session, user_book.id)
     if (
         shelf == ReadingShelf.STARTED
-        and user_book.current_page is None
-        and user_book.current_percent is None
+        and user_book.book.current_page is None
+        and user_book.book.current_percent is None
     ):
         # Previously, progress could be None to mean no progress yet.
         # That now means page 0 or 0%.
