@@ -1,5 +1,7 @@
 from fastapi import status
 
+from app.models import Book
+
 
 def test_create_book(client, auth_headers, sample_book_data):
     """Test creating a book."""
@@ -169,7 +171,7 @@ def test_update_nonexistent_book(client, auth_headers):
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
-def test_delete_book(client, auth_headers, sample_book_data):
+def test_delete_book(client, auth_headers, sample_book_data, db_session):
     """Test deleting a book."""
     # Create a book
     create_response = client.post(
@@ -184,6 +186,7 @@ def test_delete_book(client, auth_headers, sample_book_data):
     # Verify it's gone
     response = client.get(f"/api/books/{book_id}", headers=auth_headers)
     assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert db_session.get(Book, book_id) is None
 
 
 def test_delete_nonexistent_book(client, auth_headers):
@@ -240,6 +243,7 @@ def test_delete_all_books_cascades_to_user_books_and_events(
     resp = client.delete("/api/books", headers=auth_headers)
     assert resp.status_code == status.HTTP_204_NO_CONTENT
 
+    assert db_session.query(Book).count() == 0
     assert db_session.query(UserBook).count() == 0
     assert db_session.query(BookEvent).count() == 0
 
@@ -247,7 +251,7 @@ def test_delete_all_books_cascades_to_user_books_and_events(
 def test_clear_library_is_scoped_to_the_acting_user(db_session):
     """clear_library must delete only the acting user's UserBooks."""
     from app.books.service import BookService
-    from app.models import Book, User, UserBook
+    from app.models import User, UserBook
 
     user_a = User(username="user_a", hashed_password="x")
     user_b = User(username="user_b", hashed_password="x")
@@ -269,10 +273,9 @@ def test_clear_library_is_scoped_to_the_acting_user(db_session):
 
     BookService(db_session, user_a).clear_library()
 
-    # Only User B's UserBook remains; the shared catalog is untouched
     remaining = db_session.query(UserBook).all()
     assert [ub.user_id for ub in remaining] == [user_b.id]
-    assert db_session.query(Book).count() == 2
+    assert [book.title for book in db_session.query(Book)] == ["B"]
 
 
 def test_delete_all_books_when_empty(client, auth_headers):

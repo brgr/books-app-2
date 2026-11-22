@@ -1,6 +1,7 @@
 """Orchestration layer for book operations."""
 
 from fastapi import HTTPException
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.book_events import (
@@ -117,21 +118,26 @@ class BookService:
         return books, total
 
     def remove_from_library(self, book: Book) -> None:
-        """Remove the book from the acting user's library.
+        """Delete the book from the user's library.
 
-        Deleting the UserBook cascades to its events and custom-shelf placements via the
-        ORM relationship.
+        Deleting the Book cascades to its UserBook, and from there to the events and
+        shelf placements, via the ORM relationships.
         """
-        # noinspection PyTypeChecker
-        user_book = get_user_book(self.db, user_id=self._user_id, book_id=book.id)
-
-        if user_book:
-            self.db.delete(user_book)
-            self.db.commit()
+        self.db.delete(book)
+        self.db.commit()
 
     def clear_library(self) -> None:
-        """Remove every book from the acting user's library."""
+        """Delete every book in the user's library."""
+        book_ids = self.db.scalars(
+            select(UserBook.book_id).where(UserBook.user_id == self._user_id)
+        ).all()
+
+        # Deletes user_books before books: the database cascades from user_books to
+        # events and shelf placements, but not from books to user_books
         self.db.query(UserBook).filter(UserBook.user_id == self._user_id).delete(
+            synchronize_session=False
+        )
+        self.db.query(Book).filter(Book.id.in_(book_ids)).delete(
             synchronize_session=False
         )
         self.db.commit()

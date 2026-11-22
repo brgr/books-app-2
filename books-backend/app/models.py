@@ -115,6 +115,16 @@ class User(Base):
 
 
 class Book(Base):
+    """A book in a user's library, with its title, author, cover and other details.
+
+    The user's notes, rating and reading progress for the book live in a separate
+    UserBook row. Splitting a book into two tables wasn't a well thought-out design:
+    it was meant for a catalog of books shared between users, which the app doesn't
+    have. We're in the process of merging the two tables into one. Until then, each
+    Book has exactly one UserBook; both are created when the book is added and
+    deleted when it is removed.
+    """
+
     __tablename__ = "books"
     # Permit the non-Mapped ``user_book`` annotation below; it's a transient
     # instance attribute the service layer sets, not a mapped column.
@@ -185,6 +195,16 @@ class Book(Base):
 
 
 class UserBook(Base):
+    """The user's notes, rating and reading progress for one book in their library.
+
+    The book's events and shelf placements also belong to it, while the title,
+    author and cover live in a separate Book row. Splitting a book into two tables
+    wasn't a well thought-out design: it was meant for a catalog of books shared
+    between users, which the app doesn't have. We're in the process of merging the
+    two tables into one. Until then, each UserBook has exactly one Book; both are
+    created when the book is added and deleted when it is removed.
+    """
+
     __tablename__ = "user_books"
     __table_args__ = (
         CheckConstraint(
