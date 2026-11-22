@@ -131,6 +131,9 @@ class Book(Base):
     __allow_unmapped__ = True
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=False
+    )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     author: Mapped[str | None] = mapped_column(String(100), nullable=True)
     isbn: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -149,9 +152,10 @@ class Book(Base):
     user_book: "UserBookResponse | None" = None
 
     @classmethod
-    def from_create(cls, data: "BookCreate") -> "Book":
-        """Build a Book from a validated BookCreate payload."""
+    def from_create(cls, data: "BookCreate", user_id: int) -> "Book":
+        """Build a Book in the user's library from a validated BookCreate payload."""
         return cls(
+            user_id=user_id,
             title=data.title,
             author=data.author,
             isbn=data.isbn,

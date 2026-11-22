@@ -21,6 +21,7 @@ def create_sample_books(
 
     for index in range(1, count + 1):
         book = Book(
+            user_id=user_id,
             title=f"Sample Book {index:04d}",
             author=f"Sample Author {(index - 1) % 30 + 1:02d}",
             page_count=100 + (index * 37) % 600,

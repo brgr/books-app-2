@@ -258,8 +258,8 @@ def test_clear_library_is_scoped_to_the_acting_user(db_session):
     db_session.add_all([user_a, user_b])
     db_session.flush()
 
-    book_a = Book(title="A", author="A")
-    book_b = Book(title="B", author="B")
+    book_a = Book(user_id=user_a.id, title="A", author="A")
+    book_b = Book(user_id=user_b.id, title="B", author="B")
     db_session.add_all([book_a, book_b])
     db_session.flush()
 

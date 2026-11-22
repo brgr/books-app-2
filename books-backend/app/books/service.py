@@ -32,7 +32,7 @@ class BookService:
 
     async def create(self, book_data: BookCreate) -> Book:
         """Persist a new book, then add it to the acting user's library."""
-        book = Book.from_create(book_data)
+        book = Book.from_create(book_data, self._user_id)
         remote_cover = await self._download_if_remote(book_data.cover_image_url)
         if remote_cover:
             book.cover_image_url, book.cover_thumbnail_url = remote_cover

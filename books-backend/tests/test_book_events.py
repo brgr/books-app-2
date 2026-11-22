@@ -26,7 +26,7 @@ from app.models import (
 
 def _create_user_and_book(db_session):
     user = create_user(db_session, "alice", "secret123")
-    book = Book(title="Sample", author="Author")
+    book = Book(user_id=user.id, title="Sample", author="Author")
     db_session.add(book)
     db_session.commit()
     db_session.refresh(book)

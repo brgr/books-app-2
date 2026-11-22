@@ -28,7 +28,13 @@ def _make_image(
 def _create_book_with_local_cover(
     db, *, cover_path: str, title="T", author="A", isbn="111"
 ):
-    book = Book(title=title, author=author, isbn=isbn, cover_image_url=cover_path)
+    book = Book(
+        user_id=_user_id(db, "testuser"),
+        title=title,
+        author=author,
+        isbn=isbn,
+        cover_image_url=cover_path,
+    )
     db.add(book)
     db.commit()
     db.refresh(book)
@@ -78,7 +84,12 @@ def test_start_cover_upgrade_404_when_book_not_in_library(
 
 
 def test_start_cover_upgrade_400_when_no_local_cover(client, auth_headers, db_session):
-    book = Book(title="T", author="A", cover_image_url=None)
+    book = Book(
+        user_id=_user_id(db_session, "testuser"),
+        title="T",
+        author="A",
+        cover_image_url=None,
+    )
     db_session.add(book)
     db_session.commit()
     db_session.refresh(book)
@@ -90,7 +101,12 @@ def test_start_cover_upgrade_400_when_no_local_cover(client, auth_headers, db_se
 
 
 def test_start_cover_upgrade_400_for_external_cover(client, auth_headers, db_session):
-    book = Book(title="T", author="A", cover_image_url="http://example.com/c.jpg")
+    book = Book(
+        user_id=_user_id(db_session, "testuser"),
+        title="T",
+        author="A",
+        cover_image_url="http://example.com/c.jpg",
+    )
     db_session.add(book)
     db_session.commit()
     db_session.refresh(book)

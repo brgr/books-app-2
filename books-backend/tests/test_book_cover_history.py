@@ -16,7 +16,9 @@ from app.models import (
 
 
 def _make_book(db_session, **overrides):
+    user = db_session.query(User).one()
     defaults = {
+        "user_id": user.id,
         "title": "Test Book",
         "author": "Test Author",
         "cover_image_url": "/uploads/covers/old.jpg",
@@ -32,10 +34,8 @@ def _make_book(db_session, **overrides):
     # The update/cover endpoints require the book to be in the acting user's
     # library. Use the normal event path so it also receives its initial
     # reading-shelf placement.
-    user = db_session.query(User).first()
-    if user:
-        ensure_added_event(db_session, user_id=user.id, book_id=book.id)
-        db_session.commit()
+    ensure_added_event(db_session, user_id=user.id, book_id=book.id)
+    db_session.commit()
     return book
 
 

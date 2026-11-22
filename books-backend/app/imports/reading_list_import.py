@@ -195,6 +195,7 @@ def import_reading_list_from_bytes(
                 continue
 
         book = Book(
+            user_id=user_id,
             title=title,
             author=author,
             isbn=isbn,
