@@ -17,7 +17,7 @@ def get_library_book(
     """Load a book from the acting user's library, or 404 if it isn't in it."""
     book = get_book_by_id(db, book_id)
 
-    if not book or not get_user_book(db, user_id=current_user.id, book_id=book_id):
+    if not book or book.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
         )

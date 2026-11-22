@@ -1,7 +1,6 @@
 """Orchestration layer for book operations."""
 
 from fastapi import HTTPException
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.book_events import (
@@ -102,20 +101,16 @@ class BookService:
 
     def list(self, page: int, page_size: int) -> tuple[list[Book], int]:
         """Return one page of the user's library (with shelf entry attached) and the total."""
-        library_books = (
-            self.db.query(Book)
-            .join(UserBook, UserBook.book_id == Book.id)
-            .filter(UserBook.user_id == self._user_id)
-        )
+        books = self.db.query(Book).filter(Book.user_id == self._user_id)
 
         offset = (page - 1) * page_size
-        total = library_books.count()
-        books = library_books.offset(offset).limit(page_size).all()
+        total = books.count()
+        page_books = books.offset(offset).limit(page_size).all()
 
-        for book in books:
+        for book in page_books:
             self.attach_user_book(book)
 
-        return books, total
+        return page_books, total
 
     def remove_from_library(self, book: Book) -> None:
         """Delete the book from the user's library.
@@ -128,16 +123,12 @@ class BookService:
 
     def clear_library(self) -> None:
         """Delete every book in the user's library."""
-        book_ids = self.db.scalars(
-            select(UserBook.book_id).where(UserBook.user_id == self._user_id)
-        ).all()
-
         # Deletes user_books before books: the database cascades from user_books to
         # events and shelf placements, but not from books to user_books
         self.db.query(UserBook).filter(UserBook.user_id == self._user_id).delete(
             synchronize_session=False
         )
-        self.db.query(Book).filter(Book.id.in_(book_ids)).delete(
+        self.db.query(Book).filter(Book.user_id == self._user_id).delete(
             synchronize_session=False
         )
         self.db.commit()

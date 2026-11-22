@@ -15,7 +15,7 @@ from app.covers.cover_upgrade import (
     _score_candidates,
     get_job,
 )
-from app.models import Book, UserBook
+from app.models import Book, User, UserBook
 
 
 def _make_image(
@@ -48,8 +48,6 @@ def _add_to_library(db, *, user_id, book_id):
 
 
 def _user_id(db, username: str) -> int:
-    from app.models import User
-
     return db.query(User).filter(User.username == username).first().id
 
 
@@ -77,8 +75,16 @@ def test_start_cover_upgrade_404_for_unknown_book(client, auth_headers):
 def test_start_cover_upgrade_404_when_book_not_in_library(
     client, auth_headers, db_session, local_cover
 ):
-    book = _create_book_with_local_cover(db_session, cover_path=local_cover)
-    # Note: book exists but no UserBook row for current user.
+    # create_user allows a single account only
+    other_user = User(username="otheruser", hashed_password="x")
+    db_session.add(other_user)
+    db_session.flush()
+    book = Book(
+        user_id=other_user.id, title="T", author="A", cover_image_url=local_cover
+    )
+    db_session.add(book)
+    db_session.commit()
+
     r = client.post(f"/api/books/{book.id}/cover-upgrade-search", headers=auth_headers)
     assert r.status_code == 404
 
