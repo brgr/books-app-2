@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { mount } from "@vue/test-utils";
 import BookCoverTile from "./BookCoverTile.vue";
 import { ReadingShelf } from "../../../api/types";
-import { makeBook, makeUserBook } from "../../../test/factories";
+import { makeBook } from "../../../test/factories";
 
 describe("BookCoverTile", () => {
   it("renders cover image when thumbnail url is present", () => {
@@ -41,10 +41,8 @@ describe("BookCoverTile", () => {
         href: "/books/1",
         book: makeBook({
           page_count: 200,
-          user_book: makeUserBook({
-            shelf: ReadingShelf.STARTED,
-            progress: { unit: "page", value: 50 },
-          }),
+          shelf: ReadingShelf.STARTED,
+          progress: { unit: "page", value: 50 },
         }),
       },
     });
@@ -58,10 +56,8 @@ describe("BookCoverTile", () => {
         showProgress: true,
         book: makeBook({
           page_count: 200,
-          user_book: makeUserBook({
-            shelf: ReadingShelf.STARTED,
-            progress: { unit: "page", value: 50 },
-          }),
+          shelf: ReadingShelf.STARTED,
+          progress: { unit: "page", value: 50 },
         }),
       },
     });
@@ -77,10 +73,8 @@ describe("BookCoverTile", () => {
         showProgress: true,
         book: makeBook({
           page_count: 200,
-          user_book: makeUserBook({
-            shelf: ReadingShelf.WANT_TO_READ,
-            progress: { unit: "page", value: 50 },
-          }),
+          shelf: ReadingShelf.WANT_TO_READ,
+          progress: { unit: "page", value: 50 },
         }),
       },
     });

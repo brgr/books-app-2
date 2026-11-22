@@ -49,7 +49,7 @@ const coverUrl = computed(() => getMediaUrl(props.book.cover_thumbnail_url || pr
 
 // Null when there is nothing to show: no progress yet, or pages without a known page count.
 const progressPercent = computed<number | null>(() => {
-  const progress = props.book.user_book.progress;
+  const progress = props.book.progress;
   const pageCount = props.book.page_count;
   let percent: number;
 
@@ -65,7 +65,7 @@ const progressPercent = computed<number | null>(() => {
 });
 
 const showBadge = computed(
-  () => props.showProgress && props.book.user_book.shelf === ReadingShelf.STARTED && progressPercent.value !== null,
+  () => props.showProgress && props.book.shelf === ReadingShelf.STARTED && progressPercent.value !== null,
 );
 </script>
 
@@ -83,11 +83,11 @@ const showBadge = computed(
     >
       <span v-if="showBadge" class="grid-progress-badge"> {{ progressPercent }}% </span>
       <span
-        v-if="book.user_book.rating !== null"
+        v-if="book.rating !== null"
         class="grid-rating-badge"
-        :aria-label="`Your rating: ${book.user_book.rating} out of 5 stars`"
+        :aria-label="`Your rating: ${book.rating} out of 5 stars`"
       >
-        <span aria-hidden="true">★ {{ book.user_book.rating }}</span>
+        <span aria-hidden="true">★ {{ book.rating }}</span>
       </span>
       <img
         v-if="coverUrl"

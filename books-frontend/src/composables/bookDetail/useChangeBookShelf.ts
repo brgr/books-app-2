@@ -3,12 +3,12 @@ import { setShelf } from "../../api/books";
 import { ReadingDatePrecision, type ReadingDateValue, type ReadingShelf } from "../../api/types";
 import { invalidateAfter } from "../../query/invalidate";
 import { localDayValue } from "../../utils/date";
-import { useSetUserBook } from "../useBook";
+import { useSetReadingState } from "../useBook";
 
 type ShelfChange = { bookId: number; shelf: ReadingShelf; readingDate?: ReadingDateValue };
 
 export function useChangeBookShelf() {
-  const setUserBook = useSetUserBook();
+  const setReadingState = useSetReadingState();
 
   return useMutation({
     mutationFn: ({ bookId, shelf, readingDate }: ShelfChange) =>
@@ -16,8 +16,8 @@ export function useChangeBookShelf() {
         shelf,
         reading_date: readingDate ?? { value: localDayValue(new Date()), precision: ReadingDatePrecision.DAY },
       }),
-    onSuccess: async (userBook, { bookId }) => {
-      await setUserBook(bookId, userBook);
+    onSuccess: async (readingState, { bookId }) => {
+      await setReadingState(bookId, readingState);
       await invalidateAfter.shelfChanged(bookId);
     },
     onError: (err) => {

@@ -4,7 +4,7 @@ import { VueQueryPlugin } from "@tanstack/vue-query";
 import BookDetailView from "./BookDetailView.vue";
 import BookReadingCard from "../components/bookDetail/BookReadingCard/BookReadingCard.vue";
 import { clearRating, getBook, getBookEvents, setRating } from "../api/books";
-import { type Book, BookEventType, ReadingShelf, type UserBook } from "../api/types";
+import { type Book, BookEventType, ReadingShelf } from "../api/types";
 import { queryClient } from "../query/client";
 import { queryKeys } from "../query/keys";
 
@@ -25,16 +25,6 @@ vi.mock("../api/books", () => ({
   createBook: vi.fn(),
 }));
 
-const userBook: UserBook = {
-  user_id: 1,
-  book_id: 1,
-  shelf: ReadingShelf.FINISHED,
-  started_at: { value: "2026-09-01T00:00:00+02:00", precision: "day" },
-  finished_at: { value: "2026-09-05T00:00:00+02:00", precision: "day" },
-  notes: null,
-  progress: null,
-  rating: 3.5,
-};
 const book: Book = {
   id: 1,
   title: "Dune",
@@ -46,7 +36,12 @@ const book: Book = {
   page_count: null,
   cover_image_url: null,
   cover_thumbnail_url: null,
-  user_book: userBook,
+  shelf: ReadingShelf.FINISHED,
+  started_at: { value: "2026-09-01T00:00:00+02:00", precision: "day" },
+  finished_at: { value: "2026-09-05T00:00:00+02:00", precision: "day" },
+  notes: null,
+  progress: null,
+  rating: 3.5,
 };
 
 function mountBook() {
@@ -95,7 +90,8 @@ describe("book detail", () => {
   ] as const)("passes recorded progress to the reading card: $expected", async ({ progress, expected }) => {
     vi.mocked(getBook).mockResolvedValue({
       ...book,
-      user_book: { ...userBook, shelf: ReadingShelf.STARTED, progress },
+      shelf: ReadingShelf.STARTED,
+      progress,
     });
 
     const wrapper = mountBook();
@@ -108,7 +104,7 @@ describe("book detail", () => {
     vi.mocked(getBook).mockResolvedValue({
       ...book,
       page_count: 200,
-      user_book: { ...userBook, shelf: ReadingShelf.STARTED },
+      shelf: ReadingShelf.STARTED,
     });
 
     const wrapper = mountBook();
@@ -140,7 +136,7 @@ describe("book detail", () => {
 
     await vi.waitFor(() => expect(getBookEvents).toHaveBeenCalledWith(1));
     expect(wrapper.get("h1").text()).toBe("Dune");
-    finishBook({ ...shelfBook, title: "Fresh Dune", user_book: { ...userBook, rating: 5 } });
+    finishBook({ ...shelfBook, title: "Fresh Dune", rating: 5 });
     await vi.waitFor(() => expect(wrapper.get("h1").text()).toBe("Fresh Dune"));
     expect(wrapper.get(".stars").attributes("aria-label")).toBe("Edit rating: 5 out of 5 stars");
     expect(queryClient.getQueryData<Book>(queryKeys.book.detail(1))?.title).toBe("Fresh Dune");
@@ -205,7 +201,7 @@ describe("book detail", () => {
 
     expect(wrapper.get<HTMLInputElement>("input:checked").element.value).toBe("3.5");
 
-    vi.mocked(setRating).mockResolvedValue({ ...userBook, rating: 4.5 });
+    vi.mocked(setRating).mockResolvedValue({ ...book, rating: 4.5 });
     vi.mocked(getBookEvents).mockResolvedValue([
       {
         id: "rating",
@@ -221,7 +217,7 @@ describe("book detail", () => {
     await wrapper.get('[data-test="save"]').trigger("click");
     await vi.waitFor(() => expect(wrapper.text()).toContain("Rated 4.5 / 5 stars"));
     expect(setRating).toHaveBeenCalledWith(1, 4.5);
-    expect(queryClient.getQueryData<Book>(queryKeys.book.detail(1))?.user_book.rating).toBe(4.5);
+    expect(queryClient.getQueryData<Book>(queryKeys.book.detail(1))?.rating).toBe(4.5);
     expect(queryClient.getQueryState(shelfKey)?.isInvalidated).toBe(true);
     wrapper.unmount();
   });
@@ -245,11 +241,9 @@ describe("book detail", () => {
     await vi.waitFor(() => expect(wrapper.text()).toContain("Rating cleared"));
     expect(clearRating).toHaveBeenCalledWith(1);
     expect(setRating).not.toHaveBeenCalled();
-    expect(queryClient.getQueryData<Book>(queryKeys.book.detail(1))?.user_book.rating).toBeNull();
+    expect(queryClient.getQueryData<Book>(queryKeys.book.detail(1))?.rating).toBeNull();
     expect(wrapper.find('[role="alert"]').exists()).toBe(false);
-    expect(queryClient.getQueryData<Book>(queryKeys.book.detail(1))?.user_book.finished_at).toEqual(
-      userBook.finished_at,
-    );
+    expect(queryClient.getQueryData<Book>(queryKeys.book.detail(1))?.finished_at).toEqual(book.finished_at);
     wrapper.unmount();
   });
 

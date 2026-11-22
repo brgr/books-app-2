@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { ReadingShelf, type UserBook } from "../../api/types";
+import { type Book, ReadingShelf } from "../../api/types";
 import { formatReadingDate } from "../../utils/date";
 import BookReadingCard from "./BookReadingCard/BookReadingCard.vue";
 import type { ReadingProgress } from "./BookReadingCard/types";
@@ -11,15 +11,14 @@ import BookShelfButton from "./BookShelfButton/BookShelfButton.vue";
  * move it to another shelf along with the dates they read it.
  */
 const props = defineProps<{
-  userBook: UserBook;
-  pageCount: number | null;
+  book: Book;
 }>();
 
-const reading = computed(() => props.userBook.shelf === ReadingShelf.STARTED);
+const reading = computed(() => props.book.shelf === ReadingShelf.STARTED);
 
 // A book without recorded progress starts at zero, counted in pages when we know how many it has
 const progress = computed<ReadingProgress>(
-  () => props.userBook.progress ?? { unit: props.pageCount != null ? "page" : "percent", value: 0 },
+  () => props.book.progress ?? { unit: props.book.page_count != null ? "page" : "percent", value: 0 },
 );
 </script>
 
@@ -27,23 +26,23 @@ const progress = computed<ReadingProgress>(
   <div class="book-shelf-section">
     <BookReadingCard
       v-if="reading"
-      :book-id="userBook.book_id"
-      :shelf="userBook.shelf"
+      :book-id="book.id"
+      :shelf="book.shelf"
       :progress="progress"
-      :page-count="pageCount"
-      :started-at="userBook.started_at"
-      :finished-at="userBook.finished_at"
+      :page-count="book.page_count"
+      :started-at="book.started_at"
+      :finished-at="book.finished_at"
     />
 
-    <BookShelfButton v-else :book-id="userBook.book_id" :shelf="userBook.shelf" />
+    <BookShelfButton v-else :book-id="book.id" :shelf="book.shelf" />
   </div>
 
   <div v-if="!reading" class="book-dates">
-    <div v-if="userBook.started_at" class="date-item">
-      <strong>Started:</strong> {{ formatReadingDate(userBook.started_at) }}
+    <div v-if="book.started_at" class="date-item">
+      <strong>Started:</strong> {{ formatReadingDate(book.started_at) }}
     </div>
-    <div v-if="userBook.finished_at" class="date-item">
-      <strong>Finished:</strong> {{ formatReadingDate(userBook.finished_at) }}
+    <div v-if="book.finished_at" class="date-item">
+      <strong>Finished:</strong> {{ formatReadingDate(book.finished_at) }}
     </div>
   </div>
 </template>

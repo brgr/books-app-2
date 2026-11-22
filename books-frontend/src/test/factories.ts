@@ -1,18 +1,4 @@
-import { type Book, ReadingShelf, type UserBook } from "../api/types";
-
-export function makeUserBook(overrides: Partial<UserBook> = {}): UserBook {
-  return {
-    user_id: 1,
-    book_id: 1,
-    shelf: ReadingShelf.WANT_TO_READ,
-    started_at: null,
-    finished_at: null,
-    notes: null,
-    progress: null,
-    rating: null,
-    ...overrides,
-  };
-}
+import { type Book, ReadingShelf } from "../api/types";
 
 export function makeBook(overrides: Partial<Book> = {}): Book {
   return {
@@ -26,7 +12,12 @@ export function makeBook(overrides: Partial<Book> = {}): Book {
     page_count: null,
     cover_image_url: null,
     cover_thumbnail_url: null,
-    user_book: makeUserBook({ book_id: overrides.id ?? 1 }),
+    shelf: ReadingShelf.WANT_TO_READ,
+    started_at: null,
+    finished_at: null,
+    notes: null,
+    progress: null,
+    rating: null,
     ...overrides,
   };
 }

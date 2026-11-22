@@ -1,19 +1,15 @@
 import { expect, type Page, test } from "@playwright/test";
 import { authenticate } from "../support/auth";
 
-// The API always returns a book together with its library entry.
-function userBook(bookId: number) {
-  return {
-    user_id: 1,
-    book_id: bookId,
-    shelf: "want_to_read",
-    started_at: null,
-    finished_at: null,
-    notes: null,
-    progress: null,
-    rating: null,
-  };
-}
+// The API always returns a book together with its reading state.
+const readingState = {
+  shelf: "want_to_read",
+  started_at: null,
+  finished_at: null,
+  notes: null,
+  progress: null,
+  rating: null,
+};
 
 // Pages scroll inside the page scroller rather than the window
 function pageScrollTop(page: Page) {
@@ -31,7 +27,7 @@ async function mockLibrary(page: Page, covers = false) {
     description: null,
     cover_image_url: covers ? "/preview-cover.svg" : null,
     cover_thumbnail_url: covers ? "/preview-thumbnail.svg" : null,
-    user_book: userBook(index + 1),
+    ...readingState,
   }));
 
   const shelves = [
@@ -129,7 +125,7 @@ for (const mode of ["list", "grid"] as const) {
           author: "Fresh author",
           cover_thumbnail_url: "/preview-thumbnail.svg",
           cover_image_url: "/preview-cover.svg",
-          user_book: userBook(1),
+          ...readingState,
         },
       });
     });

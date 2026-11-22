@@ -2,16 +2,16 @@ import { useMutation } from "@tanstack/vue-query";
 import { addBookProgress } from "../../api/books";
 import type { BookProgressUpdate } from "../../api/types";
 import { invalidateAfter } from "../../query/invalidate";
-import { useSetUserBook } from "../useBook";
+import { useSetReadingState } from "../useBook";
 
 export function useSaveBookProgress() {
-  const setUserBook = useSetUserBook();
+  const setReadingState = useSetReadingState();
 
   return useMutation({
     mutationFn: ({ bookId, progress }: { bookId: number; progress: BookProgressUpdate }) =>
       addBookProgress(bookId, progress),
-    onSuccess: async (userBook, { bookId }) => {
-      await setUserBook(bookId, userBook);
+    onSuccess: async (readingState, { bookId }) => {
+      await setReadingState(bookId, readingState);
       // Stay pending until the timeline shows the new progress
       await invalidateAfter.progressSaved(bookId);
     },

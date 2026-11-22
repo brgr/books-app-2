@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import type { UserBook } from "../../../api/types";
+import type { Book } from "../../../api/types";
 import { useSaveBookNotes } from "../../../composables/bookDetail/useSaveBookNotes";
 import { useSaveBookRating } from "../../../composables/bookDetail/useSaveBookRating";
 import BookNotes from "./BookNotes.vue";
 import BookRating from "./BookRating.vue";
 
 const props = defineProps<{
-  userBook: UserBook;
+  book: Book;
 }>();
 
 const { mutateAsync: saveNotes, isPending: savingNotes } = useSaveBookNotes();
@@ -15,8 +15,8 @@ const { mutateAsync: saveRating, isPending: savingRating } = useSaveBookRating()
 const saving = computed(() => savingNotes.value || savingRating.value);
 const error = ref("");
 
-const notes = computed(() => props.userBook.notes ?? "");
-const rating = computed(() => props.userBook.rating);
+const notes = computed(() => props.book.notes ?? "");
+const rating = computed(() => props.book.rating);
 
 const editing = ref(false);
 const draftNotes = ref(notes.value);
@@ -45,7 +45,7 @@ async function save() {
     return;
   }
 
-  const bookId = props.userBook.book_id;
+  const bookId = props.book.id;
   error.value = "";
 
   // Each part shows as saved once its request is done, so after a failure only the other one is still a draft

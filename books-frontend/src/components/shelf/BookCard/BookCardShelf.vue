@@ -7,7 +7,7 @@ const props = defineProps<{
   book: Book;
 }>();
 
-const shelf = computed(() => props.book.user_book.shelf);
+const shelf = computed(() => props.book.shelf);
 
 const SHELF_LABELS: Record<ReadingShelf, string> = {
   [ReadingShelf.WANT_TO_READ]: "Want to read",
@@ -38,11 +38,11 @@ const shelfColor = computed(() => (shelf.value ? SHELF_COLORS[shelf.value] : "va
   </div>
 
   <div class="book-dates text-small text-muted">
-    <div v-if="book.user_book.started_at">Started: {{ formatReadingDate(book.user_book.started_at) }}</div>
-    <div v-if="book.user_book.finished_at">Finished: {{ formatReadingDate(book.user_book.finished_at) }}</div>
-    <div v-if="book.user_book.progress?.unit === 'percent'">Progress: {{ book.user_book.progress.value }}%</div>
-    <div v-else-if="book.user_book.progress">
-      Progress: {{ book.user_book.progress.value }}
+    <div v-if="book.started_at">Started: {{ formatReadingDate(book.started_at) }}</div>
+    <div v-if="book.finished_at">Finished: {{ formatReadingDate(book.finished_at) }}</div>
+    <div v-if="book.progress?.unit === 'percent'">Progress: {{ book.progress.value }}%</div>
+    <div v-else-if="book.progress">
+      Progress: {{ book.progress.value }}
       <span v-if="book.page_count">/ {{ book.page_count }}</span>
     </div>
   </div>

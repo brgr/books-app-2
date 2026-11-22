@@ -65,17 +65,6 @@ export interface User {
   username: string;
 }
 
-export interface UserBook {
-  user_id: number;
-  book_id: number;
-  shelf: ReadingShelf;
-  started_at: ReadingDateValue | null;
-  finished_at: ReadingDateValue | null;
-  notes: string | null;
-  progress: BookProgressUpdate | null;
-  rating: number | null;
-}
-
 export interface ShelfReorderRequest {
   moved_book_id: number;
   edge?: "top" | "bottom";
@@ -94,8 +83,16 @@ export interface Book {
   page_count: number | null;
   cover_image_url: string | null;
   cover_thumbnail_url: string | null;
-  user_book: UserBook;
+  shelf: ReadingShelf;
+  started_at: ReadingDateValue | null;
+  finished_at: ReadingDateValue | null;
+  notes: string | null;
+  progress: BookProgressUpdate | null;
+  rating: number | null;
 }
+
+/** The part of a book that the shelf, notes, rating and progress endpoints answer with. */
+export type ReadingState = Pick<Book, "shelf" | "started_at" | "finished_at" | "notes" | "progress" | "rating">;
 
 export interface PaginatedBooks {
   items: Book[];
@@ -127,7 +124,7 @@ export interface BookUpdate {
   cover_image_url?: string;
 }
 
-export interface UserBookShelfUpdate {
+export interface BookShelfUpdate {
   shelf: ReadingShelf;
   reading_date?: ReadingDateValue;
 }

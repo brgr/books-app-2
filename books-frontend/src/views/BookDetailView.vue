@@ -51,7 +51,7 @@ function handleEdit() {
             <h1>{{ book.title }}</h1>
             <p v-if="book.author" class="book-author">by {{ book.author }}</p>
 
-            <BookReadingStatus :user-book="book.user_book" :page-count="book.page_count" />
+            <BookReadingStatus :book="book" />
           </div>
         </div>
 
@@ -60,7 +60,7 @@ function handleEdit() {
             <h2>Description</h2>
             <CollapsibleText :text="book.description" />
           </div>
-          <BookNotesAndRating :key="book.id" :user-book="book.user_book" />
+          <BookNotesAndRating :key="book.id" :book="book" />
           <BookCustomShelves :book-id="book.id" />
           <BookMetadata :book="book" />
           <EventTimeline :book-id="book.id" />
