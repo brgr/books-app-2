@@ -43,9 +43,9 @@ def test_generated_books_have_consistent_reading_state(db_session, test_user, sh
     create_sample_books(db_session, user.id, 2, shelf)
     db_session.commit()
 
-    for book in db_session.query(UserBook).all():
-        assert current_reading_shelf(db_session, book.id) == shelf
-        started, finished = derive_reading_date_values(db_session, book.id)
+    for user_book in db_session.query(UserBook).all():
+        assert current_reading_shelf(db_session, user_book.id) == shelf
+        started, finished = derive_reading_date_values(db_session, user_book.book_id)
         assert (started is not None) == (shelf != ReadingShelf.WANT_TO_READ)
         assert (finished is not None) == (shelf == ReadingShelf.FINISHED)
 

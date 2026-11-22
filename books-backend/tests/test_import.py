@@ -253,7 +253,7 @@ def test_import_status_paused(client, auth_headers, db_session):
         db_session.query(BookEvent)
         .join(BookEventType)
         .filter(
-            BookEvent.user_book_id == ub.id,
+            BookEvent.book_id == ub.book_id,
             BookEventType.code == BookEventCode.PAUSED_READING.value,
         )
         .one()
@@ -278,8 +278,8 @@ def test_import_preserves_month_precision_reading_date(
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
 
-    user_book = db_session.query(UserBook).one()
-    assert derive_reading_date_values(db_session, user_book.id)[0] == ReadingDate(
+    book = db_session.query(Book).one()
+    assert derive_reading_date_values(db_session, book.id)[0] == ReadingDate(
         datetime(2025, 2, 1, tzinfo=UTC).replace(tzinfo=None),
         ReadingDatePrecision.MONTH,
     )
@@ -300,8 +300,8 @@ def test_import_preserves_year_precision_reading_date(client, auth_headers, db_s
     resp = _upload_zip(client, auth_headers, zip_bytes)
     assert resp.status_code == status.HTTP_200_OK
 
-    user_book = db_session.query(UserBook).one()
-    assert derive_reading_date_values(db_session, user_book.id)[0] == ReadingDate(
+    book = db_session.query(Book).one()
+    assert derive_reading_date_values(db_session, book.id)[0] == ReadingDate(
         datetime(2023, 1, 1, tzinfo=UTC).replace(tzinfo=None), ReadingDatePrecision.YEAR
     )
 
@@ -362,7 +362,7 @@ def test_import_notes_and_current_page(client, auth_headers, db_session):
         db_session.query(BookEvent)
         .join(BookEventType)
         .filter(
-            BookEvent.user_book_id == ub.id,
+            BookEvent.book_id == ub.book_id,
             BookEventType.code == BookEventCode.PROGRESS_SET.value,
         )
         .one()
@@ -393,7 +393,7 @@ def test_import_current_percentage(client, auth_headers, db_session):
         db_session.query(BookEvent)
         .join(BookEventType)
         .filter(
-            BookEvent.user_book_id == ub.id,
+            BookEvent.book_id == ub.book_id,
             BookEventType.code == BookEventCode.PROGRESS_SET.value,
         )
         .one()
@@ -849,7 +849,7 @@ def test_import_real_export_currently_reading(client, auth_headers, db_session):
 
     # Reading dates are derived from the event stream, not stored on user_books.
     ekel = next(ub for book, ub in started if book.title == "Der Ekel")
-    assert derive_reading_date_values(db_session, ekel.id)[
+    assert derive_reading_date_values(db_session, ekel.book_id)[
         0
     ] == ReadingDate.from_datetime(
         datetime(2026, 4, 13, tzinfo=UTC).replace(tzinfo=None)
@@ -860,7 +860,7 @@ def test_import_real_export_currently_reading(client, auth_headers, db_session):
         for book, ub in started
         if book.title == "UNIX and Linux System Administration Handbook, 5/e"
     )
-    assert derive_reading_date_values(db_session, unix.id)[
+    assert derive_reading_date_values(db_session, unix.book_id)[
         0
     ] == ReadingDate.from_datetime(
         datetime(2026, 4, 18, tzinfo=UTC).replace(tzinfo=None)

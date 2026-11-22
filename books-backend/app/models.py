@@ -116,9 +116,9 @@ class User(Base):
 
 class Book(Base):
     """A book in a user's library with its title, author, cover and other details, and the
-    user's notes, rating and reading progress.
+    user's notes, rating, reading progress and events.
 
-    The book's events and shelf placements belong to a separate UserBook row.
+    The book's shelf placements belong to a separate UserBook row.
     Splitting a book into two tables wasn't a well thought-out design: it was meant
     for a catalog of books shared between users, which the app doesn't have. We're in
     the process of merging the two tables into one. Until then, each Book has exactly
@@ -157,6 +157,9 @@ class Book(Base):
 
     # Relationship to users who have this book
     user_books: Mapped[list["UserBook"]] = relationship(
+        back_populates="book", cascade="all, delete-orphan"
+    )
+    events: Mapped[list["BookEvent"]] = relationship(
         back_populates="book", cascade="all, delete-orphan"
     )
 
@@ -210,14 +213,14 @@ class Book(Base):
 
 
 class UserBook(Base):
-    """The events and shelf placements of one book in a user's library.
+    """The shelf placements of one book in a user's library.
 
-    The title, author, cover, notes, rating and reading progress live in a separate
-    Book row. Splitting a book into two tables wasn't a well thought-out design: it
-    was meant for a catalog of books shared between users, which the app doesn't
-    have. We're in the process of merging the two tables into one. Until then, each
-    UserBook has exactly one Book; both are created when the book is added and
-    deleted when it is removed.
+    The title, author, cover, notes, rating, reading progress and events live in a
+    separate Book row. Splitting a book into two tables wasn't a well thought-out
+    design: it was meant for a catalog of books shared between users, which the app
+    doesn't have. We're in the process of merging the two tables into one. Until
+    then, each UserBook has exactly one Book; both are created when the book is
+    added and deleted when it is removed.
     """
 
     __tablename__ = "user_books"
@@ -233,9 +236,6 @@ class UserBook(Base):
     # Relationships
     user: Mapped["User"] = relationship(back_populates="user_books")
     book: Mapped["Book"] = relationship(back_populates="user_books")
-    events: Mapped[list["BookEvent"]] = relationship(
-        back_populates="user_book", cascade="all, delete-orphan"
-    )
     shelf_placements: Mapped[list["ShelfPlacement"]] = relationship(
         back_populates="user_book", cascade="all, delete-orphan"
     )
@@ -260,8 +260,8 @@ class BookEvent(Base):
     id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
-    user_book_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("user_books.id", ondelete="CASCADE"), nullable=False
+    book_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("books.id", ondelete="CASCADE"), nullable=False
     )
     event_type_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("book_event_types.id"), nullable=False
@@ -275,7 +275,7 @@ class BookEvent(Base):
         cascade="all, delete-orphan",
     )
 
-    user_book: Mapped["UserBook"] = relationship(back_populates="events")
+    book: Mapped["Book"] = relationship(back_populates="events")
     event_type: Mapped["BookEventType"] = relationship()
     note_entry: Mapped["BookEventNote | None"] = relationship(
         back_populates="event",
@@ -304,12 +304,12 @@ class BookEvent(Base):
     )
 
     __table_args__ = (
-        Index("ix_book_events_user_book_id_occurred_at", "user_book_id", "occurred_at"),
+        Index("ix_book_events_book_id_occurred_at", "book_id", "occurred_at"),
     )
 
     def __repr__(self):
         return (
-            f"<BookEvent(id='{self.id}', user_book_id={self.user_book_id}, "
+            f"<BookEvent(id='{self.id}', book_id={self.book_id}, "
             f"event_type_id={self.event_type_id}, occurred_at={self.occurred_at})>"
         )
 

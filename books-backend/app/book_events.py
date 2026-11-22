@@ -36,15 +36,13 @@ def _get_event_type(session: Session, code: BookEventCode) -> BookEventType:
 
 
 def _latest_event(
-    session: Session, user_book_id: int, code: BookEventCode
+    session: Session, book_id: int, code: BookEventCode
 ) -> BookEvent | None:
     # noinspection PyTypeChecker
     return (
         session.query(BookEvent)
         .join(BookEventType, BookEvent.event_type_id == BookEventType.id)
-        .filter(
-            BookEvent.user_book_id == user_book_id, BookEventType.code == code.value
-        )
+        .filter(BookEvent.book_id == book_id, BookEventType.code == code.value)
         .order_by(BookEvent.occurred_at.desc(), BookEvent.id.desc())
         .first()
     )
@@ -69,18 +67,18 @@ def record_added_to_library(
 ) -> BookEvent:
     """Create the user_book record if needed and append the first add event.
 
-    Raises ValueError if an add event already exists for this user_book.
+    Raises ValueError if an add event already exists for this book.
     """
-    user_book = _ensure_user_book(session, user_id=user_id, book_id=book_id)
+    _ensure_user_book(session, user_id=user_id, book_id=book_id)
 
     # noinspection PyTypeChecker
-    existing_add = _latest_event(session, user_book.id, BookEventCode.ADDED_TO_LIBRARY)
+    existing_add = _latest_event(session, book_id, BookEventCode.ADDED_TO_LIBRARY)
     if existing_add:
         raise ValueError("Book already added to library for this user")
 
     event_type = _get_event_type(session, BookEventCode.ADDED_TO_LIBRARY)
     event = BookEvent(
-        user_book_id=user_book.id,
+        book_id=book_id,
         event_type_id=event_type.id,
         occurred_at=occurred_at or datetime.now(UTC),
     )
@@ -149,7 +147,7 @@ def ensure_added_event(
         return user_book
 
     # noinspection PyTypeChecker
-    existing_add = _latest_event(session, user_book.id, BookEventCode.ADDED_TO_LIBRARY)
+    existing_add = _latest_event(session, book_id, BookEventCode.ADDED_TO_LIBRARY)
     if not existing_add:
         record_added_to_library(
             session, user_id=user_id, book_id=book_id, import_id=import_id
@@ -182,7 +180,7 @@ def ensure_added_event(
 
 def record_started_reading(
     session: Session,
-    user_book_id: int,
+    book_id: int,
     reading_date: ReadingDate,
 ) -> BookEvent:
     """Add a start event with the user's stated reading date.
@@ -191,15 +189,13 @@ def record_started_reading(
     records when the user says reading began. Requires that the book was added
     and is not already in an open reading cycle.
     """
-    add_event = _latest_event(session, user_book_id, BookEventCode.ADDED_TO_LIBRARY)
+    add_event = _latest_event(session, book_id, BookEventCode.ADDED_TO_LIBRARY)
     if not add_event:
         raise ValueError("Cannot start reading before adding to library")
 
-    latest_start = _latest_event(session, user_book_id, BookEventCode.STARTED_READING)
-    latest_finish = _latest_event(session, user_book_id, BookEventCode.FINISHED_READING)
-    latest_abandoned = _latest_event(
-        session, user_book_id, BookEventCode.ABANDONED_READING
-    )
+    latest_start = _latest_event(session, book_id, BookEventCode.STARTED_READING)
+    latest_finish = _latest_event(session, book_id, BookEventCode.FINISHED_READING)
+    latest_abandoned = _latest_event(session, book_id, BookEventCode.ABANDONED_READING)
     latest_terminal = latest_finish
     if latest_abandoned and (
         latest_terminal is None or _is_after(latest_abandoned, latest_terminal)
@@ -217,7 +213,7 @@ def record_started_reading(
 
     event_type = _get_event_type(session, BookEventCode.STARTED_READING)
     event = BookEvent(
-        user_book_id=user_book_id,
+        book_id=book_id,
         event_type_id=event_type.id,
         occurred_at=datetime.now(UTC),
     )
@@ -235,16 +231,16 @@ def record_started_reading(
 
 def record_finished_reading(
     session: Session,
-    user_book_id: int,
+    book_id: int,
     reading_date: ReadingDate,
 ) -> BookEvent:
     """Add a finish event with the user's stated reading date."""
-    add_event = _latest_event(session, user_book_id, BookEventCode.ADDED_TO_LIBRARY)
+    add_event = _latest_event(session, book_id, BookEventCode.ADDED_TO_LIBRARY)
     if not add_event:
         raise ValueError("Cannot finish reading before adding to library")
 
-    latest_start = _latest_event(session, user_book_id, BookEventCode.STARTED_READING)
-    latest_finish = _latest_event(session, user_book_id, BookEventCode.FINISHED_READING)
+    latest_start = _latest_event(session, book_id, BookEventCode.STARTED_READING)
+    latest_finish = _latest_event(session, book_id, BookEventCode.FINISHED_READING)
 
     # Validate against the event stream rather than the reading placement: an
     # import constructs its historical events before projecting that placement.
@@ -255,7 +251,7 @@ def record_finished_reading(
 
     event_type = _get_event_type(session, BookEventCode.FINISHED_READING)
     event = BookEvent(
-        user_book_id=user_book_id,
+        book_id=book_id,
         event_type_id=event_type.id,
         occurred_at=datetime.now(UTC),
     )
@@ -275,7 +271,7 @@ def record_finished_reading(
 
 def record_reading_event(
     session: Session,
-    user_book_id: int,
+    book_id: int,
     code: BookEventCode,
     occurred_at: datetime | None = None,
 ) -> BookEvent:
@@ -287,11 +283,11 @@ def record_reading_event(
     }:
         raise ValueError("Not a reading-state event")
 
-    if not _latest_event(session, user_book_id, BookEventCode.ADDED_TO_LIBRARY):
+    if not _latest_event(session, book_id, BookEventCode.ADDED_TO_LIBRARY):
         raise ValueError("Cannot change reading state before adding to library")
 
     event = BookEvent(
-        user_book_id=user_book_id,
+        book_id=book_id,
         event_type_id=_get_event_type(session, code).id,
         occurred_at=occurred_at or datetime.now(UTC),
     )
@@ -303,15 +299,15 @@ def record_reading_event(
 
 def record_note_event(
     session: Session,
-    user_book_id: int,
+    book_id: int,
     code: BookEventCode,
     note: str | None,
     occurred_at: datetime | None = None,
 ) -> BookEvent:
-    """Append a note event for the user_book."""
+    """Append a note event for the book."""
     event_type = _get_event_type(session, code)
     event = BookEvent(
-        user_book_id=user_book_id,
+        book_id=book_id,
         event_type_id=event_type.id,
         occurred_at=occurred_at or datetime.now(UTC),
     )
@@ -324,14 +320,14 @@ def record_note_event(
 
 def record_rating_event(
     session: Session,
-    user_book_id: int,
+    book_id: int,
     rating: float | None,
     occurred_at: datetime | None = None,
     import_id: int | None = None,
 ) -> BookEvent:
     """Add a rating event; a null rating represents an explicit removal of the rating."""
     event = BookEvent(
-        user_book_id=user_book_id,
+        book_id=book_id,
         event_type_id=_get_event_type(session, BookEventCode.RATING_SET).id,
         occurred_at=occurred_at or datetime.now(UTC),
     )
@@ -350,12 +346,12 @@ def record_rating_event(
 
 def record_progress_event(
     session: Session,
-    user_book_id: int,
+    book_id: int,
     page: int | None = None,
     percent: float | None = None,
     occurred_at: datetime | None = None,
 ) -> BookEvent:
-    """Append a progress event for the user_book.
+    """Append a progress event for the book.
 
     Progress must be expressed as exactly one of page or percent.
     """
@@ -364,7 +360,7 @@ def record_progress_event(
 
     event_type = _get_event_type(session, BookEventCode.PROGRESS_SET)
     event = BookEvent(
-        user_book_id=user_book_id,
+        book_id=book_id,
         event_type_id=event_type.id,
         occurred_at=occurred_at or datetime.now(UTC),
     )
@@ -391,7 +387,7 @@ def apply_progress_event(
         page = max_page
 
     record_progress_event(
-        session, user_book_id=user_book.id, page=page, percent=percent
+        session, book_id=user_book.book_id, page=page, percent=percent
     )
     user_book.book.current_page = page
     user_book.book.current_percent = percent
@@ -402,7 +398,7 @@ def apply_progress_event(
 
 def record_cover_changed(
     session: Session,
-    user_book_id: int,
+    book_id: int,
     old_cover_image_url: str | None,
     new_cover_image_url: str | None,
     old_cover_thumbnail_url: str | None,
@@ -415,7 +411,7 @@ def record_cover_changed(
     """
     event_type = _get_event_type(session, BookEventCode.COVER_CHANGED)
     event = BookEvent(
-        user_book_id=user_book_id,
+        book_id=book_id,
         event_type_id=event_type.id,
         occurred_at=occurred_at or datetime.now(UTC),
     )
@@ -435,11 +431,11 @@ def record_cover_changed(
 
 
 def derive_reading_date_values(
-    session: Session, user_book_id: int
+    session: Session, book_id: int
 ) -> tuple[ReadingDate | None, ReadingDate | None]:
     """Derive precise or partial reading dates."""
-    latest_start = _latest_event(session, user_book_id, BookEventCode.STARTED_READING)
-    latest_finish = _latest_event(session, user_book_id, BookEventCode.FINISHED_READING)
+    latest_start = _latest_event(session, book_id, BookEventCode.STARTED_READING)
+    latest_finish = _latest_event(session, book_id, BookEventCode.FINISHED_READING)
 
     started_at = _reading_date_for_event(latest_start)
     finished_at = (
@@ -512,9 +508,9 @@ def project_user_book_state(session: Session, user_book: UserBook) -> UserBook:
     Reading dates are not stored. This only sets the persisted progress columns
     (current page/percent).
     """
-    user_book_id: int = user_book.id
-    latest_start = _latest_event(session, user_book_id, BookEventCode.STARTED_READING)
-    latest_progress = _latest_event(session, user_book_id, BookEventCode.PROGRESS_SET)
+    book_id = user_book.book_id
+    latest_start = _latest_event(session, book_id, BookEventCode.STARTED_READING)
+    latest_progress = _latest_event(session, book_id, BookEventCode.PROGRESS_SET)
 
     if latest_progress and (
         latest_start is None or _is_after(latest_progress, latest_start)
@@ -547,7 +543,7 @@ def build_user_book_response(session: Session, user_book: UserBook) -> UserBookR
     dates. This is the single seam that produces the read model; the ORM
     ``UserBook`` itself carries no date attributes.
     """
-    started_at, finished_at = derive_reading_date_values(session, user_book.id)
+    started_at, finished_at = derive_reading_date_values(session, user_book.book_id)
     shelf = current_reading_shelf(session, user_book.id)
     if (
         shelf == ReadingShelf.STARTED

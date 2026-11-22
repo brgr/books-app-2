@@ -251,34 +251,34 @@ def import_reading_list_from_bytes(
         ):
             record_started_reading(
                 db,
-                user_book_id=user_book.id,
+                book_id=book_id,
                 reading_date=started_at,
             )
         if derived_shelf == ReadingShelf.PAUSED:
             record_reading_event(
                 db,
-                user_book.id,
+                book_id,
                 BookEventCode.PAUSED_READING,
                 occurred_at=paused_at,
             )
         if derived_shelf == ReadingShelf.FINISHED:
             record_finished_reading(
                 db,
-                user_book_id=user_book.id,
+                book_id=book_id,
                 reading_date=finished_at,
             )
         if derived_shelf == ReadingShelf.ABANDONED:
-            record_reading_event(db, user_book.id, BookEventCode.ABANDONED_READING)
+            record_reading_event(db, book_id, BookEventCode.ABANDONED_READING)
         if current_page is not None:
             record_progress_event(
                 db,
-                user_book.id,
+                book_id,
                 page=current_page,
             )
         elif current_percent is not None:
-            record_progress_event(db, user_book.id, percent=current_percent)
+            record_progress_event(db, book_id, percent=current_percent)
         if rating is not None:
-            record_rating_event(db, user_book.id, rating=rating, import_id=import_id)
+            record_rating_event(db, book_id, rating=rating, import_id=import_id)
 
         move_reading_shelf_placement(db, user_book, derived_shelf)
         project_user_book_state(db, user_book)

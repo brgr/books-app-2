@@ -34,12 +34,12 @@ def create_sample_books(
         user_book = ensure_added_event(db, user_id=user_id, book_id=book.id)
 
         if shelf != ReadingShelf.WANT_TO_READ:
-            record_started_reading(db, user_book.id, ReadingDate.unknown())
+            record_started_reading(db, book.id, ReadingDate.unknown())
         if shelf == ReadingShelf.FINISHED:
-            record_finished_reading(db, user_book.id, ReadingDate.unknown())
+            record_finished_reading(db, book.id, ReadingDate.unknown())
         elif shelf == ReadingShelf.PAUSED:
-            record_reading_event(db, user_book.id, BookEventCode.PAUSED_READING)
+            record_reading_event(db, book.id, BookEventCode.PAUSED_READING)
         elif shelf == ReadingShelf.ABANDONED:
-            record_reading_event(db, user_book.id, BookEventCode.ABANDONED_READING)
+            record_reading_event(db, book.id, BookEventCode.ABANDONED_READING)
 
         move_reading_shelf_placement(db, user_book, shelf)

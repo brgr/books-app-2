@@ -1,4 +1,4 @@
-"""Tests for cover-change events (per user_book, like other reading events)."""
+"""Tests for cover-change events (per book, like other reading events)."""
 
 import io
 from pathlib import Path
@@ -11,7 +11,6 @@ from app.models import (
     BookEventCover,
     BookEventType,
     User,
-    UserBook,
 )
 
 
@@ -61,12 +60,12 @@ def _patch_cover_store(
     monkeypatch.setattr("app.books.router.store_cover_image", fake_store)
 
 
-def _cover_events_for_user_book(db_session, user_book_id):
+def _cover_events_for_book(db_session, book_id):
     return (
         db_session.query(BookEvent)
         .join(BookEventType, BookEvent.event_type_id == BookEventType.id)
         .filter(
-            BookEvent.user_book_id == user_book_id,
+            BookEvent.book_id == book_id,
             BookEventType.code == BookEventCode.COVER_CHANGED.value,
         )
         .order_by(BookEvent.occurred_at.asc(), BookEvent.id.asc())
@@ -79,7 +78,7 @@ def test_cover_changed_event_type_is_seeded(db_session):
     assert BookEventCode.COVER_CHANGED.value in codes
 
 
-def test_put_book_with_new_cover_records_event_on_user_book(
+def test_put_book_with_new_cover_records_event_on_book(
     client, auth_headers, db_session, monkeypatch
 ):
     book = _make_book(db_session)
@@ -92,8 +91,7 @@ def test_put_book_with_new_cover_records_event_on_user_book(
     )
     assert response.status_code == 200
 
-    user_book = db_session.query(UserBook).filter_by(book_id=book.id).one()
-    events = _cover_events_for_user_book(db_session, user_book.id)
+    events = _cover_events_for_book(db_session, book.id)
     assert len(events) == 1
     payload = db_session.query(BookEventCover).filter_by(event_id=events[0].id).one()
     assert payload.old_cover_image_url == "/uploads/covers/old.jpg"
@@ -148,8 +146,7 @@ def test_put_book_clearing_cover_records_event(
     )
     assert response.status_code == 200
 
-    user_book = db_session.query(UserBook).filter_by(book_id=book.id).one()
-    events = _cover_events_for_user_book(db_session, user_book.id)
+    events = _cover_events_for_book(db_session, book.id)
     assert len(events) == 1
     payload = db_session.query(BookEventCover).filter_by(event_id=events[0].id).one()
     assert payload.old_cover_image_url == "/uploads/covers/old.jpg"
@@ -168,8 +165,7 @@ def test_upload_cover_records_event(client, auth_headers, db_session, monkeypatc
     )
     assert response.status_code == 200
 
-    user_book = db_session.query(UserBook).filter_by(book_id=book.id).one()
-    events = _cover_events_for_user_book(db_session, user_book.id)
+    events = _cover_events_for_book(db_session, book.id)
     assert len(events) == 1
     payload = db_session.query(BookEventCover).filter_by(event_id=events[0].id).one()
     assert payload.old_cover_image_url == "/uploads/covers/old.jpg"
@@ -205,8 +201,7 @@ def test_two_consecutive_changes_record_two_events(
     )
     assert r2.status_code == 200
 
-    user_book = db_session.query(UserBook).filter_by(book_id=book.id).one()
-    events = _cover_events_for_user_book(db_session, user_book.id)
+    events = _cover_events_for_book(db_session, book.id)
     assert len(events) == 2
     payloads = [
         db_session.query(BookEventCover).filter_by(event_id=e.id).one() for e in events

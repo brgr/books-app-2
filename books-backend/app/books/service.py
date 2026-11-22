@@ -179,12 +179,10 @@ class BookService:
         old_cover_image_url: str | None,
         old_cover_thumbnail_url: str | None,
     ) -> None:
-        actor_user_book = ensure_added_event(
-            self.db, user_id=self._user_id, book_id=book.id
-        )
+        ensure_added_event(self.db, user_id=self._user_id, book_id=book.id)
         record_cover_changed(
             self.db,
-            user_book_id=actor_user_book.id,
+            book_id=book.id,
             old_cover_image_url=old_cover_image_url,
             new_cover_image_url=book.cover_image_url,
             old_cover_thumbnail_url=old_cover_thumbnail_url,
